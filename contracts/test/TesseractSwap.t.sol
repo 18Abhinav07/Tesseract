@@ -3,11 +3,14 @@ pragma solidity ^0.8.20;
 import "forge-std/Test.sol";
 import "../src/swap/TesseractSwap.sol";
 import "./mocks/MockXC20.sol";
+import "./mocks/MockXCM.sol";
+import {IXcm, XCM_PRECOMPILE} from "../src/interfaces/IXCM.sol";
 
 contract TesseractSwapTest is Test {
     TesseractSwap public swap;
     MockXC20 public tokenA;
     MockXC20 public tokenB;
+    MockXCM public xcmPrecompileMock;
 
     address public alice = address(0x1);
     address public bob = address(0x2);
@@ -20,10 +23,17 @@ contract TesseractSwapTest is Test {
         
         tokenA.mint(alice, 1000 ether);
         tokenB.mint(alice, 1000 ether);
+
+        xcmPrecompileMock = new MockXCM();
+        vm.etch(XCM_PRECOMPILE, address(xcmPrecompileMock).code);
     }
 
     function testCreatePairAndAddLiquidity() public {
         vm.startPrank(alice);
+        
+        // Ensure the pair is created manually first so TesseractSwap can retrieve it correctly for transferring
+        TesseractFactory(swap.factory()).createPair(address(tokenA), address(tokenB));
+        
         tokenA.approve(address(swap), 100 ether);
         tokenB.approve(address(swap), 100 ether);
         
@@ -48,7 +58,9 @@ contract TesseractSwapTest is Test {
         
         vm.startPrank(bob);
         tokenA.mint(bob, 10 ether);
+        tokenB.mint(bob, 10 ether);
         tokenA.approve(address(swap), 10 ether);
+        tokenB.approve(address(swap), 10 ether);
         
         uint256 balanceBefore = tokenB.balanceOf(bob);
         
@@ -74,7 +86,9 @@ contract TesseractSwapTest is Test {
         
         vm.startPrank(bob);
         tokenA.mint(bob, 10 ether);
+        tokenB.mint(bob, 10 ether);
         tokenA.approve(address(swap), 10 ether);
+        tokenB.approve(address(swap), 10 ether);
         
         address[] memory path = new address[](2);
         path[0] = address(tokenA);
@@ -88,6 +102,62 @@ contract TesseractSwapTest is Test {
             bob,
             block.timestamp - 1 // Deadline in past
         );
+        vm.stopPrank();
+    }
+
+    function testSwapSlippageRevert() public {
+        testCreatePairAndAddLiquidity();
+
+        vm.startPrank(bob);
+        tokenA.mint(bob, 10 ether);
+        tokenB.mint(bob, 10 ether);
+        tokenA.approve(address(swap), 10 ether);
+        tokenB.approve(address(swap), 10 ether);
+        
+        address[] memory path = new address[](2);
+        path[0] = address(tokenA);
+        path[1] = address(tokenB);
+
+        // Expect revert because minimum amount requested is unreasonably high
+        // The router's output min check revert is INSUFFICIENT_OUTPUT_AMOUNT
+        vm.expectRevert("TesseractSwap: INSUFFICIENT_OUTPUT_AMOUNT");
+        swap.swapExactTokensForTokens(
+            10 ether,
+            100 ether, // Min amount out (slippage protection)
+            path,
+            bob,
+            block.timestamp + 3600
+        );
+        vm.stopPrank();
+    }
+
+    function testSwapAndBridgeXCM() public {
+        testCreatePairAndAddLiquidity();
+
+        vm.startPrank(bob);
+        tokenA.mint(bob, 10 ether);
+        tokenB.mint(bob, 10 ether);
+        tokenA.approve(address(swap), 10 ether);
+        tokenB.approve(address(swap), 10 ether);
+
+        bytes memory xcmMessage = hex"112233";
+        bytes memory destination = abi.encodePacked(uint32(2001)); 
+
+        vm.expectEmit(true, true, true, false);
+        emit TesseractSwap.CrossChainSwap(bob, address(tokenA), address(tokenB), 10 ether, 0); // we skip exact output verify
+        
+        uint256 amountOut = swap.swapAndBridgeXCM(
+            address(tokenA),
+            address(tokenB),
+            10 ether,
+            1 ether,
+            destination,
+            xcmMessage,
+            block.timestamp + 3600
+        );
+
+        assertGt(amountOut, 0);
+
         vm.stopPrank();
     }
 }

@@ -35,6 +35,11 @@ contract TesseractStakeTest is Test {
         // to mock the call entirely if it was a constant, but we'll re-deploy for clean state.
         
         dotToken.mint(alice, 1000 ether);
+        
+        // Give the dummy precompile some DOT so it can handle unstaking payouts
+        // Since we are etching at STAKING_PRECOMPILE (0x00...0800), we need to mint DOT to that constant address,
+        // not the wrapper `precompile` address!
+        dotToken.mint(STAKING_PRECOMPILE, 1000 ether);
     }
     
     function testInitialExchangeRate() public view {
@@ -64,5 +69,25 @@ contract TesseractStakeTest is Test {
         
         // Exhange rate should now be 1.1 (110 total value / 100 total supply)
         assertEq(stakeVault.exchangeRate(), 1.1 * 1e18);
+    }
+
+    function testUnstake() public {
+        testStakeAndMintLstDOT();
+
+        uint256 lstAmountToUnstake = 50 ether;
+        
+        // Need to approve lstDOT for burning in the test if using burnFrom? No, it's burned inside but let's check.
+        // Actually lstDOT.burnFrom is called by the stakeVault, so the user needs to approve the stakeVault to burn their tokens
+        vm.startPrank(alice);
+        stakeVault.lstDOT().approve(address(stakeVault), lstAmountToUnstake);
+        
+        uint256 dotBalanceBefore = dotToken.balanceOf(alice);
+        
+        uint256 returnedDot = stakeVault.unstake(lstAmountToUnstake);
+
+        assertEq(returnedDot, 50 ether); // 1:1 right now
+        assertEq(stakeVault.lstDOT().balanceOf(alice), 50 ether); // remaining
+        assertEq(dotToken.balanceOf(alice), dotBalanceBefore + 50 ether);
+        vm.stopPrank();
     }
 }
