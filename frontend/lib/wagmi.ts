@@ -1,7 +1,8 @@
+import { defineChain } from 'viem'
 import { http, createConfig } from 'wagmi'
-import { custom, injected } from 'wagmi/connectors'
+import { injected } from 'wagmi/connectors'
 
-export const paseoTestnet = {
+export const paseoTestnet = defineChain({
     id: 420420417,
     name: 'Polkadot Hub TestNet',
     nativeCurrency: { name: 'PAS', symbol: 'PAS', decimals: 18 },
@@ -11,7 +12,7 @@ export const paseoTestnet = {
     blockExplorers: {
         default: { name: 'Blockscout', url: 'https://blockscout-testnet.polkadot.io/' },
     },
-} as const;
+});
 
 export const wagmiConfig = createConfig({
     chains: [paseoTestnet],

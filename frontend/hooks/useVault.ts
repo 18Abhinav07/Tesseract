@@ -51,14 +51,14 @@ export function useVault() {
         address: VAULT_ADDRESS,
         abi: VAULT_ABI,
         functionName: 'activeStrategies',
-        args: [0n],
+        args: [BigInt(0)],
     });
 
     const { data: strategy1 } = useReadContract({
         address: VAULT_ADDRESS,
         abi: VAULT_ABI,
         functionName: 'activeStrategies',
-        args: [1n],
+        args: [BigInt(1)],
     });
 
     const activeStrategiesList = [strategy0, strategy1].filter(Boolean);
