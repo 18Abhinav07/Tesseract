@@ -10,8 +10,8 @@ export const GlassCard = React.forwardRef<HTMLDivElement, GlassCardProps>(
     ({ className, children, variant = 'default', ...props }, ref) => {
 
         const variants = {
-            default: 'bg-glass-bg border-glass-border shadow-xl backdrop-blur-2xl',
-            elevated: 'bg-glass-bg border-glass-border shadow-2xl shadow-primary/5 backdrop-blur-3xl ring-1 ring-white/5',
+            default: 'bg-white/5 border-[rgba(255,255,255,0.1)] shadow-2xl backdrop-blur-xl',
+            elevated: 'bg-white/10 border-[rgba(255,255,255,0.2)] shadow-2xl shadow-primary/5 backdrop-blur-3xl ring-1 ring-white/5',
             subtle: 'bg-surface/30 border-glass-border border-opacity-50 backdrop-blur-md'
         }
 
