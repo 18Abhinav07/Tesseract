@@ -5,6 +5,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { wagmiConfig } from '../lib/wagmi'
 import { ReactNode } from 'react'
 import { shortenAddress } from '../lib/utils'
+import { ThemeProvider } from '../components/providers/ThemeProvider'
+import { Toaster } from 'sonner'
+import '../styles/theme.css'
 
 const queryClient = new QueryClient()
 
@@ -57,9 +60,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 <WagmiProvider config={wagmiConfig}>
                     <QueryClientProvider client={queryClient}>
                         <Navbar />
-                        <main className="container mx-auto p-4 lg:p-8">
-                            {children}
-                        </main>
+                        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+                            <main className="container mx-auto p-4 lg:p-8">
+                                {children}
+                            </main>
+                        </ThemeProvider>
+                        <Toaster position="bottom-right" richColors />
                     </QueryClientProvider>
                 </WagmiProvider>
             </body>

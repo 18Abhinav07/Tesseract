@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+:root {
+  /* Soft Pearl Grey / White */
+  --bg-primary: #f8fafc;
+  --bg-secondary: #f1f5f9;
+  
+  /* Deep Navy / Magenta accents */
+  --brand-accent: #e81cff;    /* Polkadot Pink/Magenta */
+  --brand-subtle: #0f172a;    /* Navy */
+  
+  --text-main: #0f172a;
+  --text-secondary: #475569;
+  
+  --font-primary: 'Inter', sans-serif;
+  
+  /* Glassmorphism Light */
+  --glass-bg: rgba(255, 255, 255, 0.6);
+  --glass-border: rgba(15, 23, 42, 0.05);
+}
+
+.dark {
+  /* Deep Charcoal */
+  --bg-primary: #020617;
+  --bg-secondary: #0f172a;
+  
+  /* Neon Pink / Cyan accents */
+  --brand-accent: #e81cff;    /* Polkadot Pink */
+  --brand-subtle: #22d3ee;    /* Cyan */
+  
+  --text-main: #f8fafc;
+  --text-secondary: #94a3b8;
+  
+  --font-primary: 'Inter', sans-serif;
+
+  /* Glassmorphism Dark */
+  --glass-bg: rgba(15, 23, 42, 0.4);
+  --glass-border: rgba(255, 255, 255, 0.05);
+}
+
+@theme {
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-subtle: var(--brand-subtle);
+  --color-text-main: var(--text-main);
+  --color-text-secondary: var(--text-secondary);
+  
+  --color-glass-bg: var(--glass-bg);
+  --color-glass-border: var(--glass-border);
+
+  --font-sans: var(--font-primary);
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+}
