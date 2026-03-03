@@ -1,6 +1,10 @@
 import * as React from 'react'
 import { GlassCard } from '../factory/GlassCard'
 import { ActionButton } from '../factory/ActionButton'
+import { useVaultLogic } from '../../hooks/useVaultLogic'
+import { formatDisplayBalance } from '../../lib/utils'
+import { useEffect } from 'react'
+import { toast } from 'sonner'
 
 const STRATEGIES = [
     {

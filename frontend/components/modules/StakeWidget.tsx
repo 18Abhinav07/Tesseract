@@ -3,19 +3,50 @@ import { GlassCard } from '../factory/GlassCard'
 import { ActionButton } from '../factory/ActionButton'
 import { TokenInput } from '../factory/TokenInput'
 import { useState, useEffect } from 'react'
+import { useStakingLogic } from '../../hooks/useStakingLogic'
+import { toast } from 'sonner'
+import { formatDisplayBalance } from '../../lib/utils'
+import { parseUnits } from 'viem'
 
 export function StakeWidget() {
     const [amount, setAmount] = useState('');
     const [tab, setTab] = useState<'stake'>('stake');
     const [liveRewards, setLiveRewards] = useState(0.0042);
 
-    // Fake live rewards ticking
+    const {
+        executeStake,
+        exchangeRate,
+        stakedBalance,
+        isPending,
+        isSuccess,
+        hash
+    } = useStakingLogic(amount);
+
+    useEffect(() => {
+        if (isSuccess && hash) {
+            toast.success('Successfully Staked DOT!', {
+                description: `Transaction hash: ${hash.slice(0, 6)}...${hash.slice(-4)}`
+            });
+            setAmount('');
+        }
+    }, [isSuccess, hash]);
+
+    // Fake live rewards ticking mapping
     useEffect(() => {
         const interval = setInterval(() => {
             setLiveRewards(prev => prev + 0.000001);
         }, 2000);
         return () => clearInterval(interval);
     }, []);
+
+    const handleStake = () => {
+        if (!amount || parseFloat(amount) <= 0) return;
+        executeStake();
+    };
+
+    const displayExchangeRate = exchangeRate ? (Number(exchangeRate) / 1e18).toFixed(4) : "1.0000";
+    const expectedOut = amount ? (parseFloat(amount) / parseFloat(displayExchangeRate)).toFixed(4) : "0.0000";
+
 
     return (
         <div className="w-full max-w-[840px] grid grid-cols-1 md:grid-cols-2 gap-6 relative">
@@ -29,21 +60,26 @@ export function StakeWidget() {
                 <TokenInput
                     label="Deposit Amount"
                     tokenSymbol="DOT"
-                    balance="150.00"
+                    balance="-"
                     value={amount}
                     onChange={setAmount}
-                    onMax={() => setAmount('150.00')}
                 />
 
                 <div className="flexjustify-between items-center my-2 text-sm text-muted px-2">
                     <div className="flex justify-between items-center w-full mt-2">
                         <span>Exchange Rate</span>
-                        <span className="font-mono text-primary">1 lstDOT = 1.042 DOT</span>
+                        {exchangeRate ? (
+                            <span className="font-mono text-primary animate-in fade-in">1 lstDOT = {displayExchangeRate} DOT</span>
+                        ) : (
+                            <div className="h-4 w-32 bg-white/10 animate-pulse rounded"></div>
+                        )}
                     </div>
                 </div>
 
                 <div className="mt-auto">
-                    <ActionButton className="w-full">Stake DOT</ActionButton>
+                    <ActionButton className="w-full" onClick={handleStake} isLoading={isPending}>
+                        Stake DOT
+                    </ActionButton>
                 </div>
             </GlassCard>
 
@@ -62,10 +98,22 @@ export function StakeWidget() {
 
                     <div className="flex flex-col gap-1">
                         <span className="text-muted text-sm">Your Staked Balance</span>
-                        <div className="text-5xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-white/60">
-                            42.500 <span className="text-xl text-muted font-medium">lstDOT</span>
+                        <div className="text-5xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-white/60 min-h-[48px]">
+                            {stakedBalance !== undefined ? (
+                                <>
+                                    {formatDisplayBalance(stakedBalance, 18, 4)} <span className="text-xl text-muted font-medium">lstDOT</span>
+                                </>
+                            ) : (
+                                <div className="h-10 w-48 bg-white/10 animate-pulse rounded-lg mt-1"></div>
+                            )}
                         </div>
-                        <span className="text-sm text-muted mt-1 font-mono">≈ 44.285 DOT</span>
+                        {stakedBalance !== undefined && exchangeRate ? (
+                            <span className="text-sm text-muted mt-1 font-mono">
+                                ≈ {((Number(stakedBalance) / 1e18) * (Number(exchangeRate) / 1e18)).toFixed(4)} DOT
+                            </span>
+                        ) : (
+                            <div className="h-4 w-24 bg-white/5 animate-pulse rounded mt-2"></div>
+                        )}
                     </div>
 
                     <div className="flex flex-col gap-1 mt-4 border-t border-white/5 pt-6">
