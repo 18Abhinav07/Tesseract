@@ -1,14 +1,26 @@
 [profile.default]
 src = "evm"
+test = "test"
+script = "script"
 out = "out"
 libs = ["lib"]
 solc_version = "0.8.24"
 optimizer = true
 optimizer_runs = 200
 via_ir = true
-
-# Also compile mocks for testing
-extra_output_files = ["abi"]
+extra_output = ["abi", "evm.bytecode"]
 
 [rpc_endpoints]
-passet = "https://testnet-passet-hub-eth-rpc.polkadot.io"
+hub_testnet = "${PASSET_RPC}"
+
+[etherscan]
+hub_testnet = { key = "", url = "https://paseo.subscan.io/api" }
+
+[fmt]
+line_length = 120
+tab_width = 4
+bracket_spacing = false
+int_types = "long"
+multiline_func_header = "params_first"
+quote_style = "double"
+number_underscore = "thousands"
