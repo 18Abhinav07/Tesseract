@@ -84,6 +84,7 @@ contract KredioLending is ReentrancyGuard {
     mapping(address => uint64) public repaymentCount;
     mapping(address => uint64) public defaultCount;
     mapping(address => Position) public positions;
+    mapping(address => uint256) public demoRateMultiplier; // Optional per-borrower rate boost for demoing liquidations
 
     struct Position {
         uint256 collateral;
@@ -112,6 +113,11 @@ contract KredioLending is ReentrancyGuard {
     event Liquidated(address indexed borrower, address indexed liquidator);
     event ReserveAdded(uint256 amount);
     event CollateralWithdrawn(address indexed user, uint256 amount);
+    event Deposited(address indexed user, uint256 amount);
+    event Withdrawn(address indexed user, uint256 amount);
+    event YieldHarvested(address indexed lender, uint256 amount);
+    event FeeSwept(address indexed to, uint256 amount);
+    event DemoMultiplierSet(address indexed borrower, uint256 multiplier);
 
     // Convenience getters for checklist tooling
     function getAgent() external view returns (address) {
@@ -172,12 +178,14 @@ contract KredioLending is ReentrancyGuard {
         totalDeposited += amount;
         yieldDebt[msg.sender] = (depositBalance[msg.sender] * accYieldPerShare) / ACC_PRECISION;
         require(usdc.transferFrom(msg.sender, address(this), amount), "transfer fail");
+        emit Deposited(msg.sender, amount);
     }
 
     function pendingYield(
         address user
     ) public view returns (uint256) {
         uint256 userBalance = depositBalance[user];
+        if (userBalance == 0) return 0;
         uint256 accrued = (userBalance * accYieldPerShare) / ACC_PRECISION;
         if (accrued < yieldDebt[user]) {
             return 0;
@@ -195,6 +203,7 @@ contract KredioLending is ReentrancyGuard {
         totalDeposited -= amount;
         yieldDebt[msg.sender] = (depositBalance[msg.sender] * accYieldPerShare) / ACC_PRECISION;
         require(usdc.transfer(msg.sender, amount), "transfer fail");
+        emit Withdrawn(msg.sender, amount);
     }
 
     function pendingYieldAndHarvest(
@@ -255,8 +264,7 @@ contract KredioLending is ReentrancyGuard {
         Position storage p = positions[msg.sender];
         require(p.active, "no position");
 
-        uint256 elapsed = block.timestamp - p.openedAt;
-        uint256 interest = (p.debt * p.interestBps * elapsed) / (BPS_DIVISOR * 365 days);
+        uint256 interest = _accruedInterest(msg.sender, p);
         uint256 totalOwed = p.debt + interest;
 
         require(usdc.transferFrom(msg.sender, address(this), totalOwed), "transfer fail");
@@ -287,6 +295,7 @@ contract KredioLending is ReentrancyGuard {
         uint256 amount = protocolFees;
         protocolFees = 0;
         require(usdc.transfer(to, amount), "transfer fail");
+        emit FeeSwept(to, amount);
     }
 
     /// View helper: accrued interest for an open position
@@ -295,8 +304,36 @@ contract KredioLending is ReentrancyGuard {
     ) external view returns (uint256) {
         Position memory pos = positions[borrower];
         if (!pos.active) return 0;
-        uint256 elapsed = block.timestamp - pos.openedAt;
-        return (pos.debt * pos.interestBps * elapsed) / (BPS_DIVISOR * 365 days);
+        return _accruedInterestValue(borrower, pos);
+    }
+
+    /// View helper: health ratio in basis points; max uint256 if inactive.
+    function healthRatio(
+        address borrower
+    ) external view returns (uint256) {
+        Position memory pos = positions[borrower];
+        if (!pos.active || pos.debt == 0) return type(uint256).max;
+        uint256 owed = pos.debt + _accruedInterestValue(borrower, pos);
+        return (pos.collateral * BPS_DIVISOR) / owed;
+    }
+
+    /// View helper: full position plus accrued interest in one call.
+    function getPositionFull(
+        address borrower
+    ) external view returns (uint256, uint256, uint256, uint256, uint32, uint8, bool) {
+        Position memory pos = positions[borrower];
+        uint256 accrued = pos.active ? _accruedInterestValue(borrower, pos) : 0;
+        uint256 totalOwed = pos.debt + accrued;
+        return (pos.collateral, pos.debt, accrued, totalOwed, pos.interestBps, pos.tier, pos.active);
+    }
+
+    function setDemoMultiplier(
+        address borrower,
+        uint256 multiplier
+    ) external onlyAdmin {
+        require(multiplier <= 1000, "max 1000x");
+        demoRateMultiplier[borrower] = multiplier;
+        emit DemoMultiplierSet(borrower, multiplier);
     }
 
     // -------- TIER 2: Risk Management --------
@@ -355,6 +392,7 @@ contract KredioLending is ReentrancyGuard {
         yieldDebt[user] = (depositBalance[user] * accYieldPerShare) / ACC_PRECISION;
         if (pending > 0) {
             require(usdc.transfer(user, pending), "yield transfer fail");
+            emit YieldHarvested(user, pending);
         }
     }
 
@@ -376,8 +414,7 @@ contract KredioLending is ReentrancyGuard {
         Position storage p = positions[borrower];
         require(p.active, "no position");
 
-        uint256 elapsed = block.timestamp - p.openedAt;
-        uint256 interest = (p.debt * p.interestBps * elapsed) / (BPS_DIVISOR * 365 days);
+        uint256 interest = _accruedInterest(borrower, p);
         uint256 totalOwed = p.debt + interest;
 
         if (!ignoreHealth) {
@@ -448,5 +485,27 @@ contract KredioLending is ReentrancyGuard {
         } else {
             protocolFees += toLenders;
         }
+    }
+
+    function _accruedInterest(
+        address borrower,
+        Position storage p
+    ) internal view returns (uint256) {
+        if (!p.active) return 0;
+        uint256 elapsed = block.timestamp - p.openedAt;
+        uint256 multiplier = demoRateMultiplier[borrower];
+        uint256 rate = multiplier > 0 ? p.interestBps * multiplier : p.interestBps;
+        return (p.debt * rate * elapsed) / (BPS_DIVISOR * 365 days);
+    }
+
+    function _accruedInterestValue(
+        address borrower,
+        Position memory p
+    ) internal view returns (uint256) {
+        if (!p.active) return 0;
+        uint256 elapsed = block.timestamp - p.openedAt;
+        uint256 multiplier = demoRateMultiplier[borrower];
+        uint256 rate = multiplier > 0 ? p.interestBps * multiplier : p.interestBps;
+        return (p.debt * rate * elapsed) / (BPS_DIVISOR * 365 days);
     }
 }
