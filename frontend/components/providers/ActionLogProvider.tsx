@@ -9,6 +9,7 @@ type ActionLogInput = {
     action: string;
     detail: string;
     txHash?: string;
+    chain?: 'hub' | 'people';
     market?: 'lending' | 'pas' | 'system';
 };
 
@@ -34,6 +35,7 @@ export function ActionLogProvider({ children }: { children: React.ReactNode }) {
             action: input.action,
             detail: input.detail,
             txHash: input.txHash,
+            chain: input.chain,
             market: input.market,
         });
         setEntries(updated);

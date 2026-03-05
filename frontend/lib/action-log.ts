@@ -7,6 +7,8 @@ export type ActionLogEntry = {
     action: string;
     detail: string;
     txHash?: string;
+    /** Which chain the txHash belongs to — determines the correct explorer URL */
+    chain?: 'hub' | 'people';
     market?: 'lending' | 'pas' | 'system';
 };
 

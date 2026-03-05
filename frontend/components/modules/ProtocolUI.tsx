@@ -68,7 +68,7 @@ export function StatRow({ label, value, tone = 'default' }: { label: string; val
 export function StatRowSkeleton({ label }: { label: string }) {
     return (
         <div className="flex items-center justify-between text-sm border-b border-white/5 pb-2 last:border-0 last:pb-0">
-            <span className="text-slate-500">{label}</span>
+            <span className="text-slate-400">{label}</span>
             <span className="h-4 w-20 rounded bg-white/10 animate-pulse" />
         </div>
     );

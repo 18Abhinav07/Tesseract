@@ -8,7 +8,7 @@ import config from '../../../lib/addresses';
 import { ABIS } from '../../../lib/constants';
 import { formatTokenAmount, cn } from '../../../lib/utils';
 import { parseUsdcInput } from '../../../lib/input';
-import { PageShell, StateNotice } from '../../../components/modules/ProtocolUI';
+import { PageShell, MarketModeSwitch, StateNotice } from '../../../components/modules/ProtocolUI';
 import { bpsToPercent, fmtToken, formatHealthFactor, healthState, tierLabel, useUserPortfolio } from '../../../hooks/useProtocolData';
 import { useProtocolActions } from '../../../hooks/useProtocolActions';
 import { useAccess } from '../../../hooks/useAccess';
@@ -333,6 +333,7 @@ export default function BorrowUsdcPage() {
     return (
         <PageShell title="Borrow" subtitle="Deposit mUSDC collateral, then borrow based on your credit score.">
             <div className="max-w-lg mx-auto space-y-4">
+                <MarketModeSwitch base="/borrow" active="usdc" />
                 {!isConnected && <StateNotice tone="info" message="Connect MetaMask via the header to borrow." />}
                 {isConnected && isWrongNetwork && <StateNotice tone="error" message="Switch to the correct network to continue." />}
 

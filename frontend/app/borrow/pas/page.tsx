@@ -16,7 +16,7 @@ import {
 import config from '../../../lib/addresses';
 import { ABIS } from '../../../lib/constants';
 import { formatDisplayBalance, formatTokenAmount, cn } from '../../../lib/utils';
-import { PageShell, StatRow, StateNotice } from '../../../components/modules/ProtocolUI';
+import { PageShell, MarketModeSwitch, StatRow, StateNotice } from '../../../components/modules/ProtocolUI';
 import { useUserPortfolio, useGlobalProtocolData, formatHealthFactor, healthState, fmtToken, fmtOraclePrice8 } from '../../../hooks/useProtocolData';
 import { useProtocolActions } from '../../../hooks/useProtocolActions';
 
@@ -645,6 +645,7 @@ export default function BorrowPasPage() {
     return (
         <PageShell title="Borrow" subtitle="Deposit PAS as collateral and borrow mUSDC from KredioPASMarket.">
             <div className="max-w-lg mx-auto space-y-4">
+                <MarketModeSwitch base="/borrow" active="pas" />
                 <div className="inline-flex gap-1 rounded-xl border border-white/10 bg-black/30 p-1">
                     <button className={tabCls(source === 'hub')} onClick={() => setSource('hub')}>PAS on Hub</button>
                     <button className={tabCls(source === 'people')} onClick={() => setSource('people')}>PAS on People Chain</button>
