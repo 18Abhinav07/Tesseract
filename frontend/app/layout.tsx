@@ -6,9 +6,11 @@ import { RainbowKitProvider, ConnectButton, darkTheme } from '@rainbow-me/rainbo
 import { wagmiConfig, paseoTestnet } from '../lib/wagmi'
 import { ReactNode, useState, useRef, useEffect } from 'react'
 import { ThemeProvider } from '../components/providers/ThemeProvider'
+import { ActionLogProvider } from '../components/providers/ActionLogProvider'
 import { Toaster } from 'sonner'
 import { NebulaBackground } from '../components/modules/NebulaBackground'
-import { Dock } from '../components/modules/Dock'
+import { AppNavigation } from '../components/modules/AppNavigation'
+import { ActionLogPanel } from '../components/modules/ActionLogPanel'
 import { WalletPanel } from '../components/modules/WalletPanel'
 import '../styles/theme.css'
 import '@rainbow-me/rainbowkit/styles.css'
@@ -16,7 +18,7 @@ import { Plus_Jakarta_Sans } from 'next/font/google'
 import { formatDisplayBalance } from '../lib/utils'
 import config, { isDeployed } from '../lib/addresses'
 import { ABIS } from '../lib/constants'
-import { TUSDC, WPAS, TVTUSDC } from '../lib/tokens'
+import { TUSDC } from '../lib/tokens'
 
 const jakarta = Plus_Jakarta_Sans({
     subsets: ['latin'],
@@ -38,9 +40,7 @@ function FaucetsDropdown() {
 
     // Tokens that can be added to wallet
     const watchableTokens = [
-        { def: TUSDC, address: config.tUSDC, color: 'bg-yellow-500/20 text-yellow-300', borderColor: 'border-yellow-500/30' },
-        { def: WPAS, address: config.wpas, color: 'bg-orange-500/20 text-orange-300', borderColor: 'border-orange-500/30' },
-        { def: TVTUSDC, address: config.vault, color: 'bg-green-500/20 text-green-300', borderColor: 'border-green-500/30' },
+        { def: TUSDC, address: config.mUSDC, color: 'bg-yellow-500/20 text-yellow-300', borderColor: 'border-yellow-500/30' },
     ] as const
 
     const handleAddToken = async (symbol: string, address: `0x${string}`, decimals: number) => {
@@ -63,18 +63,18 @@ function FaucetsDropdown() {
     }, [])
 
     const handleMintTUSDC = async () => {
-        if (!walletClient || !publicClient || !address || !isDeployed(config.tUSDC)) return
+        if (!walletClient || !publicClient || !address || !isDeployed(config.mUSDC)) return
         setMinting(true)
         setMintMsg('')
         try {
             const tx = await walletClient.writeContract({
-                address: config.tUSDC,
+                address: config.mUSDC,
                 abi: ABIS.MOCK_ASSET,
                 functionName: 'mint',
                 args: [address, TUSDC.faucet!.amount],
             })
             await publicClient.waitForTransactionReceipt({ hash: tx })
-            setMintMsg('Minted 1,000 tUSDC!')
+            setMintMsg('Minted 1,000 mUSDC!')
             setTimeout(() => setMintMsg(''), 3000)
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message.slice(0, 60) : 'Unknown error'
@@ -88,7 +88,7 @@ function FaucetsDropdown() {
         <div ref={ref} className="relative">
             <button
                 onClick={() => setOpen(o => !o)}
-                className="flex items-center gap-1.5 text-sm font-medium text-slate-300 hover:text-white border border-white/10 px-3 py-2 bg-white/5 backdrop-blur-sm transition-colors"
+                className="flex items-center gap-1.5 rounded-xl text-sm font-medium text-slate-300 hover:text-white border border-white/15 px-3 py-2 bg-black/30 backdrop-blur-xl transition-colors hover:bg-black/40"
             >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
@@ -100,15 +100,15 @@ function FaucetsDropdown() {
             </button>
 
             {open && (
-                <div className="absolute right-0 top-full mt-2 w-64 rounded-xl border border-white/10 bg-slate-900/95 backdrop-blur-xl shadow-2xl z-[60] overflow-hidden">
+                <div className="absolute right-0 top-full mt-2 w-72 rounded-2xl border border-white/15 bg-black/85 backdrop-blur-2xl shadow-2xl z-[60] overflow-hidden">
                     {/* PAS Faucet */}
                     <a
                         href="https://faucet.polkadot.io/"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors border-b border-white/5"
+                        className="flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition-colors border-b border-white/10"
                     >
-                        <span className="w-8 h-8 rounded-lg bg-pink-500/20 border border-pink-500/30 flex items-center justify-center text-pink-300 text-xs font-bold">PAS</span>
+                        <span className="w-9 h-9 rounded-xl bg-pink-500/20 border border-pink-500/30 flex items-center justify-center text-pink-300 text-xs font-bold">PAS</span>
                         <div>
                             <p className="text-sm font-medium text-white">PAS Faucet</p>
                             <p className="text-xs text-slate-400">Official Polkadot testnet faucet</p>
@@ -121,26 +121,26 @@ function FaucetsDropdown() {
                     {/* tUSDC Faucet — always visible, disabled when not connected */}
                     <button
                         onClick={handleMintTUSDC}
-                        disabled={minting || !isConnected || !isDeployed(config.tUSDC)}
-                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors text-left disabled:opacity-50"
+                        disabled={minting || !isConnected || !isDeployed(config.mUSDC)}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition-colors text-left disabled:opacity-50"
                     >
-                        <span className="w-8 h-8 rounded-lg bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center text-yellow-300 text-[10px] font-bold">tUSDC</span>
+                        <span className="w-9 h-9 rounded-xl bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center text-yellow-300 text-[10px] font-bold">mUSDC</span>
                         <div>
                             <p className="text-sm font-medium text-white">
-                                {!isConnected ? 'Connect wallet to mint' : minting ? 'Minting...' : 'Mint 1,000 tUSDC'}
+                                {!isConnected ? 'Connect wallet to mint' : minting ? 'Minting...' : 'Mint 1,000 mUSDC'}
                             </p>
-                            <p className="text-xs text-slate-400">Test stablecoin (6 decimals)</p>
+                            <p className="text-xs text-slate-400">Protocol stablecoin (6 decimals)</p>
                         </div>
                     </button>
 
                     {mintMsg && (
-                        <div className={`px-4 py-2 text-xs ${mintMsg.startsWith('Error') ? 'text-red-400 bg-red-500/10' : 'text-green-400 bg-green-500/10'}`}>
+                        <div className={`px-4 py-2 text-xs border-y border-white/10 ${mintMsg.startsWith('Error') ? 'text-red-300 bg-red-500/10' : 'text-emerald-300 bg-emerald-500/10'}`}>
                             {mintMsg}
                         </div>
                     )}
 
                     {/* ── Add Tokens to Wallet ── */}
-                    <div className="px-4 py-2 border-t border-white/5">
+                    <div className="px-4 py-3 border-t border-white/10">
                         <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Add to Wallet</p>
                         <div className="flex flex-wrap gap-1.5">
                             {watchableTokens.map(({ def, address: addr, color, borderColor }) => {
@@ -196,7 +196,6 @@ function Navbar() {
     })
 
     const isWrongNetwork = isConnected && chainId !== paseoTestnet.id;
-    const hasZeroBalance = isConnected && !isWrongNetwork && balanceData && balanceData.value === 0n;
 
     return (
         <>
@@ -208,9 +207,10 @@ function Navbar() {
                         </svg>
                     </div>
                     <div className="text-xl font-light tracking-[0.2em] text-white hidden sm:block uppercase">
-                        Tesseract
+                        Kredio
                     </div>
                 </div>
+                <AppNavigation />
                 <div className="flex items-center gap-3">
                     {isWrongNetwork && (
                         <button
@@ -232,7 +232,7 @@ function Navbar() {
                         </button>
                     )}
                     <ConnectButton.Custom>
-                        {({ account, chain, openAccountModal, openChainModal, openConnectModal, mounted }) => {
+                        {({ account, chain, openAccountModal, openConnectModal, mounted }) => {
                             const connected = mounted && account && chain;
                             return (
                                 <div>
@@ -276,15 +276,17 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                                 fontStack: 'system',
                             })}
                         >
-                            <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-                                <NebulaBackground />
-                                <Navbar />
-                                <main className="container mx-auto p-4 lg:p-8 pb-32 relative z-10 flex flex-col items-center">
-                                    {children}
-                                </main>
-                                <Dock />
-                            </ThemeProvider>
-                            <Toaster position="bottom-right" richColors />
+                            <ActionLogProvider>
+                                <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+                                    <NebulaBackground />
+                                    <Navbar />
+                                    <main className="container mx-auto p-4 lg:p-8 pb-32 relative z-10 flex flex-col items-center">
+                                        {children}
+                                    </main>
+                                    <ActionLogPanel />
+                                </ThemeProvider>
+                                <Toaster position="bottom-right" richColors />
+                            </ActionLogProvider>
                         </RainbowKitProvider>
                     </QueryClientProvider>
                 </WagmiProvider>

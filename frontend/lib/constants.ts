@@ -1,12 +1,9 @@
-// ─── Contract ABIs matching the Tesseract 2.0 Solidity contracts ─────
-// These exactly match the function signatures in TesseractSwap.sol,
-// TesseractVault.sol, and TesseractCompute.sol.
-// Parsed via viem's parseAbi so wagmi readContract/writeContract work correctly.
+// ─── Contract ABIs used by the current frontend scope ─────────────────
 
 import { parseAbi } from 'viem';
 
 export const ABIS = {
-    // Standard ERC-20 (10 decimals on Polkadot Assets pallet)
+    // Standard ERC-20
     ERC20: parseAbi([
         'function balanceOf(address owner) view returns (uint256)',
         'function allowance(address owner, address spender) view returns (uint256)',
@@ -16,59 +13,6 @@ export const ABIS = {
         'function symbol() view returns (string)',
         'function decimals() view returns (uint8)',
         'function totalSupply() view returns (uint256)',
-    ]),
-
-    // TesseractSwap — evm/TesseractSwap.sol
-    SWAP: parseAbi([
-        'function registerAsset(uint32 assetId, address precompileAddr) external',
-        'function getPoolId(uint32 assetA, uint32 assetB) view returns (bytes32)',
-        'function addLiquidity(uint32 assetA, uint32 assetB, uint256 amountA, uint256 amountB) external returns (uint256 shares)',
-        'function removeLiquidity(uint32 assetA, uint32 assetB, uint256 shares) external returns (uint256 amountA, uint256 amountB)',
-        'function swap(uint32 assetIdIn, uint32 assetIdOut, uint256 amountIn, uint256 minAmountOut) external returns (uint256 amountOut)',
-        'function swapAndBridgeXCM(uint32 assetIdIn, uint32 assetIdOut, uint256 amountIn, uint256 minAmountOut, bytes xcmDestination, bytes xcmMessage) external returns (uint256 amountOut)',
-        'function getReserves(uint32 assetA, uint32 assetB) view returns (uint256 reserveA, uint256 reserveB)',
-        'function getPoolShares(bytes32 poolId, address user) view returns (uint256)',
-        'function assetPrecompile(uint32 assetId) view returns (address)',
-        'function owner() view returns (address)',
-        'event Swap(address indexed sender, uint32 assetIdIn, uint32 assetIdOut, uint256 amountIn, uint256 amountOut)',
-        'event BridgeXCM(address indexed sender, uint32 assetIdOut, uint256 amountOut, bytes xcmDestination)',
-        'event LiquidityAdded(address indexed provider, bytes32 indexed poolId, uint256 shares)',
-        'event LiquidityRemoved(address indexed provider, bytes32 indexed poolId, uint256 shares)',
-    ]),
-
-    // TesseractVault — evm/TesseractVault.sol (ERC-4626)
-    VAULT: parseAbi([
-        'function deposit(uint256 assets, address receiver) external returns (uint256 shares)',
-        'function withdraw(uint256 shares, address receiver) external returns (uint256 assets)',
-        'function previewDeposit(uint256 assets) view returns (uint256)',
-        'function previewWithdraw(uint256 shares) view returns (uint256)',
-        'function convertToShares(uint256 assets) view returns (uint256)',
-        'function convertToAssets(uint256 shares) view returns (uint256)',
-        'function rebalance(uint64[] strategyAprs, bytes xcmMessage) external',
-        'function setComputeContract(address _compute) external',
-        'function totalAssets() view returns (uint256)',
-        'function totalSupply() view returns (uint256)',
-        'function balanceOf(address account) view returns (uint256)',
-        'function name() view returns (string)',
-        'function symbol() view returns (string)',
-        'function decimals() view returns (uint8)',
-        'function computeContract() view returns (address)',
-        'function owner() view returns (address)',
-        'event Deposit(address indexed sender, address indexed receiver, uint256 assets, uint256 shares)',
-        'event Withdraw(address indexed sender, address indexed receiver, uint256 assets, uint256 shares)',
-        'event Rebalanced(uint64 bestStrategyIndex, bytes xcmMessage, uint64 refTime, uint64 proofSize)',
-    ]),
-
-    // TesseractCompute — pvm/TesseractCompute.sol (PVM)
-    COMPUTE: parseAbi([
-        'function getBestStrategy(uint64[] aprs) external returns (uint64 bestIndex)',
-        'function routeToParachain(bytes destination, bytes message) external',
-        'function getAssetBalance(address assetPrecompile) view returns (uint256)',
-        'function systemInfo() view returns (uint64 refTime, uint64 proofSize, bytes32 codeHash)',
-        'function authorizedCaller() view returns (address)',
-        'function owner() view returns (address)',
-        'event StrategySelected(uint64 bestIndex, uint256 aprCount)',
-        'event Routed(bytes destination, uint64 refTime, uint64 proofSize)',
     ]),
 
     // MockAsset
@@ -82,19 +26,83 @@ export const ABIS = {
         'function name() view returns (string)',
     ]),
 
-    // WPAS — Wrapped PAS (deposit/withdraw native PAS)
-    WPAS: parseAbi([
-        'function deposit() payable',
+    KREDIO_LENDING: parseAbi([
+        'function admin() view returns (address)',
+        'function totalDeposited() view returns (uint256)',
+        'function totalBorrowed() view returns (uint256)',
+        'function protocolFees() view returns (uint256)',
+        'function utilizationRate() view returns (uint256)',
+        'function depositBalance(address user) view returns (uint256)',
+        'function collateralBalance(address user) view returns (uint256)',
+        'function repaymentCount(address user) view returns (uint64)',
+        'function defaultCount(address user) view returns (uint64)',
+        'function pendingYield(address user) view returns (uint256)',
+        'function getScore(address user) view returns (uint64 score, uint8 tier, uint32 collateralRatioBps, uint32 interestRateBps)',
+        'function getPositionFull(address borrower) view returns (uint256 collateral, uint256 debt, uint256 accrued, uint256 totalOwed, uint32 interestBps, uint8 tier, bool active)',
+        'function healthRatio(address borrower) view returns (uint256)',
+        'function deposit(uint256 amount) external',
         'function withdraw(uint256 amount) external',
-        'function balanceOf(address owner) view returns (uint256)',
-        'function approve(address spender, uint256 amount) returns (bool)',
-        'function allowance(address owner, address spender) view returns (uint256)',
-        'function transfer(address to, uint256 amount) returns (bool)',
-        'function totalSupply() view returns (uint256)',
-        'function symbol() view returns (string)',
-        'function name() view returns (string)',
+        'function pendingYieldAndHarvest(address user) external',
+        'function depositCollateral(uint256 amount) external',
+        'function withdrawCollateral() external',
+        'function borrow(uint256 amount) external',
+        'function repay() external',
+        'function liquidate(address borrower) external',
+        'function adminLiquidate(address borrower) external',
+        'function setDemoMultiplier(address borrower, uint256 multiplier) external',
+        'function sweepProtocolFees(address to) external',
+        'event Borrowed(address indexed user, uint256 amount, uint8 tier, uint32 ratioBps)',
+    ]),
+
+    KREDIO_PAS_MARKET: parseAbi([
+        'function owner() view returns (address)',
+        'function ltvBps() view returns (uint256)',
+        'function liqBonusBps() view returns (uint256)',
+        'function stalenessLimit() view returns (uint256)',
+        'function protocolFeeBps() view returns (uint256)',
+        'function totalDeposited() view returns (uint256)',
+        'function totalBorrowed() view returns (uint256)',
+        'function protocolFees() view returns (uint256)',
+        'function utilizationRate() view returns (uint256)',
+        'function depositBalance(address user) view returns (uint256)',
+        'function collateralBalance(address user) view returns (uint256)',
+        'function repaymentCount(address user) view returns (uint256)',
+        'function defaultCount(address user) view returns (uint256)',
+        'function pendingYield(address user) view returns (uint256)',
+        'function healthRatio(address borrower) view returns (uint256)',
+        'function accruedInterest(address borrower) view returns (uint256)',
+        'function maxBorrowable(address borrower) view returns (uint256)',
+        'function getPositionFull(address borrower) view returns (uint256 collateralPAS, uint256 collateralValueUSDC, uint256 debtUSDC, uint256 accrued, uint256 totalOwed, uint32 interestBps, uint8 tier, bool active)',
+        'function deposit(uint256 amount) external',
+        'function withdraw(uint256 amount) external',
+        'function pendingYieldAndHarvest(address user) external',
+        'function depositCollateral() payable',
+        'function withdrawCollateral() external',
+        'function borrow(uint256 amount) external',
+        'function repay() external',
+        'function liquidate(address borrower) external',
+        'function adminLiquidate(address borrower) external',
+        'function sweepProtocolFees(address to) external',
+        'function setOracle(address newOracle) external',
+        'function setRiskParams(uint256 _ltvBps, uint256 _liqBonusBps, uint256 _stalenessLimit, uint256 _protocolFeeBps) external',
+        'function setDemoMultiplier(address user, uint256 multiplier) external',
+        'function pause() external',
+        'function unpause() external',
+        'event Borrowed(address indexed borrower, uint256 usdcAmount)',
+    ]),
+
+    PAS_ORACLE: parseAbi([
+        'function latestRoundData() view returns (uint80, int256, uint256, uint256, uint80)',
         'function decimals() view returns (uint8)',
-        'event Deposit(address indexed from, uint256 amount)',
-        'event Withdrawal(address indexed to, uint256 amount)',
+        'function isCrashed() view returns (bool)',
+        'function setPrice(int256 price) external',
+        'function crash(int256 crashPrice) external',
+        'function recover() external',
+    ]),
+
+    GOVERNANCE_CACHE: parseAbi([
+        'function getGovernanceData(address user) view returns (uint64 votes, uint8 conviction, uint256 cachedAt)',
+        'function setGovernanceData(address user, uint64 voteCount, uint8 maxConviction) external',
+        'function admin() view returns (address)',
     ]),
 };

@@ -1,7 +1,7 @@
 'use client';
 import * as React from 'react';
 import { useAccount, useBalance, usePublicClient, useWalletClient } from 'wagmi';
-import { formatUnits, parseEther } from 'viem';
+import { formatUnits } from 'viem';
 import config, { isDeployed } from '../../lib/addresses';
 import { ABIS } from '../../lib/constants';
 import { ALL_TOKENS, TUSDC, type TokenDef } from '../../lib/tokens';
@@ -28,9 +28,7 @@ const readErc20 = async (
 
 /* ── Contract address for a token ─────────────────────────────────── */
 function addrFor(token: TokenDef): `0x${string}` | null {
-    if (token.symbol === 'WPAS') return isDeployed(config.wpas) ? config.wpas : null;
-    if (token.symbol === 'tUSDC') return isDeployed(config.tUSDC) ? config.tUSDC : null;
-    if (token.symbol === 'tvtUSDC') return isDeployed(config.vault) ? config.vault : null;
+    if (token.symbol === 'mUSDC') return isDeployed(config.mUSDC) ? config.mUSDC : null;
     return null; // PAS = native, handled separately
 }
 
@@ -44,7 +42,6 @@ export function WalletPanel({ onClose }: { onClose: () => void }) {
     const [rows, setRows] = React.useState<Row[]>([]);
     const [loading, setLoading] = React.useState(false);
     const [mintStatus, setMintStatus] = React.useState('');
-    const [wrapStatus, setWrapStatus] = React.useState('');
 
     /* ── Fetch all 4 balances ──────────────────────────────────────── */
     const fetchBalances = React.useCallback(async () => {
@@ -75,70 +72,24 @@ export function WalletPanel({ onClose }: { onClose: () => void }) {
         if (isConnected) fetchBalances();
     }, [isConnected, fetchBalances]);
 
-    /* ── tUSDC Faucet ─────────────────────────────────────────────── */
+    /* ── mUSDC Faucet ─────────────────────────────────────────────── */
     const handleMintTUSDC = async () => {
-        if (!walletClient || !publicClient || !address || !isDeployed(config.tUSDC)) return;
+        if (!walletClient || !publicClient || !address || !isDeployed(config.mUSDC)) return;
         setLoading(true);
         setMintStatus('');
         try {
             const tx = await walletClient.writeContract({
-                address: config.tUSDC,
+                address: config.mUSDC,
                 abi: ABIS.MOCK_ASSET,
                 functionName: 'mint',
                 args: [address, TUSDC.faucet!.amount], // 1,000 x 10^6
             });
             await publicClient.waitForTransactionReceipt({ hash: tx });
-            setMintStatus('Minted 1,000 tUSDC!');
+            setMintStatus('Minted 1,000 mUSDC!');
             fetchBalances();
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message.slice(0, 80) : 'Unknown error';
             setMintStatus(`Error: ${msg}`);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    /* ── Wrap PAS -> WPAS ─────────────────────────────────────────── */
-    const handleWrap = async () => {
-        if (!walletClient || !publicClient || !address || !isDeployed(config.wpas)) return;
-        setLoading(true);
-        setWrapStatus('');
-        try {
-            const tx = await walletClient.writeContract({
-                address: config.wpas,
-                abi: ABIS.WPAS,
-                functionName: 'deposit',
-                value: parseEther('1'),
-            });
-            await publicClient.waitForTransactionReceipt({ hash: tx });
-            setWrapStatus('Wrapped 1 PAS \u2192 1 WPAS');
-            fetchBalances();
-        } catch (e: unknown) {
-            const msg = e instanceof Error ? e.message.slice(0, 80) : 'Unknown error';
-            setWrapStatus(`Error: ${msg}`);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    /* ── Unwrap WPAS -> PAS ───────────────────────────────────────── */
-    const handleUnwrap = async () => {
-        if (!walletClient || !publicClient || !address || !isDeployed(config.wpas)) return;
-        setLoading(true);
-        setWrapStatus('');
-        try {
-            const tx = await walletClient.writeContract({
-                address: config.wpas,
-                abi: ABIS.WPAS,
-                functionName: 'withdraw',
-                args: [parseEther('1')],
-            });
-            await publicClient.waitForTransactionReceipt({ hash: tx });
-            setWrapStatus('Unwrapped 1 WPAS \u2192 1 PAS');
-            fetchBalances();
-        } catch (e: unknown) {
-            const msg = e instanceof Error ? e.message.slice(0, 80) : 'Unknown error';
-            setWrapStatus(`Error: ${msg}`);
         } finally {
             setLoading(false);
         }
@@ -189,7 +140,7 @@ export function WalletPanel({ onClose }: { onClose: () => void }) {
                             )}
                         </div>
 
-                        {/* ERC-20 Balances (WPAS, tUSDC, tvtUSDC) */}
+                        {/* ERC-20 Balances (mUSDC) */}
                         <div className="space-y-2">
                             <p className="text-xs text-muted font-medium">Token Balances</p>
                             {rows.filter(r => r.token.symbol !== 'PAS').map(r => (
@@ -207,44 +158,16 @@ export function WalletPanel({ onClose }: { onClose: () => void }) {
                             ))}
                         </div>
 
-                        {/* Wrap / Unwrap (WPAS) */}
-                        {isDeployed(config.wpas) && (
-                            <div className="rounded-xl border border-orange-500/20 bg-orange-500/5 p-3 space-y-2">
-                                <p className="text-xs text-orange-300 font-medium">Wrap / Unwrap PAS</p>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={handleWrap}
-                                        disabled={loading}
-                                        className="flex-1 py-2 rounded-lg bg-orange-600 hover:bg-orange-500 text-white text-xs font-medium disabled:opacity-50 transition-colors"
-                                    >
-                                        Wrap 1 PAS
-                                    </button>
-                                    <button
-                                        onClick={handleUnwrap}
-                                        disabled={loading}
-                                        className="flex-1 py-2 rounded-lg bg-orange-600/70 hover:bg-orange-500 text-white text-xs font-medium disabled:opacity-50 transition-colors"
-                                    >
-                                        Unwrap 1 WPAS
-                                    </button>
-                                </div>
-                                {wrapStatus && (
-                                    <p className={`text-xs ${wrapStatus.startsWith('Error') ? 'text-red-400' : 'text-green-400'}`}>
-                                        {wrapStatus}
-                                    </p>
-                                )}
-                            </div>
-                        )}
-
-                        {/* tUSDC Faucet */}
-                        {isDeployed(config.tUSDC) && (
+                        {/* mUSDC Faucet */}
+                        {isDeployed(config.mUSDC) && (
                             <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-3 space-y-2">
-                                <p className="text-xs text-yellow-300 font-medium">tUSDC Faucet</p>
+                                <p className="text-xs text-yellow-300 font-medium">mUSDC Faucet</p>
                                 <button
                                     onClick={handleMintTUSDC}
                                     disabled={loading}
                                     className="w-full py-2 rounded-lg bg-yellow-600 hover:bg-yellow-500 text-white text-xs font-medium disabled:opacity-50 transition-colors"
                                 >
-                                    {loading ? 'Minting\u2026' : 'Mint 1,000 tUSDC'}
+                                    {loading ? 'Minting\u2026' : 'Mint 1,000 mUSDC'}
                                 </button>
                                 {mintStatus && (
                                     <p className={`text-xs ${mintStatus.startsWith('Error') ? 'text-red-400' : 'text-green-400'}`}>

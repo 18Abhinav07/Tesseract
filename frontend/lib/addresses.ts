@@ -1,61 +1,40 @@
-// ─── Address Configuration — Phase 1 ────────────────────────────────
-// All contract addresses loaded from env vars.
-// Set NEXT_PUBLIC_NETWORK=hubTestnet for real precompiles.
-//
-// IMPORTANT: Next.js only inlines NEXT_PUBLIC_* when accessed via
-// process.env.NEXT_PUBLIC_XXX (dot notation). Dynamic bracket access
-// like process.env[key] does NOT work in the browser bundle.
+import { CONTRACTS, asAddress } from '../config/contracts';
 
 export const ZERO_ADDR = '0x0000000000000000000000000000000000000000' as const;
 export const isDeployed = (addr: string | null | undefined): addr is `0x${string}` =>
     !!addr && addr !== ZERO_ADDR;
 
 export type NetworkConfig = {
-    swap: `0x${string}`;
-    vault: `0x${string}`;
-    compute: `0x${string}`;
-    wpas: `0x${string}`;
-    tUSDC: `0x${string}`;
-    xcm: `0x${string}`;
-    system: `0x${string}`;
+    lending: `0x${string}`;
+    pasMarket: `0x${string}`;
+    mUSDC: `0x${string}`;
+    oracle: `0x${string}`;
+    governanceCache: `0x${string}`;
+    kreditAgent: `0x${string}`;
     chainId: number;
     rpc: string;
     explorer: string;
     faucet: string;
+    owner: `0x${string}`;
 };
 
-const addr = (v: string | undefined): `0x${string}` =>
-    (v || ZERO_ADDR) as `0x${string}`;
-
-const localConfig: NetworkConfig = {
-    swap: addr(process.env.NEXT_PUBLIC_SWAP_ADDR),
-    vault: addr(process.env.NEXT_PUBLIC_VAULT_ADDR),
-    compute: addr(process.env.NEXT_PUBLIC_COMPUTE_ADDR),
-    wpas: addr(process.env.NEXT_PUBLIC_WPAS_ADDR),
-    tUSDC: addr(process.env.NEXT_PUBLIC_TUSDC_ADDR),
-    xcm: ZERO_ADDR as `0x${string}`,
-    system: ZERO_ADDR as `0x${string}`,
-    chainId: 31337,
-    rpc: 'http://127.0.0.1:8545',
-    explorer: '',
-    faucet: '',
+export const config: NetworkConfig = {
+    lending: asAddress(CONTRACTS.KREDIOLENDING),
+    pasMarket: asAddress(CONTRACTS.KREDIOPASMARKET),
+    mUSDC: asAddress(CONTRACTS.MOCKUSDC),
+    oracle: asAddress(CONTRACTS.MOCKPASORACLE),
+    governanceCache: asAddress(CONTRACTS.GOVERNANCECACHE),
+    kreditAgent: asAddress(CONTRACTS.KREDITAGENT),
+    chainId: CONTRACTS.CHAIN_ID,
+    rpc: CONTRACTS.RPC,
+    explorer: CONTRACTS.EXPLORER,
+    faucet: CONTRACTS.FAUCET,
+    owner: '0xe37a8983570B39F305fe93D565A29F89366f3fFe',
 };
 
-const hubTestnetConfig: NetworkConfig = {
-    swap: addr(process.env.NEXT_PUBLIC_SWAP_ADDR),
-    vault: addr(process.env.NEXT_PUBLIC_VAULT_ADDR),
-    compute: addr(process.env.NEXT_PUBLIC_COMPUTE_ADDR),
-    wpas: addr(process.env.NEXT_PUBLIC_WPAS_ADDR),
-    tUSDC: addr(process.env.NEXT_PUBLIC_TUSDC_ADDR),
-    xcm: '0x00000000000000000000000000000000000a0000' as `0x${string}`,
-    system: '0x0000000000000000000000000000000000000900' as `0x${string}`,
-    chainId: 420420417,
-    rpc: 'https://eth-rpc-testnet.polkadot.io/',
-    explorer: 'https://paseo.subscan.io',
-    faucet: 'https://faucet.polkadot.io/',
+export const legacyAliases = {
+    tUSDC: config.mUSDC,
 };
 
-const network = process.env.NEXT_PUBLIC_NETWORK || 'local';
-export const config: NetworkConfig = network === 'hubTestnet' ? hubTestnetConfig : localConfig;
 export default config;
 

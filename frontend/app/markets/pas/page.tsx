@@ -1,0 +1,53 @@
+"use client";
+
+import { Grid, PageShell, Panel, StatRow } from '../../../components/modules/ProtocolUI';
+import { bpsToPercent, fmtToken, healthState, tierLabel, useGlobalProtocolData, useUserPortfolio } from '../../../hooks/useProtocolData';
+
+export default function MarketsPasPage() {
+    const { pasMarket, oracle, refresh } = useGlobalProtocolData();
+    const portfolio = useUserPortfolio();
+    const healthTone = healthState(portfolio.pasHealthRatio);
+
+    return (
+        <PageShell title="Market: PAS Collateral" subtitle="KredioPASMarket details with oracle-linked collateral valuation.">
+            <Grid>
+                <Panel title="PAS Market Metrics">
+                    <StatRow label="Total Deposited" value={`${fmtToken(pasMarket.totalDeposited, 6, 2)} mUSDC`} />
+                    <StatRow label="Total Borrowed" value={`${fmtToken(pasMarket.totalBorrowed, 6, 2)} mUSDC`} />
+                    <StatRow label="Utilization" value={bpsToPercent(pasMarket.utilizationBps)} />
+                    <StatRow label="Protocol Fees" value={`${fmtToken(pasMarket.protocolFees, 6, 2)} mUSDC`} />
+                    <button onClick={refresh} className="text-xs text-cyan-300 hover:underline">Refresh</button>
+                </Panel>
+
+                <Panel title="Oracle">
+                    <StatRow label="Price (8d)" value={oracle.price8.toString()} />
+                    <StatRow label="Round ID" value={oracle.roundId.toString()} />
+                    <StatRow label="Updated At" value={oracle.updatedAt.toString()} />
+                    <StatRow label="Crash Mode" value={oracle.isCrashed ? 'True' : 'False'} tone={oracle.isCrashed ? 'red' : 'green'} />
+                </Panel>
+            </Grid>
+
+            <Grid>
+                <Panel title="My PAS Position" subtitle="Wallet-level state on PAS market.">
+                    <StatRow label="Lend Deposit" value={`${fmtToken(portfolio.pasDeposit, 6, 2)} mUSDC`} />
+                    <StatRow label="Pending Yield" value={`${fmtToken(portfolio.pasPendingYield, 6, 4)} mUSDC`} />
+                    <StatRow label="PAS Collateral" value={fmtToken(portfolio.pasPosition[0], 18, 4)} />
+                    <StatRow label="Collateral Value" value={`${fmtToken(portfolio.pasPosition[1], 6, 2)} mUSDC`} />
+                    <StatRow label="Debt" value={`${fmtToken(portfolio.pasPosition[2], 6, 2)} mUSDC`} />
+                    <StatRow label="Accrued" value={`${fmtToken(portfolio.pasPosition[3], 6, 4)} mUSDC`} />
+                    <StatRow label="Total Owed" value={`${fmtToken(portfolio.pasPosition[4], 6, 2)} mUSDC`} />
+                    <StatRow label="Rate" value={bpsToPercent(portfolio.pasPosition[5])} />
+                    <StatRow label="Tier" value={tierLabel(portfolio.pasPosition[6])} />
+                    <StatRow label="Health" value={bpsToPercent(portfolio.pasHealthRatio)} tone={healthTone === 'red' ? 'red' : healthTone === 'yellow' ? 'yellow' : 'green'} />
+                </Panel>
+
+                <Panel title="Wallet Context">
+                    <StatRow label="Native PAS Balance" value={fmtToken(portfolio.nativePas, 18, 4)} />
+                    <StatRow label="mUSDC Collateral Wallet" value={`${fmtToken(portfolio.pasCollateralWallet, 6, 2)} mUSDC`} />
+                    <StatRow label="Repayments" value={portfolio.pasRepaymentCount.toString()} />
+                    <StatRow label="Defaults" value={portfolio.pasDefaultCount.toString()} />
+                </Panel>
+            </Grid>
+        </PageShell>
+    );
+}

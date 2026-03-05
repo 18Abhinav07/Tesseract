@@ -1,0 +1,257 @@
+'use client';
+
+import { parseUnits } from 'viem';
+import { useAccount, useChainId, usePublicClient, useWalletClient } from 'wagmi';
+import config from '../lib/addresses';
+import { ABIS } from '../lib/constants';
+import { useActionLog } from '../components/providers/ActionLogProvider';
+
+type ActionResult = { ok: true; hash: `0x${string}` } | { ok: false; error: string };
+
+function toErrorMessage(error: unknown) {
+    if (error instanceof Error) return error.message;
+    return 'Unknown wallet error';
+}
+
+export function useProtocolActions() {
+    const { address } = useAccount();
+    const chainId = useChainId();
+    const publicClient = usePublicClient();
+    const { data: walletClient } = useWalletClient();
+    const { logAction } = useActionLog();
+
+    const ensureWallet = (action: string, market: 'lending' | 'pas' | 'system') => {
+        if (!address || !walletClient || !publicClient) {
+            logAction({ level: 'warning', action, detail: 'Connect wallet to continue', market });
+            return 'Wallet not connected';
+        }
+        if (chainId !== config.chainId) {
+            logAction({ level: 'warning', action, detail: `Switch network to chain ${config.chainId}`, market });
+            return 'Wrong network';
+        }
+        return null;
+    };
+
+    const approveMUSDC = async (spender: `0x${string}`, amount: bigint): Promise<ActionResult> => {
+        const missing = ensureWallet('Approve mUSDC', 'system');
+        if (missing) return { ok: false, error: missing };
+        if (amount <= 0n) {
+            logAction({ level: 'warning', action: 'Approve mUSDC', detail: 'Approval amount must be greater than 0', market: 'system' });
+            return { ok: false, error: 'Invalid amount' };
+        }
+        try {
+            const hash = await walletClient!.writeContract({
+                address: config.mUSDC,
+                abi: ABIS.ERC20,
+                functionName: 'approve',
+                args: [spender, amount],
+            });
+            await publicClient!.waitForTransactionReceipt({ hash });
+            logAction({ level: 'success', action: 'Approve mUSDC', detail: 'Allowance update confirmed', txHash: hash, market: 'system' });
+            return { ok: true, hash };
+        } catch (error) {
+            const message = toErrorMessage(error);
+            logAction({ level: 'error', action: 'Approve mUSDC', detail: message, market: 'system' });
+            return { ok: false, error: message };
+        }
+    };
+
+    const tx = async (
+        title: string,
+        market: 'lending' | 'pas' | 'system',
+        run: () => Promise<`0x${string}`>,
+    ): Promise<ActionResult> => {
+        const missing = ensureWallet(title, market);
+        if (missing) return { ok: false, error: missing };
+        try {
+            logAction({ action: title, detail: 'Waiting for wallet confirmation…', market });
+            const hash = await run();
+            await publicClient!.waitForTransactionReceipt({ hash });
+            logAction({ level: 'success', action: title, detail: 'Transaction confirmed', txHash: hash, market });
+            return { ok: true, hash };
+        } catch (error) {
+            const message = toErrorMessage(error);
+            logAction({ level: 'error', action: title, detail: message, market });
+            return { ok: false, error: message };
+        }
+    };
+
+    return {
+        approveMUSDC,
+        depositLending: (amount: bigint) => tx('Deposit to KredioLending', 'lending', () => walletClient!.writeContract({
+            address: config.lending,
+            abi: ABIS.KREDIO_LENDING,
+            functionName: 'deposit',
+            args: [amount],
+        })),
+        withdrawLending: (amount: bigint) => tx('Withdraw from KredioLending', 'lending', () => walletClient!.writeContract({
+            address: config.lending,
+            abi: ABIS.KREDIO_LENDING,
+            functionName: 'withdraw',
+            args: [amount],
+        })),
+        harvestLending: () => tx('Harvest lending yield', 'lending', () => walletClient!.writeContract({
+            address: config.lending,
+            abi: ABIS.KREDIO_LENDING,
+            functionName: 'pendingYieldAndHarvest',
+            args: [address!],
+        })),
+        depositLendingCollateral: (amount: bigint) => tx('Deposit USDC collateral', 'lending', () => walletClient!.writeContract({
+            address: config.lending,
+            abi: ABIS.KREDIO_LENDING,
+            functionName: 'depositCollateral',
+            args: [amount],
+        })),
+        withdrawLendingCollateral: () => tx('Withdraw USDC collateral', 'lending', () => walletClient!.writeContract({
+            address: config.lending,
+            abi: ABIS.KREDIO_LENDING,
+            functionName: 'withdrawCollateral',
+        })),
+        borrowLending: (amount: bigint) => tx('Borrow from KredioLending', 'lending', () => walletClient!.writeContract({
+            address: config.lending,
+            abi: ABIS.KREDIO_LENDING,
+            functionName: 'borrow',
+            args: [amount],
+        })),
+        repayLending: () => tx('Repay KredioLending debt', 'lending', () => walletClient!.writeContract({
+            address: config.lending,
+            abi: ABIS.KREDIO_LENDING,
+            functionName: 'repay',
+        })),
+        liquidateLending: (borrower: `0x${string}`) => tx('Liquidate KredioLending position', 'lending', () => walletClient!.writeContract({
+            address: config.lending,
+            abi: ABIS.KREDIO_LENDING,
+            functionName: 'liquidate',
+            args: [borrower],
+        })),
+        adminLiquidateLending: (borrower: `0x${string}`) => tx('Admin liquidate KredioLending position', 'lending', () => walletClient!.writeContract({
+            address: config.lending,
+            abi: ABIS.KREDIO_LENDING,
+            functionName: 'adminLiquidate',
+            args: [borrower],
+        })),
+        sweepLendingFees: (to: `0x${string}`) => tx('Sweep Lending protocol fees', 'lending', () => walletClient!.writeContract({
+            address: config.lending,
+            abi: ABIS.KREDIO_LENDING,
+            functionName: 'sweepProtocolFees',
+            args: [to],
+        })),
+        setLendingMultiplier: (borrower: `0x${string}`, multiplier: bigint) => tx('Set Lending demo multiplier', 'lending', () => walletClient!.writeContract({
+            address: config.lending,
+            abi: ABIS.KREDIO_LENDING,
+            functionName: 'setDemoMultiplier',
+            args: [borrower, multiplier],
+        })),
+
+        depositPasLend: (amount: bigint) => tx('Deposit to PAS market pool', 'pas', () => walletClient!.writeContract({
+            address: config.pasMarket,
+            abi: ABIS.KREDIO_PAS_MARKET,
+            functionName: 'deposit',
+            args: [amount],
+        })),
+        withdrawPasLend: (amount: bigint) => tx('Withdraw from PAS market pool', 'pas', () => walletClient!.writeContract({
+            address: config.pasMarket,
+            abi: ABIS.KREDIO_PAS_MARKET,
+            functionName: 'withdraw',
+            args: [amount],
+        })),
+        harvestPasLend: () => tx('Harvest PAS market yield', 'pas', () => walletClient!.writeContract({
+            address: config.pasMarket,
+            abi: ABIS.KREDIO_PAS_MARKET,
+            functionName: 'pendingYieldAndHarvest',
+            args: [address!],
+        })),
+        depositPasCollateral: (amountPasEth: string) => tx('Deposit PAS collateral', 'pas', () => walletClient!.writeContract({
+            address: config.pasMarket,
+            abi: ABIS.KREDIO_PAS_MARKET,
+            functionName: 'depositCollateral',
+            value: parseUnits(amountPasEth, 18),
+        })),
+        withdrawPasCollateral: () => tx('Withdraw PAS collateral', 'pas', () => walletClient!.writeContract({
+            address: config.pasMarket,
+            abi: ABIS.KREDIO_PAS_MARKET,
+            functionName: 'withdrawCollateral',
+        })),
+        borrowPas: (amount: bigint) => tx('Borrow from PAS market', 'pas', () => walletClient!.writeContract({
+            address: config.pasMarket,
+            abi: ABIS.KREDIO_PAS_MARKET,
+            functionName: 'borrow',
+            args: [amount],
+        })),
+        repayPas: () => tx('Repay PAS market debt', 'pas', () => walletClient!.writeContract({
+            address: config.pasMarket,
+            abi: ABIS.KREDIO_PAS_MARKET,
+            functionName: 'repay',
+        })),
+        liquidatePas: (borrower: `0x${string}`) => tx('Liquidate PAS position', 'pas', () => walletClient!.writeContract({
+            address: config.pasMarket,
+            abi: ABIS.KREDIO_PAS_MARKET,
+            functionName: 'liquidate',
+            args: [borrower],
+        })),
+        adminLiquidatePas: (borrower: `0x${string}`) => tx('Admin liquidate PAS position', 'pas', () => walletClient!.writeContract({
+            address: config.pasMarket,
+            abi: ABIS.KREDIO_PAS_MARKET,
+            functionName: 'adminLiquidate',
+            args: [borrower],
+        })),
+        sweepPasFees: (to: `0x${string}`) => tx('Sweep PAS market fees', 'pas', () => walletClient!.writeContract({
+            address: config.pasMarket,
+            abi: ABIS.KREDIO_PAS_MARKET,
+            functionName: 'sweepProtocolFees',
+            args: [to],
+        })),
+        setPasMultiplier: (user: `0x${string}`, multiplier: bigint) => tx('Set PAS demo multiplier', 'pas', () => walletClient!.writeContract({
+            address: config.pasMarket,
+            abi: ABIS.KREDIO_PAS_MARKET,
+            functionName: 'setDemoMultiplier',
+            args: [user, multiplier],
+        })),
+        setPasRiskParams: (ltvBps: bigint, liqBonusBps: bigint, stalenessLimit: bigint, protocolFeeBps: bigint) => tx('Update PAS risk params', 'pas', () => walletClient!.writeContract({
+            address: config.pasMarket,
+            abi: ABIS.KREDIO_PAS_MARKET,
+            functionName: 'setRiskParams',
+            args: [ltvBps, liqBonusBps, stalenessLimit, protocolFeeBps],
+        })),
+        setPasOracle: (newOracle: `0x${string}`) => tx('Set PAS oracle', 'pas', () => walletClient!.writeContract({
+            address: config.pasMarket,
+            abi: ABIS.KREDIO_PAS_MARKET,
+            functionName: 'setOracle',
+            args: [newOracle],
+        })),
+        pausePas: () => tx('Pause PAS market', 'pas', () => walletClient!.writeContract({
+            address: config.pasMarket,
+            abi: ABIS.KREDIO_PAS_MARKET,
+            functionName: 'pause',
+        })),
+        unpausePas: () => tx('Unpause PAS market', 'pas', () => walletClient!.writeContract({
+            address: config.pasMarket,
+            abi: ABIS.KREDIO_PAS_MARKET,
+            functionName: 'unpause',
+        })),
+
+        oracleCrash: (price8: bigint) => tx('Inject oracle crash', 'system', () => walletClient!.writeContract({
+            address: config.oracle,
+            abi: ABIS.PAS_ORACLE,
+            functionName: 'crash',
+            args: [price8],
+        })),
+        oracleRecover: () => tx('Recover oracle', 'system', () => walletClient!.writeContract({
+            address: config.oracle,
+            abi: ABIS.PAS_ORACLE,
+            functionName: 'recover',
+        })),
+        oracleSetPrice: (price8: bigint) => tx('Set oracle price', 'system', () => walletClient!.writeContract({
+            address: config.oracle,
+            abi: ABIS.PAS_ORACLE,
+            functionName: 'setPrice',
+            args: [price8],
+        })),
+        setGovernanceData: (user: `0x${string}`, votes: bigint, conviction: number) => tx('Update GovernanceCache entry', 'system', () => walletClient!.writeContract({
+            address: config.governanceCache,
+            abi: ABIS.GOVERNANCE_CACHE,
+            functionName: 'setGovernanceData',
+            args: [user, votes, conviction],
+        })),
+    };
+}

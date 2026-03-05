@@ -1,0 +1,11 @@
+{
+    "name": "tesseract-oracle-feeder",
+    "version": "1.0.0",
+    "scripts": {
+        "start:demo": "MODE=DEMO node oracle-feeder.js",
+        "start:real": "MODE=REAL node oracle-feeder.js"
+    },
+    "dependencies": {
+        "ethers": "^6.0.0"
+    }
+}
