@@ -72,12 +72,7 @@ contract Deploy is Script {
         pasMarket.deposit(POOL_SEED);
 
         // ── 5. Deploy KredioXCMSettler ─────────────────────────────────────
-        KredioXCMSettler xcmSettler = new KredioXCMSettler(
-            address(pasMarket),
-            address(lending),
-            KREDIT_SWAP,
-            MUSDC
-        );
+        KredioXCMSettler xcmSettler = new KredioXCMSettler(address(pasMarket), address(lending), KREDIT_SWAP, MUSDC);
 
         // ── 6. Deploy KredioAccountRegistry ───────────────────────────────
         KredioAccountRegistry accountRegistry = new KredioAccountRegistry(SR25519_PRECOMPILE);

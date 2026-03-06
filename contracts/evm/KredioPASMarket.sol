@@ -48,8 +48,8 @@ contract KredioPASMarket is Ownable, ReentrancyGuard, Pausable {
     mapping(address => uint256) public demoRateMultiplier; // 0 or 1-1000
 
     // Credit score inputs
-    mapping(address => uint256) public totalDepositedEver;  // cumulative lifetime USDC deposits (never decrements)
-    mapping(address => uint256) public firstSeenBlock;      // block of first deposit()
+    mapping(address => uint256) public totalDepositedEver; // cumulative lifetime USDC deposits (never decrements)
+    mapping(address => uint256) public firstSeenBlock; // block of first deposit()
 
     struct Position {
         uint256 collateralPAS;
@@ -446,9 +446,7 @@ contract KredioPASMarket is Ownable, ReentrancyGuard, Pausable {
         uint64 depositTier = _depositTier(user);
         uint64 repayments = repaymentCount[user];
         uint64 liquidations = liquidationCount[user];
-        uint64 blocksSinceFirst = firstSeenBlock[user] > 0
-            ? uint64(block.number - firstSeenBlock[user])
-            : 0;
+        uint64 blocksSinceFirst = firstSeenBlock[user] > 0 ? uint64(block.number - firstSeenBlock[user]) : 0;
         uint64 score = _callAgent4(SEL_COMPUTE_SCORE, repayments, liquidations, depositTier, blocksSinceFirst);
         ratioBps = uint32(_callAgent1(SEL_COLLATERAL_RATIO, score));
         rateBps = uint32(_callAgent1(SEL_INTEREST_RATE, score));
@@ -460,12 +458,12 @@ contract KredioPASMarket is Ownable, ReentrancyGuard, Pausable {
     ) internal view returns (uint64) {
         uint256 d = totalDepositedEver[user];
         if (d >= 100_000_000_000) return 7;
-        if (d >=  75_000_000_000) return 6;
-        if (d >=  55_000_000_000) return 5;
-        if (d >=  35_000_000_000) return 4;
-        if (d >=  20_000_000_000) return 3;
-        if (d >=  10_000_000_000) return 2;
-        if (d >=   5_000_000_000) return 1;
+        if (d >= 75_000_000_000) return 6;
+        if (d >= 55_000_000_000) return 5;
+        if (d >= 35_000_000_000) return 4;
+        if (d >= 20_000_000_000) return 3;
+        if (d >= 10_000_000_000) return 2;
+        if (d >= 5_000_000_000) return 1;
         return 0;
     }
 

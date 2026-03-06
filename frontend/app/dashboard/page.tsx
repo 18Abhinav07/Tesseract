@@ -392,12 +392,12 @@ function liquidationPenalty(l: number) {
 function depositPts(totalDeposited: bigint) {
     const d = Number(totalDeposited);
     if (d >= 100_000_000_000) return 35;
-    if (d >=  75_000_000_000) return 30;
-    if (d >=  55_000_000_000) return 25;
-    if (d >=  35_000_000_000) return 20;
-    if (d >=  20_000_000_000) return 15;
-    if (d >=  10_000_000_000) return 10;
-    if (d >=   5_000_000_000) return 5;
+    if (d >= 75_000_000_000) return 30;
+    if (d >= 55_000_000_000) return 25;
+    if (d >= 35_000_000_000) return 20;
+    if (d >= 20_000_000_000) return 15;
+    if (d >= 10_000_000_000) return 10;
+    if (d >= 5_000_000_000) return 5;
     return 0;
 }
 function agePts(blocksSince: number) {
@@ -426,11 +426,11 @@ function CreditProfile({ scoreValue, tier, collateralRatioBps, interestRateBps, 
     const scoreTierLabel = TIER_LABELS[Math.min(tier, 5)] ?? 'ANON';
     const tierBadge =
         tier >= 5 ? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-300' :
-        tier === 4 ? 'border-purple-500/40 bg-purple-500/10 text-purple-300' :
-        tier === 3 ? 'border-amber-500/40 bg-amber-500/10 text-amber-300' :
-        tier === 2 ? 'border-slate-400/40 bg-slate-400/10 text-slate-300' :
-        tier === 1 ? 'border-amber-700/40 bg-amber-700/10 text-amber-500' :
-                     'border-slate-500/40 bg-slate-500/10 text-slate-400';
+            tier === 4 ? 'border-purple-500/40 bg-purple-500/10 text-purple-300' :
+                tier === 3 ? 'border-amber-500/40 bg-amber-500/10 text-amber-300' :
+                    tier === 2 ? 'border-slate-400/40 bg-slate-400/10 text-slate-300' :
+                        tier === 1 ? 'border-amber-700/40 bg-amber-700/10 text-amber-500' :
+                            'border-slate-500/40 bg-slate-500/10 text-slate-400';
     const scorePct = Math.min(score / 100, 1) * 100;
     const scoreTone = score >= 65 ? 'text-cyan-300' : score >= 50 ? 'text-emerald-300' : score >= 30 ? 'text-amber-300' : score > 0 ? 'text-rose-300' : 'text-slate-400';
     const scoreBarColor = score >= 65 ? 'bg-cyan-500' : score >= 50 ? 'bg-emerald-500' : score >= 30 ? 'bg-amber-500' : score > 0 ? 'bg-rose-500' : 'bg-slate-600';
@@ -541,15 +541,15 @@ function CreditProfile({ scoreValue, tier, collateralRatioBps, interestRateBps, 
 // ── Lending history table ─────────────────────────────────────────────────
 
 const TYPE_META: Record<LendHistoryEntry['type'], { label: string; color: string }> = {
-    deposit:  { label: 'Deposit',  color: 'text-indigo-300' },
-    withdraw: { label: 'Withdraw', color: 'text-slate-300'  },
-    yield:    { label: 'Yield',    color: 'text-amber-300'  },
+    deposit: { label: 'Deposit', color: 'text-indigo-300' },
+    withdraw: { label: 'Withdraw', color: 'text-slate-300' },
+    yield: { label: 'Yield', color: 'text-amber-300' },
 };
 
 function LendingHistoryTable({ entries, loading }: { entries: LendHistoryEntry[]; loading: boolean }) {
-    const totalYieldUSDC  = entries.filter(e => e.type === 'yield').reduce((s, e) => s + e.amount, 0n);
-    const totalDeposited  = entries.filter(e => e.type === 'deposit').reduce((s, e) => s + e.amount, 0n);
-    const totalWithdrawn  = entries.filter(e => e.type === 'withdraw').reduce((s, e) => s + e.amount, 0n);
+    const totalYieldUSDC = entries.filter(e => e.type === 'yield').reduce((s, e) => s + e.amount, 0n);
+    const totalDeposited = entries.filter(e => e.type === 'deposit').reduce((s, e) => s + e.amount, 0n);
+    const totalWithdrawn = entries.filter(e => e.type === 'withdraw').reduce((s, e) => s + e.amount, 0n);
 
     if (loading) {
         return <div className="rounded-2xl border border-white/5 bg-black/20 p-5 h-32 animate-pulse" />;
@@ -666,7 +666,7 @@ export default function DashboardPage() {
         portfolio.lendingFirstSeenBlock > 0n && portfolio.pasFirstSeenBlock > 0n
             ? portfolio.lendingFirstSeenBlock < portfolio.pasFirstSeenBlock ? portfolio.lendingFirstSeenBlock : portfolio.pasFirstSeenBlock
             : portfolio.lendingFirstSeenBlock > 0n ? portfolio.lendingFirstSeenBlock
-            : portfolio.pasFirstSeenBlock;
+                : portfolio.pasFirstSeenBlock;
 
     return (
         <PageShell title="Dashboard" subtitle="Protocol overview, active positions, and credit profile.">

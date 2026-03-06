@@ -26,9 +26,15 @@ interface IKreditAgent {
         uint64 deposit_tier,
         uint64 blocks_since_first
     ) external view returns (uint64);
-    function collateral_ratio(uint64 score) external view returns (uint64);
-    function interest_rate(uint64 score) external view returns (uint64);
-    function tier(uint64 score) external view returns (uint8);
+    function collateral_ratio(
+        uint64 score
+    ) external view returns (uint64);
+    function interest_rate(
+        uint64 score
+    ) external view returns (uint64);
+    function tier(
+        uint64 score
+    ) external view returns (uint8);
 }
 
 contract KredioLending is ReentrancyGuard {
@@ -66,8 +72,8 @@ contract KredioLending is ReentrancyGuard {
     mapping(address => uint256) public demoRateMultiplier; // Optional per-borrower rate boost for demoing liquidations
 
     // Credit score inputs
-    mapping(address => uint256) public totalDepositedEver;  // cumulative lifetime deposits (never decrements)
-    mapping(address => uint256) public firstSeenBlock;      // block of first deposit(), never updated after
+    mapping(address => uint256) public totalDepositedEver; // cumulative lifetime deposits (never decrements)
+    mapping(address => uint256) public firstSeenBlock; // block of first deposit(), never updated after
 
     struct Position {
         uint256 collateral;
@@ -135,9 +141,7 @@ contract KredioLending is ReentrancyGuard {
         uint64 depositTier = _depositTier(user);
         uint64 repayments = repaymentCount[user];
         uint64 liquidations = liquidationCount[user];
-        uint64 blocksSinceFirst = firstSeenBlock[user] > 0
-            ? uint64(block.number - firstSeenBlock[user])
-            : 0;
+        uint64 blocksSinceFirst = firstSeenBlock[user] > 0 ? uint64(block.number - firstSeenBlock[user]) : 0;
 
         uint64 score = _callAgent4(SEL_COMPUTE_SCORE, repayments, liquidations, depositTier, blocksSinceFirst);
 
@@ -471,12 +475,12 @@ contract KredioLending is ReentrancyGuard {
     ) internal view returns (uint64) {
         uint256 d = totalDepositedEver[user];
         if (d >= 100_000_000_000) return 7;
-        if (d >=  75_000_000_000) return 6;
-        if (d >=  55_000_000_000) return 5;
-        if (d >=  35_000_000_000) return 4;
-        if (d >=  20_000_000_000) return 3;
-        if (d >=  10_000_000_000) return 2;
-        if (d >=   5_000_000_000) return 1;
+        if (d >= 75_000_000_000) return 6;
+        if (d >= 55_000_000_000) return 5;
+        if (d >= 35_000_000_000) return 4;
+        if (d >= 20_000_000_000) return 3;
+        if (d >= 10_000_000_000) return 2;
+        if (d >= 5_000_000_000) return 1;
         return 0;
     }
 

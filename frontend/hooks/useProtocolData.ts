@@ -380,39 +380,39 @@ export function useLendingHistory() {
             const addrLower = address.toLowerCase();
 
             const [harvestedL, depositedL, withdrawnL, harvestedP, depositedP, withdrawnP] = await Promise.all([
-                publicClient.getLogs({ address: config.lending,   event: parseAbiItem('event YieldHarvested(address indexed lender, uint256 amount)'), fromBlock: DEPLOY_BLOCK }),
-                publicClient.getLogs({ address: config.lending,   event: parseAbiItem('event Deposited(address indexed user, uint256 amount)'),       fromBlock: DEPLOY_BLOCK }),
-                publicClient.getLogs({ address: config.lending,   event: parseAbiItem('event Withdrawn(address indexed user, uint256 amount)'),       fromBlock: DEPLOY_BLOCK }),
+                publicClient.getLogs({ address: config.lending, event: parseAbiItem('event YieldHarvested(address indexed lender, uint256 amount)'), fromBlock: DEPLOY_BLOCK }),
+                publicClient.getLogs({ address: config.lending, event: parseAbiItem('event Deposited(address indexed user, uint256 amount)'), fromBlock: DEPLOY_BLOCK }),
+                publicClient.getLogs({ address: config.lending, event: parseAbiItem('event Withdrawn(address indexed user, uint256 amount)'), fromBlock: DEPLOY_BLOCK }),
                 publicClient.getLogs({ address: config.pasMarket, event: parseAbiItem('event YieldHarvested(address indexed lender, uint256 amount)'), fromBlock: DEPLOY_BLOCK }),
-                publicClient.getLogs({ address: config.pasMarket, event: parseAbiItem('event Deposited(address indexed lender, uint256 amount)'),      fromBlock: DEPLOY_BLOCK }),
-                publicClient.getLogs({ address: config.pasMarket, event: parseAbiItem('event Withdrawn(address indexed lender, uint256 amount)'),      fromBlock: DEPLOY_BLOCK }),
+                publicClient.getLogs({ address: config.pasMarket, event: parseAbiItem('event Deposited(address indexed lender, uint256 amount)'), fromBlock: DEPLOY_BLOCK }),
+                publicClient.getLogs({ address: config.pasMarket, event: parseAbiItem('event Withdrawn(address indexed lender, uint256 amount)'), fromBlock: DEPLOY_BLOCK }),
             ]);
 
             const entries: LendHistoryEntry[] = [];
 
             for (const log of harvestedL) {
                 if ((log.args as any).lender?.toLowerCase() !== addrLower) continue;
-                entries.push({ type: 'yield',    market: 'USDC Market', amount: (log.args as any).amount ?? 0n, blockNumber: log.blockNumber ?? 0n, txHash: log.transactionHash ?? '' });
+                entries.push({ type: 'yield', market: 'USDC Market', amount: (log.args as any).amount ?? 0n, blockNumber: log.blockNumber ?? 0n, txHash: log.transactionHash ?? '' });
             }
             for (const log of depositedL) {
-                if ((log.args as any).user?.toLowerCase()   !== addrLower) continue;
-                entries.push({ type: 'deposit',  market: 'USDC Market', amount: (log.args as any).amount ?? 0n, blockNumber: log.blockNumber ?? 0n, txHash: log.transactionHash ?? '' });
+                if ((log.args as any).user?.toLowerCase() !== addrLower) continue;
+                entries.push({ type: 'deposit', market: 'USDC Market', amount: (log.args as any).amount ?? 0n, blockNumber: log.blockNumber ?? 0n, txHash: log.transactionHash ?? '' });
             }
             for (const log of withdrawnL) {
-                if ((log.args as any).user?.toLowerCase()   !== addrLower) continue;
+                if ((log.args as any).user?.toLowerCase() !== addrLower) continue;
                 entries.push({ type: 'withdraw', market: 'USDC Market', amount: (log.args as any).amount ?? 0n, blockNumber: log.blockNumber ?? 0n, txHash: log.transactionHash ?? '' });
             }
             for (const log of harvestedP) {
                 if ((log.args as any).lender?.toLowerCase() !== addrLower) continue;
-                entries.push({ type: 'yield',    market: 'PAS Market',  amount: (log.args as any).amount ?? 0n, blockNumber: log.blockNumber ?? 0n, txHash: log.transactionHash ?? '' });
+                entries.push({ type: 'yield', market: 'PAS Market', amount: (log.args as any).amount ?? 0n, blockNumber: log.blockNumber ?? 0n, txHash: log.transactionHash ?? '' });
             }
             for (const log of depositedP) {
                 if ((log.args as any).lender?.toLowerCase() !== addrLower) continue;
-                entries.push({ type: 'deposit',  market: 'PAS Market',  amount: (log.args as any).amount ?? 0n, blockNumber: log.blockNumber ?? 0n, txHash: log.transactionHash ?? '' });
+                entries.push({ type: 'deposit', market: 'PAS Market', amount: (log.args as any).amount ?? 0n, blockNumber: log.blockNumber ?? 0n, txHash: log.transactionHash ?? '' });
             }
             for (const log of withdrawnP) {
                 if ((log.args as any).lender?.toLowerCase() !== addrLower) continue;
-                entries.push({ type: 'withdraw', market: 'PAS Market',  amount: (log.args as any).amount ?? 0n, blockNumber: log.blockNumber ?? 0n, txHash: log.transactionHash ?? '' });
+                entries.push({ type: 'withdraw', market: 'PAS Market', amount: (log.args as any).amount ?? 0n, blockNumber: log.blockNumber ?? 0n, txHash: log.transactionHash ?? '' });
             }
 
             entries.sort((a, b) => (b.blockNumber > a.blockNumber ? 1 : -1));

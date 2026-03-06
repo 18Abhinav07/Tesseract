@@ -17,10 +17,11 @@ interface ISR25519Verifier {
     /// @param signature  64-byte SR25519 signature.
     /// @param message    Arbitrary byte message that was signed.
     /// @return           True iff the signature is valid for (publicKey, message).
-    function verify(bytes32 publicKey, bytes calldata signature, bytes calldata message)
-        external
-        view
-        returns (bool);
+    function verify(
+        bytes32 publicKey,
+        bytes calldata signature,
+        bytes calldata message
+    ) external view returns (bool);
 }
 
 /// @title  KredioAccountRegistry
@@ -81,9 +82,7 @@ contract KredioAccountRegistry {
     // Events
     // ─────────────────────────────────────────────────────────────────────────
 
-    event AccountLinked(
-        address indexed evmAddress, bytes32 indexed substrateKey, bool adminAttested, uint256 linkedAt
-    );
+    event AccountLinked(address indexed evmAddress, bytes32 indexed substrateKey, bool adminAttested, uint256 linkedAt);
 
     event AccountUnlinked(address indexed evmAddress, bytes32 indexed substrateKey);
 
@@ -113,7 +112,9 @@ contract KredioAccountRegistry {
 
     /// @param _sr25519Verifier Address of the SR25519 precompile, or address(0)
     ///                         to start in attested-only mode.
-    constructor(address _sr25519Verifier) {
+    constructor(
+        address _sr25519Verifier
+    ) {
         owner = msg.sender;
         sr25519Verifier = _sr25519Verifier;
         // Deployer is the first authorised attester.
@@ -135,7 +136,10 @@ contract KredioAccountRegistry {
     ///
     /// @param substratePublicKey 32-byte SR25519 public key (SS58 raw bytes).
     /// @param substrateSignature 64-byte SR25519 signature over getLinkMessage(msg.sender).
-    function linkAccount(bytes32 substratePublicKey, bytes calldata substrateSignature) external {
+    function linkAccount(
+        bytes32 substratePublicKey,
+        bytes calldata substrateSignature
+    ) external {
         require(substratePublicKey != bytes32(0), "zero substrate key");
         require(substrateKeyOf[msg.sender] == bytes32(0), "EVM address already linked");
         require(evmAddressOf[substratePublicKey] == address(0), "substrate key already linked");
@@ -177,7 +181,10 @@ contract KredioAccountRegistry {
     ///         The attester is responsible for verifying the Substrate signature
     ///         off-chain before calling this function.
     ///         Any link created here is permanently flagged as `adminAttested`.
-    function attestedLink(address evmAddress, bytes32 substratePublicKey) external onlyAttester {
+    function attestedLink(
+        address evmAddress,
+        bytes32 substratePublicKey
+    ) external onlyAttester {
         require(evmAddress != address(0), "zero evm address");
         require(substratePublicKey != bytes32(0), "zero substrate key");
         require(substrateKeyOf[evmAddress] == bytes32(0), "EVM address already linked");
@@ -187,7 +194,9 @@ contract KredioAccountRegistry {
     }
 
     /// @notice Removes a link via admin fallback.
-    function attestedUnlink(address evmAddress) external onlyAttester {
+    function attestedUnlink(
+        address evmAddress
+    ) external onlyAttester {
         bytes32 key = substrateKeyOf[evmAddress];
         require(key != bytes32(0), "not linked");
 
@@ -199,22 +208,24 @@ contract KredioAccountRegistry {
     // ─────────────────────────────────────────────────────────────────────────
 
     /// @notice Returns true if `evmAddress` has an active link.
-    function isLinked(address evmAddress) external view returns (bool) {
+    function isLinked(
+        address evmAddress
+    ) external view returns (bool) {
         return linkOf[evmAddress].active;
     }
 
     /// @notice Returns link metadata for `evmAddress`.
-    function getLink(address evmAddress)
-        external
-        view
-        returns (bytes32 substrateKey, uint256 linkedAt, bool adminAttested, bool active)
-    {
+    function getLink(
+        address evmAddress
+    ) external view returns (bytes32 substrateKey, uint256 linkedAt, bool adminAttested, bool active) {
         AccountLink storage l = linkOf[evmAddress];
         return (l.substrateKey, l.linkedAt, l.adminAttested, l.active);
     }
 
     /// @notice Returns the EVM address linked to `substrateKey`, or address(0).
-    function getEvmAddress(bytes32 substrateKey) external view returns (address) {
+    function getEvmAddress(
+        bytes32 substrateKey
+    ) external view returns (address) {
         return evmAddressOf[substrateKey];
     }
 
@@ -222,18 +233,20 @@ contract KredioAccountRegistry {
     ///         Substrate wallet given the current nonce for `evmAddress`.
     ///         The frontend should call this and pass the result to Talisman's
     ///         signRaw() or equivalent.
-    function getLinkMessage(address evmAddress) external view returns (string memory) {
+    function getLinkMessage(
+        address evmAddress
+    ) external view returns (string memory) {
         return string(_buildMessage(evmAddress));
     }
 
     /// @notice Exposes signature verification as a view function.
     ///         Returns false if no verifier is configured.
     ///         Useful for off-chain simulation and testing.
-    function verifySignature(bytes32 substratePublicKey, bytes calldata signature, bytes calldata message)
-        external
-        view
-        returns (bool valid)
-    {
+    function verifySignature(
+        bytes32 substratePublicKey,
+        bytes calldata signature,
+        bytes calldata message
+    ) external view returns (bool valid) {
         if (sr25519Verifier == address(0)) return false;
         return _verifySignature(substratePublicKey, signature, message);
     }
@@ -242,18 +255,25 @@ contract KredioAccountRegistry {
     // Admin functions
     // ─────────────────────────────────────────────────────────────────────────
 
-    function setAttester(address attester, bool status) external onlyOwner {
+    function setAttester(
+        address attester,
+        bool status
+    ) external onlyOwner {
         require(attester != address(0), "zero addr");
         attesters[attester] = status;
         emit AttesterUpdated(attester, status);
     }
 
-    function setSR25519Verifier(address verifier) external onlyOwner {
+    function setSR25519Verifier(
+        address verifier
+    ) external onlyOwner {
         sr25519Verifier = verifier;
         emit SR25519VerifierUpdated(verifier);
     }
 
-    function transferOwnership(address newOwner) external onlyOwner {
+    function transferOwnership(
+        address newOwner
+    ) external onlyOwner {
         require(newOwner != address(0), "zero addr");
         owner = newOwner;
     }
@@ -263,7 +283,11 @@ contract KredioAccountRegistry {
     // ─────────────────────────────────────────────────────────────────────────
 
     /// @dev Writes link state, increments nonce, emits AccountLinked.
-    function _commitLink(address evmAddress, bytes32 substrateKey, bool adminAttested) internal {
+    function _commitLink(
+        address evmAddress,
+        bytes32 substrateKey,
+        bool adminAttested
+    ) internal {
         substrateKeyOf[evmAddress] = substrateKey;
         evmAddressOf[substrateKey] = evmAddress;
         linkNonce[evmAddress] += 1;
@@ -282,7 +306,10 @@ contract KredioAccountRegistry {
     }
 
     /// @dev Clears link state, increments nonce, emits AccountUnlinked.
-    function _commitUnlink(address evmAddress, bytes32 substrateKey) internal {
+    function _commitUnlink(
+        address evmAddress,
+        bytes32 substrateKey
+    ) internal {
         delete evmAddressOf[substrateKey];
         delete substrateKeyOf[evmAddress];
         linkNonce[evmAddress] += 1;
@@ -302,7 +329,9 @@ contract KredioAccountRegistry {
     ///        "EVM: 0x<evmAddress>\n"
     ///        "Chain: <chainId>\n"
     ///        "Nonce: <linkNonce[evmAddress]>"
-    function _buildMessage(address evmAddress) internal view returns (bytes memory) {
+    function _buildMessage(
+        address evmAddress
+    ) internal view returns (bytes memory) {
         return abi.encodePacked(
             "Kredio Account Link\n",
             "EVM: ",
@@ -320,11 +349,11 @@ contract KredioAccountRegistry {
     ///      Returns false on any revert from the precompile rather than bubbling up,
     ///      so an unexpected precompile failure is surfaced as an invalid signature
     ///      rather than a hard revert.
-    function _verifySignature(bytes32 publicKey, bytes calldata signature, bytes memory message)
-        internal
-        view
-        returns (bool)
-    {
+    function _verifySignature(
+        bytes32 publicKey,
+        bytes calldata signature,
+        bytes memory message
+    ) internal view returns (bool) {
         try ISR25519Verifier(sr25519Verifier).verify(publicKey, signature, message) returns (bool result) {
             return result;
         } catch {
@@ -333,7 +362,9 @@ contract KredioAccountRegistry {
     }
 
     /// @dev Returns the EVM address as a lowercase hex string prefixed with "0x".
-    function _toHexString(address addr) internal pure returns (string memory) {
+    function _toHexString(
+        address addr
+    ) internal pure returns (string memory) {
         bytes20 addrBytes = bytes20(addr);
         bytes memory hexChars = "0123456789abcdef";
         bytes memory result = new bytes(42); // "0x" + 40 hex chars
