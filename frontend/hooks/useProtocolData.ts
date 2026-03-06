@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { parseAbiItem } from 'viem';
 import { useAccount, useBalance, usePublicClient } from 'wagmi';
 import config from '../lib/addresses';
 import { ABIS } from '../lib/constants';
@@ -51,7 +52,8 @@ const defaultScore: ScoreSnapshot = {
 };
 
 export function tierLabel(tier: number) {
-    if (tier >= 4) return 'PLATINUM';
+    if (tier >= 5) return 'DIAMOND';
+    if (tier === 4) return 'PLATINUM';
     if (tier === 3) return 'GOLD';
     if (tier === 2) return 'SILVER';
     if (tier === 1) return 'BRONZE';
@@ -191,9 +193,13 @@ export function useUserPortfolio() {
         pasHealthRatio: 0n,
         governance: [0n, 0, 0n] as [bigint, number, bigint],
         lendingRepaymentCount: 0n,
-        lendingDefaultCount: 0n,
+        lendingLiquidationCount: 0n,
+        lendingTotalDepositedEver: 0n,
+        lendingFirstSeenBlock: 0n,
         pasRepaymentCount: 0n,
-        pasDefaultCount: 0n,
+        pasLiquidationCount: 0n,
+        pasTotalDepositedEver: 0n,
+        pasFirstSeenBlock: 0n,
     });
 
     const refresh = React.useCallback(async () => {
@@ -214,9 +220,13 @@ export function useUserPortfolio() {
                 pasHealthRatio,
                 governance,
                 lendingRepaymentCount,
-                lendingDefaultCount,
+                lendingLiquidationCount,
+                lendingTotalDepositedEver,
+                lendingFirstSeenBlock,
                 pasRepaymentCount,
-                pasDefaultCount,
+                pasLiquidationCount,
+                pasTotalDepositedEver,
+                pasFirstSeenBlock,
             ] = await Promise.all([
                 publicClient.readContract({ address: config.lending, abi: ABIS.KREDIO_LENDING, functionName: 'depositBalance', args: [address] }) as Promise<bigint>,
                 publicClient.readContract({ address: config.lending, abi: ABIS.KREDIO_LENDING, functionName: 'pendingYield', args: [address] }) as Promise<bigint>,
@@ -230,9 +240,13 @@ export function useUserPortfolio() {
                 publicClient.readContract({ address: config.pasMarket, abi: ABIS.KREDIO_PAS_MARKET, functionName: 'healthRatio', args: [address] }) as Promise<bigint>,
                 publicClient.readContract({ address: config.governanceCache, abi: ABIS.GOVERNANCE_CACHE, functionName: 'getGovernanceData', args: [address] }) as Promise<readonly [bigint, number, bigint]>,
                 publicClient.readContract({ address: config.lending, abi: ABIS.KREDIO_LENDING, functionName: 'repaymentCount', args: [address] }) as Promise<bigint>,
-                publicClient.readContract({ address: config.lending, abi: ABIS.KREDIO_LENDING, functionName: 'defaultCount', args: [address] }) as Promise<bigint>,
+                publicClient.readContract({ address: config.lending, abi: ABIS.KREDIO_LENDING, functionName: 'liquidationCount', args: [address] }) as Promise<bigint>,
+                publicClient.readContract({ address: config.lending, abi: ABIS.KREDIO_LENDING, functionName: 'totalDepositedEver', args: [address] }) as Promise<bigint>,
+                publicClient.readContract({ address: config.lending, abi: ABIS.KREDIO_LENDING, functionName: 'firstSeenBlock', args: [address] }) as Promise<bigint>,
                 publicClient.readContract({ address: config.pasMarket, abi: ABIS.KREDIO_PAS_MARKET, functionName: 'repaymentCount', args: [address] }) as Promise<bigint>,
-                publicClient.readContract({ address: config.pasMarket, abi: ABIS.KREDIO_PAS_MARKET, functionName: 'defaultCount', args: [address] }) as Promise<bigint>,
+                publicClient.readContract({ address: config.pasMarket, abi: ABIS.KREDIO_PAS_MARKET, functionName: 'liquidationCount', args: [address] }) as Promise<bigint>,
+                publicClient.readContract({ address: config.pasMarket, abi: ABIS.KREDIO_PAS_MARKET, functionName: 'totalDepositedEver', args: [address] }) as Promise<bigint>,
+                publicClient.readContract({ address: config.pasMarket, abi: ABIS.KREDIO_PAS_MARKET, functionName: 'firstSeenBlock', args: [address] }) as Promise<bigint>,
             ]);
 
             setState({
@@ -265,9 +279,13 @@ export function useUserPortfolio() {
                 pasHealthRatio,
                 governance: [governance[0], governance[1], governance[2]],
                 lendingRepaymentCount,
-                lendingDefaultCount,
+                lendingLiquidationCount,
+                lendingTotalDepositedEver,
+                lendingFirstSeenBlock,
                 pasRepaymentCount,
-                pasDefaultCount,
+                pasLiquidationCount,
+                pasTotalDepositedEver,
+                pasFirstSeenBlock,
             });
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Unable to fetch portfolio data');
@@ -334,4 +352,81 @@ export function healthState(healthBps: bigint) {
     if (value < 11_000) return 'red';
     if (value < 15_000) return 'yellow';
     return 'green';
+}
+
+// ── Lending history (on-chain event log) ──────────────────────────────────
+
+export type LendHistoryEntry = {
+    type: 'deposit' | 'withdraw' | 'yield';
+    market: 'USDC Market' | 'PAS Market';
+    amount: bigint;
+    blockNumber: bigint;
+    txHash: string;
+};
+
+// First block of the deployed contracts (0x5c2456 = 6,038,614)
+const DEPLOY_BLOCK = 6_038_614n;
+
+export function useLendingHistory() {
+    const publicClient = usePublicClient();
+    const { address } = useAccount();
+    const [history, setHistory] = React.useState<LendHistoryEntry[]>([]);
+    const [loading, setLoading] = React.useState(false);
+
+    const refresh = React.useCallback(async () => {
+        if (!publicClient || !address) return;
+        setLoading(true);
+        try {
+            const addrLower = address.toLowerCase();
+
+            const [harvestedL, depositedL, withdrawnL, harvestedP, depositedP, withdrawnP] = await Promise.all([
+                publicClient.getLogs({ address: config.lending,   event: parseAbiItem('event YieldHarvested(address indexed lender, uint256 amount)'), fromBlock: DEPLOY_BLOCK }),
+                publicClient.getLogs({ address: config.lending,   event: parseAbiItem('event Deposited(address indexed user, uint256 amount)'),       fromBlock: DEPLOY_BLOCK }),
+                publicClient.getLogs({ address: config.lending,   event: parseAbiItem('event Withdrawn(address indexed user, uint256 amount)'),       fromBlock: DEPLOY_BLOCK }),
+                publicClient.getLogs({ address: config.pasMarket, event: parseAbiItem('event YieldHarvested(address indexed lender, uint256 amount)'), fromBlock: DEPLOY_BLOCK }),
+                publicClient.getLogs({ address: config.pasMarket, event: parseAbiItem('event Deposited(address indexed lender, uint256 amount)'),      fromBlock: DEPLOY_BLOCK }),
+                publicClient.getLogs({ address: config.pasMarket, event: parseAbiItem('event Withdrawn(address indexed lender, uint256 amount)'),      fromBlock: DEPLOY_BLOCK }),
+            ]);
+
+            const entries: LendHistoryEntry[] = [];
+
+            for (const log of harvestedL) {
+                if ((log.args as any).lender?.toLowerCase() !== addrLower) continue;
+                entries.push({ type: 'yield',    market: 'USDC Market', amount: (log.args as any).amount ?? 0n, blockNumber: log.blockNumber ?? 0n, txHash: log.transactionHash ?? '' });
+            }
+            for (const log of depositedL) {
+                if ((log.args as any).user?.toLowerCase()   !== addrLower) continue;
+                entries.push({ type: 'deposit',  market: 'USDC Market', amount: (log.args as any).amount ?? 0n, blockNumber: log.blockNumber ?? 0n, txHash: log.transactionHash ?? '' });
+            }
+            for (const log of withdrawnL) {
+                if ((log.args as any).user?.toLowerCase()   !== addrLower) continue;
+                entries.push({ type: 'withdraw', market: 'USDC Market', amount: (log.args as any).amount ?? 0n, blockNumber: log.blockNumber ?? 0n, txHash: log.transactionHash ?? '' });
+            }
+            for (const log of harvestedP) {
+                if ((log.args as any).lender?.toLowerCase() !== addrLower) continue;
+                entries.push({ type: 'yield',    market: 'PAS Market',  amount: (log.args as any).amount ?? 0n, blockNumber: log.blockNumber ?? 0n, txHash: log.transactionHash ?? '' });
+            }
+            for (const log of depositedP) {
+                if ((log.args as any).lender?.toLowerCase() !== addrLower) continue;
+                entries.push({ type: 'deposit',  market: 'PAS Market',  amount: (log.args as any).amount ?? 0n, blockNumber: log.blockNumber ?? 0n, txHash: log.transactionHash ?? '' });
+            }
+            for (const log of withdrawnP) {
+                if ((log.args as any).lender?.toLowerCase() !== addrLower) continue;
+                entries.push({ type: 'withdraw', market: 'PAS Market',  amount: (log.args as any).amount ?? 0n, blockNumber: log.blockNumber ?? 0n, txHash: log.transactionHash ?? '' });
+            }
+
+            entries.sort((a, b) => (b.blockNumber > a.blockNumber ? 1 : -1));
+            setHistory(entries.slice(0, 100));
+        } catch (err) {
+            console.error('useLendingHistory:', err);
+        } finally {
+            setLoading(false);
+        }
+    }, [publicClient, address]);
+
+    React.useEffect(() => {
+        if (address) refresh();
+    }, [address, refresh]);
+
+    return { history, loading, refresh };
 }

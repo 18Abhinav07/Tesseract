@@ -1,5 +1,4 @@
 import { ApiPromise, WsProvider } from '@polkadot/api';
-import { web3FromAddress } from '@polkadot/extension-dapp';
 import { Builder } from '@paraspell/sdk-pjs';
 import { hexToU8a } from '@polkadot/util';
 import { encodeAddress } from '@polkadot/util-crypto';
@@ -107,6 +106,7 @@ export async function sendXCMToHub(params: SendXcmParams): Promise<{ blockHash: 
             .build();
 
         onStatus?.('awaiting_signature', 'Waiting for Talisman signature...');
+        const { web3FromAddress } = await import('@polkadot/extension-dapp');
         const injector = await web3FromAddress(senderAddress);
 
         return await new Promise<{ blockHash: string }>((resolve, reject) => {

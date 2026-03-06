@@ -7,12 +7,10 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {IPASOracle} from "./interfaces/IPASOracle.sol";
-import {IGovernanceCache} from "./interfaces/IGovernanceCache.sol";
 
 /// @notice PAS-collateral market for borrowing mUSDC.
 /// @dev KreditAgent calls use low-level SCALE encoding copied from KredioLending.
 contract KredioPASMarket is Ownable, ReentrancyGuard, Pausable {
-    IGovernanceCache public govCache;
     IERC20 public usdc;
     address public kreditAgent;
     IPASOracle public oracle;
@@ -45,9 +43,13 @@ contract KredioPASMarket is Ownable, ReentrancyGuard, Pausable {
     // Borrower state
     mapping(address => uint256) public collateralBalance; // PAS held for borrower (wei)
     mapping(address => Position) public positions;
-    mapping(address => uint256) public repaymentCount;
-    mapping(address => uint256) public defaultCount;
+    mapping(address => uint64) public repaymentCount;
+    mapping(address => uint64) public liquidationCount;
     mapping(address => uint256) public demoRateMultiplier; // 0 or 1-1000
+
+    // Credit score inputs
+    mapping(address => uint256) public totalDepositedEver;  // cumulative lifetime USDC deposits (never decrements)
+    mapping(address => uint256) public firstSeenBlock;      // block of first deposit()
 
     struct Position {
         uint256 collateralPAS;
@@ -72,15 +74,11 @@ contract KredioPASMarket is Ownable, ReentrancyGuard, Pausable {
     event DemoMultiplierSet(address indexed user, uint256 multiplier);
 
     constructor(
-        address _govCache,
         address _usdc,
         address _agent,
         address _oracle
     ) Ownable(msg.sender) {
-        require(
-            _govCache != address(0) && _usdc != address(0) && _agent != address(0) && _oracle != address(0), "zero addr"
-        );
-        govCache = IGovernanceCache(_govCache);
+        require(_usdc != address(0) && _agent != address(0) && _oracle != address(0), "zero addr");
         usdc = IERC20(_usdc);
         kreditAgent = _agent;
         oracle = IPASOracle(_oracle);
@@ -92,6 +90,10 @@ contract KredioPASMarket is Ownable, ReentrancyGuard, Pausable {
         uint256 amount
     ) external nonReentrant whenNotPaused {
         require(amount > 0, "zero amount");
+        if (firstSeenBlock[msg.sender] == 0) {
+            firstSeenBlock[msg.sender] = block.number;
+        }
+        totalDepositedEver[msg.sender] += amount;
         _harvest(msg.sender);
         depositBalance[msg.sender] += amount;
         totalDeposited += amount;
@@ -276,7 +278,7 @@ contract KredioPASMarket is Ownable, ReentrancyGuard, Pausable {
 
         delete positions[borrower];
         totalBorrowed -= principal;
-        defaultCount[borrower] += 1;
+        liquidationCount[borrower] += 1;
 
         require(usdc.transferFrom(msg.sender, address(this), totalOwed), "repay fail");
         _distributeInterest(interest);
@@ -441,14 +443,30 @@ contract KredioPASMarket is Ownable, ReentrancyGuard, Pausable {
     function _scoreParams(
         address user
     ) internal view returns (uint32 ratioBps, uint32 rateBps, uint8 tier) {
-        uint64 pasBalance = uint64(user.balance / 1e12); // scale wei → agent units
-        (uint64 votes, uint8 conviction,) = govCache.getGovernanceData(user);
-        uint64 repayments = uint64(repaymentCount[user]);
-        uint64 defaults = uint64(defaultCount[user]);
-        uint64 score = _callAgent5(SEL_COMPUTE_SCORE, pasBalance, votes, uint64(conviction), repayments, defaults);
+        uint64 depositTier = _depositTier(user);
+        uint64 repayments = repaymentCount[user];
+        uint64 liquidations = liquidationCount[user];
+        uint64 blocksSinceFirst = firstSeenBlock[user] > 0
+            ? uint64(block.number - firstSeenBlock[user])
+            : 0;
+        uint64 score = _callAgent4(SEL_COMPUTE_SCORE, repayments, liquidations, depositTier, blocksSinceFirst);
         ratioBps = uint32(_callAgent1(SEL_COLLATERAL_RATIO, score));
         rateBps = uint32(_callAgent1(SEL_INTEREST_RATE, score));
         tier = _callAgent1U8(SEL_TIER, score);
+    }
+
+    function _depositTier(
+        address user
+    ) internal view returns (uint64) {
+        uint256 d = totalDepositedEver[user];
+        if (d >= 100_000_000_000) return 7;
+        if (d >=  75_000_000_000) return 6;
+        if (d >=  55_000_000_000) return 5;
+        if (d >=  35_000_000_000) return 4;
+        if (d >=  20_000_000_000) return 3;
+        if (d >=  10_000_000_000) return 2;
+        if (d >=   5_000_000_000) return 1;
+        return 0;
     }
 
     function _accruedInterest(
@@ -519,17 +537,16 @@ contract KredioPASMarket is Ownable, ReentrancyGuard, Pausable {
         return uint8(data[1]);
     }
 
-    function _callAgent5(
+    function _callAgent4(
         bytes4 selector,
         uint64 a,
         uint64 b,
         uint64 c,
-        uint64 d,
-        uint64 e
+        uint64 d
     ) internal view returns (uint64) {
-        bytes memory input = abi.encodePacked(selector, _le64(a), _le64(b), _le64(c), _le64(d), _le64(e));
+        bytes memory input = abi.encodePacked(selector, _le64(a), _le64(b), _le64(c), _le64(d));
         (bool ok, bytes memory data) = kreditAgent.staticcall(input);
-        require(ok && data.length >= 9 && data[0] == 0x00, "agent5 fail");
+        require(ok && data.length >= 9 && data[0] == 0x00, "agent4 fail");
         return _fromLE64(data, 1);
     }
 

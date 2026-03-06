@@ -12,7 +12,8 @@ import { parseUsdcInput } from '../../lib/input';
 import {
     bpsToPercent, fmtToken, fmtOraclePrice8, fmtCount, fmtTimestamp,
     useGlobalProtocolData, useUserPortfolio, useUserScore, tierLabel,
-    formatHealthFactor, healthState,
+    formatHealthFactor, healthState, useLendingHistory,
+    type LendHistoryEntry,
 } from '../../hooks/useProtocolData';
 
 // ── Primitives ────────────────────────────────────────────────────────────
@@ -288,7 +289,7 @@ function USDCBorrowCard({ collateralAtoms, debtAtoms, accruedAtoms, totalOwedAto
 
 function LendCard({ label, subtitle, depositAtoms, yieldAtoms, utilizationBps, contractAddr, abi, onRefresh }: {
     label: string; subtitle: string; depositAtoms: bigint; yieldAtoms: bigint; utilizationBps: bigint;
-    contractAddr: `0x${string}`; abi: typeof ABIS.KREDIO_LENDING; onRefresh: () => void;
+    contractAddr: `0x${string}`; abi: typeof ABIS.KREDIO_LENDING | typeof ABIS.KREDIO_PAS_MARKET; onRefresh: () => void;
 }) {
     const { address } = useAccount();
     const [harvestPhase, setHarvestPhase] = useState<'idle' | 'confirming' | 'harvesting' | 'success'>('idle');
@@ -371,22 +372,81 @@ function LendCard({ label, subtitle, depositAtoms, yieldAtoms, utilizationBps, c
 
 // ── Credit profile ────────────────────────────────────────────────────────
 
-const TIER_LABELS = ['ANON', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM'];
+const TIER_LABELS = ['ANON', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND'];
 
-function CreditProfile({ scoreValue, tier, collateralRatioBps, interestRateBps, repaymentCount, defaultCount, governanceVotes, governanceConviction }: {
+function repaymentPts(r: number) {
+    if (r >= 12) return 55;
+    if (r >= 8) return 46;
+    if (r >= 5) return 36;
+    if (r >= 3) return 26;
+    if (r === 2) return 16;
+    if (r === 1) return 8;
+    return 0;
+}
+function liquidationPenalty(l: number) {
+    if (l === 0) return 0;
+    if (l === 1) return 20;
+    if (l === 2) return 35;
+    return 55;
+}
+function depositPts(totalDeposited: bigint) {
+    const d = Number(totalDeposited);
+    if (d >= 100_000_000_000) return 35;
+    if (d >=  75_000_000_000) return 30;
+    if (d >=  55_000_000_000) return 25;
+    if (d >=  35_000_000_000) return 20;
+    if (d >=  20_000_000_000) return 15;
+    if (d >=  10_000_000_000) return 10;
+    if (d >=   5_000_000_000) return 5;
+    return 0;
+}
+function agePts(blocksSince: number) {
+    if (blocksSince >= 10000) return 10;
+    if (blocksSince >= 2000) return 5;
+    if (blocksSince >= 500) return 2;
+    return 0;
+}
+function nextRepaymentMilestone(r: number) {
+    if (r >= 12) return null;
+    if (r >= 8) return { needed: 12 - r, pts: 9 };
+    if (r >= 5) return { needed: 8 - r, pts: 10 };
+    if (r >= 3) return { needed: 5 - r, pts: 10 };
+    if (r >= 2) return { needed: 3 - r, pts: 10 };
+    if (r >= 1) return { needed: 2 - r, pts: 8 };
+    return { needed: 1 - r, pts: 8 };
+}
+
+function CreditProfile({ scoreValue, tier, collateralRatioBps, interestRateBps, repaymentCount, liquidationCount, totalDepositedEver, firstSeenBlock, currentBlock }: {
     scoreValue: bigint; tier: number; collateralRatioBps: number; interestRateBps: number;
-    repaymentCount: bigint; defaultCount: bigint; governanceVotes: bigint; governanceConviction: number;
+    repaymentCount: bigint; liquidationCount: bigint;
+    totalDepositedEver: bigint; firstSeenBlock: bigint; currentBlock: bigint;
 }) {
     const [expanded, setExpanded] = useState(false);
     const score = Number(scoreValue);
-    const scoreTierLabel = TIER_LABELS[tier] ?? 'ANON';
-    const tierBadge = tier >= 4 ? 'border-purple-500/40 bg-purple-500/10 text-purple-300' : tier === 3 ? 'border-amber-500/40 bg-amber-500/10 text-amber-300' : tier === 2 ? 'border-slate-400/40 bg-slate-400/10 text-slate-300' : tier === 1 ? 'border-amber-700/40 bg-amber-700/10 text-amber-500' : 'border-slate-500/40 bg-slate-500/10 text-slate-400';
+    const scoreTierLabel = TIER_LABELS[Math.min(tier, 5)] ?? 'ANON';
+    const tierBadge =
+        tier >= 5 ? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-300' :
+        tier === 4 ? 'border-purple-500/40 bg-purple-500/10 text-purple-300' :
+        tier === 3 ? 'border-amber-500/40 bg-amber-500/10 text-amber-300' :
+        tier === 2 ? 'border-slate-400/40 bg-slate-400/10 text-slate-300' :
+        tier === 1 ? 'border-amber-700/40 bg-amber-700/10 text-amber-500' :
+                     'border-slate-500/40 bg-slate-500/10 text-slate-400';
     const scorePct = Math.min(score / 100, 1) * 100;
-    const scoreTone = score >= 60 ? 'text-emerald-300' : score >= 35 ? 'text-amber-300' : score > 0 ? 'text-rose-300' : 'text-slate-400';
-    const scoreBarColor = score >= 60 ? 'bg-emerald-500' : score >= 35 ? 'bg-amber-500' : score > 0 ? 'bg-rose-500' : 'bg-slate-600';
+    const scoreTone = score >= 65 ? 'text-cyan-300' : score >= 50 ? 'text-emerald-300' : score >= 30 ? 'text-amber-300' : score > 0 ? 'text-rose-300' : 'text-slate-400';
+    const scoreBarColor = score >= 65 ? 'bg-cyan-500' : score >= 50 ? 'bg-emerald-500' : score >= 30 ? 'bg-amber-500' : score > 0 ? 'bg-rose-500' : 'bg-slate-600';
     const maxLTV = collateralRatioBps > 0 ? `${((10000 / collateralRatioBps) * 100).toFixed(0)}%` : '—';
     const borrowRate = interestRateBps > 0 ? `${(interestRateBps / 100).toFixed(2)}% APY` : '—';
-    const convictionLabels = ['None', 'Low', 'Medium', 'High', 'Max'];
+
+    const repayments = Number(repaymentCount);
+    const liquidations = Number(liquidationCount);
+    const blocksSince = firstSeenBlock > 0n ? Number(currentBlock - firstSeenBlock) : 0;
+
+    const rPts = Math.max(0, repaymentPts(repayments) - liquidationPenalty(liquidations));
+    const dPts = depositPts(totalDepositedEver);
+    const aPts = agePts(blocksSince);
+
+    const nextMs = nextRepaymentMilestone(repayments);
+    const depUSD = (Number(totalDepositedEver) / 1e6).toFixed(0);
 
     return (
         <div className="rounded-2xl border border-white/10 bg-black/30 backdrop-blur-xl p-5 space-y-4">
@@ -406,8 +466,6 @@ function CreditProfile({ scoreValue, tier, collateralRatioBps, interestRateBps, 
             <div className="rounded-xl border border-white/5 bg-black/20 px-4 py-3">
                 <InfoRow label="Max LTV" value={maxLTV} />
                 <InfoRow label="Borrow rate" value={borrowRate} />
-                <InfoRow label="Successful repayments" value={repaymentCount.toString()} tone={repaymentCount > 0n ? 'green' : undefined} />
-                <InfoRow label="Defaults" value={defaultCount.toString()} tone={defaultCount > 0n ? 'red' : undefined} />
             </div>
             <div className="rounded-xl border border-white/5 bg-black/10 overflow-hidden">
                 <button onClick={() => setExpanded(v => !v)} className="w-full flex items-center justify-between px-4 py-3 text-xs text-slate-400 hover:text-white transition-colors">
@@ -417,22 +475,150 @@ function CreditProfile({ scoreValue, tier, collateralRatioBps, interestRateBps, 
                 <AnimatePresence>
                     {expanded && (
                         <motion.div key="reasoning" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                            <div className="px-4 pb-4 space-y-3 border-t border-white/5">
-                                <div className="pt-3 space-y-2 text-xs text-slate-400">
-                                    <div className="flex items-start gap-2"><span className="text-indigo-400 shrink-0">•</span><span><span className="text-slate-200">Balance tier:</span> {scoreTierLabel}</span></div>
-                                    <div className="flex items-start gap-2"><span className="text-indigo-400 shrink-0">•</span><span><span className="text-slate-200">Governance votes:</span> {governanceVotes.toString()} (conviction: {convictionLabels[Math.min(governanceConviction, 4)] ?? 'Unknown'})</span></div>
-                                    <div className="flex items-start gap-2"><span className="text-indigo-400 shrink-0">•</span><span><span className="text-slate-200">History:</span> {repaymentCount.toString()} repayment{repaymentCount !== 1n ? 's' : ''}, {defaultCount.toString()} default{defaultCount !== 1n ? 's' : ''}</span></div>
+                            <div className="px-4 pb-4 border-t border-white/5 space-y-3">
+                                {/* 3-component breakdown */}
+                                <div className="pt-3 space-y-2">
+                                    {/* Repayment history */}
+                                    <div className="rounded-xl border border-white/5 bg-black/20 px-4 py-3 space-y-1.5">
+                                        <div className="flex justify-between text-xs">
+                                            <span className="text-slate-300 font-medium">Repayment History</span>
+                                            <span className={cn('font-bold', rPts >= 40 ? 'text-emerald-300' : rPts >= 20 ? 'text-amber-300' : 'text-rose-300')}>{rPts} / 55 pts</span>
+                                        </div>
+                                        <div className="w-full h-1 rounded-full bg-white/10">
+                                            <div className="h-full rounded-full bg-indigo-500 transition-all" style={{ width: `${(rPts / 55) * 100}%` }} />
+                                        </div>
+                                        <p className="text-[11px] text-slate-500">{repayments} successful repayment{repayments !== 1 ? 's' : ''}{liquidations > 0 ? ` — ${liquidations} liquidation${liquidations !== 1 ? 's' : ''} (−${liquidationPenalty(liquidations)} pts)` : ''}</p>
+                                        {nextMs && repayments < 12 && (
+                                            <p className="text-[11px] text-indigo-400">+{nextMs.pts} pts after {nextMs.needed} more repayment{nextMs.needed !== 1 ? 's' : ''}</p>
+                                        )}
+                                    </div>
+
+                                    {/* Lending volume */}
+                                    <div className="rounded-xl border border-white/5 bg-black/20 px-4 py-3 space-y-1.5">
+                                        <div className="flex justify-between text-xs">
+                                            <span className="text-slate-300 font-medium">Lending Volume</span>
+                                            <span className={cn('font-bold', dPts >= 25 ? 'text-emerald-300' : dPts >= 10 ? 'text-amber-300' : 'text-rose-300')}>{dPts} / 35 pts</span>
+                                        </div>
+                                        <div className="w-full h-1 rounded-full bg-white/10">
+                                            <div className="h-full rounded-full bg-purple-500 transition-all" style={{ width: `${(dPts / 35) * 100}%` }} />
+                                        </div>
+                                        <p className="text-[11px] text-slate-500">${depUSD} deposited lifetime</p>
+                                        {dPts < 35 && (
+                                            <p className="text-[11px] text-purple-400">Deposit more mUSDC to earn up to 35 pts</p>
+                                        )}
+                                    </div>
+
+                                    {/* Account age */}
+                                    <div className="rounded-xl border border-white/5 bg-black/20 px-4 py-3 space-y-1.5">
+                                        <div className="flex justify-between text-xs">
+                                            <span className="text-slate-300 font-medium">Account Age</span>
+                                            <span className={cn('font-bold', aPts >= 10 ? 'text-emerald-300' : aPts >= 5 ? 'text-amber-300' : 'text-rose-300')}>{aPts} / 10 pts</span>
+                                        </div>
+                                        <div className="w-full h-1 rounded-full bg-white/10">
+                                            <div className="h-full rounded-full bg-teal-500 transition-all" style={{ width: `${(aPts / 10) * 100}%` }} />
+                                        </div>
+                                        <p className="text-[11px] text-slate-500">{firstSeenBlock > 0n ? `${blocksSince.toLocaleString()} blocks since first deposit` : 'Make a first deposit to start earning age points'}</p>
+                                        {aPts < 10 && firstSeenBlock > 0n && (
+                                            <p className="text-[11px] text-teal-400">{blocksSince < 500 ? `${500 - blocksSince} blocks until +2 pts` : blocksSince < 2000 ? `${2000 - blocksSince} blocks until +3 pts` : `${10000 - blocksSince} blocks until max age pts`}</p>
+                                        )}
+                                    </div>
                                 </div>
-                                <div className="rounded-xl border border-white/5 bg-black/20 p-3 space-y-1.5 text-xs text-slate-400">
-                                    <p className="font-medium text-slate-300">Improve your score</p>
-                                    <p>Repay loans on time to increase your score</p>
-                                    <p>Participate in governance to boost your score</p>
-                                    <p>Maintain a higher wallet balance (PAS tier)</p>
-                                </div>
+
+                                {liquidations > 0 && (
+                                    <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 px-4 py-3 text-xs text-rose-300">
+                                        ⚠ {liquidations} liquidation{liquidations !== 1 ? 's' : ''} on record — penalty applied to repayment score
+                                    </div>
+                                )}
                             </div>
                         </motion.div>
                     )}
                 </AnimatePresence>
+            </div>
+        </div>
+    );
+}
+
+// ── Lending history table ─────────────────────────────────────────────────
+
+const TYPE_META: Record<LendHistoryEntry['type'], { label: string; color: string }> = {
+    deposit:  { label: 'Deposit',  color: 'text-indigo-300' },
+    withdraw: { label: 'Withdraw', color: 'text-slate-300'  },
+    yield:    { label: 'Yield',    color: 'text-amber-300'  },
+};
+
+function LendingHistoryTable({ entries, loading }: { entries: LendHistoryEntry[]; loading: boolean }) {
+    const totalYieldUSDC  = entries.filter(e => e.type === 'yield').reduce((s, e) => s + e.amount, 0n);
+    const totalDeposited  = entries.filter(e => e.type === 'deposit').reduce((s, e) => s + e.amount, 0n);
+    const totalWithdrawn  = entries.filter(e => e.type === 'withdraw').reduce((s, e) => s + e.amount, 0n);
+
+    if (loading) {
+        return <div className="rounded-2xl border border-white/5 bg-black/20 p-5 h-32 animate-pulse" />;
+    }
+
+    if (entries.length === 0) {
+        return (
+            <div className="rounded-2xl border border-white/10 bg-black/30 px-6 py-8 text-center">
+                <p className="text-slate-500 text-sm">No lending activity yet on-chain.</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="rounded-2xl border border-white/10 bg-black/30 backdrop-blur-xl p-5 space-y-4">
+            {/* summary strip */}
+            <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-xl border border-white/5 bg-black/20 px-4 py-3">
+                    <p className="text-[11px] uppercase tracking-wider text-slate-500">Total Deposited</p>
+                    <p className="text-sm font-semibold text-white mt-1">{fmt6(totalDeposited)} mUSDC</p>
+                </div>
+                <div className="rounded-xl border border-white/5 bg-black/20 px-4 py-3">
+                    <p className="text-[11px] uppercase tracking-wider text-slate-500">Total Withdrawn</p>
+                    <p className="text-sm font-semibold text-white mt-1">{fmt6(totalWithdrawn)} mUSDC</p>
+                </div>
+                <div className="rounded-xl border border-amber-500/10 bg-amber-500/5 px-4 py-3">
+                    <p className="text-[11px] uppercase tracking-wider text-amber-500/70">Yield Earned</p>
+                    <p className="text-sm font-semibold text-amber-300 mt-1">{fmt6(totalYieldUSDC, 6)} mUSDC</p>
+                </div>
+            </div>
+
+            {/* event log */}
+            <div className="overflow-x-auto rounded-xl border border-white/5">
+                <table className="w-full text-xs">
+                    <thead>
+                        <tr className="border-b border-white/5">
+                            <th className="text-left px-4 py-2.5 text-slate-500 font-medium">Type</th>
+                            <th className="text-left px-4 py-2.5 text-slate-500 font-medium">Market</th>
+                            <th className="text-right px-4 py-2.5 text-slate-500 font-medium">Amount (mUSDC)</th>
+                            <th className="text-right px-4 py-2.5 text-slate-500 font-medium">Block</th>
+                            <th className="text-right px-4 py-2.5 text-slate-500 font-medium">Tx</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {entries.map((e, i) => {
+                            const meta = TYPE_META[e.type];
+                            return (
+                                <tr key={i} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                                    <td className={`px-4 py-2.5 font-medium ${meta.color}`}>{meta.label}</td>
+                                    <td className="px-4 py-2.5 text-slate-300">{e.market}</td>
+                                    <td className="px-4 py-2.5 text-right text-slate-200">{fmt6(e.amount, 6)}</td>
+                                    <td className="px-4 py-2.5 text-right text-slate-500">{e.blockNumber.toString()}</td>
+                                    <td className="px-4 py-2.5 text-right">
+                                        {e.txHash ? (
+                                            <a
+                                                href={`https://paseo.subscan.io/tx/${e.txHash}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-cyan-400 hover:text-cyan-300 font-mono"
+                                            >
+                                                {e.txHash.slice(0, 8)}…
+                                            </a>
+                                        ) : '—'}
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
             </div>
         </div>
     );
@@ -450,6 +636,7 @@ export default function DashboardPage() {
     const { lending, pasMarket, oracle, loading: globalLoading, error: globalError, refresh: refreshGlobal } = useGlobalProtocolData();
     const { score, refresh: refreshScore } = useUserScore();
     const portfolio = useUserPortfolio();
+    const { history: lendHistory, loading: historyLoading, refresh: refreshHistory } = useLendingHistory();
 
     const { data: ltvBpsRaw } = useReadContract({ address: config.pasMarket, abi: ABIS.KREDIO_PAS_MARKET, functionName: 'ltvBps' });
     const ltvBps = (ltvBpsRaw as bigint | undefined) ?? 6500n;
@@ -459,9 +646,9 @@ export default function DashboardPage() {
     useEffect(() => { const id = setInterval(() => setSecondsAgo(Math.floor((Date.now() - lastRefreshRef.current) / 1000)), 1000); return () => clearInterval(id); }, []);
 
     const handleRefresh = useCallback(() => {
-        portfolio.refresh(); refreshGlobal(); refreshScore();
+        portfolio.refresh(); refreshGlobal(); refreshScore(); refreshHistory();
         lastRefreshRef.current = Date.now(); setSecondsAgo(0);
-    }, []);
+    }, [refreshHistory]);
 
     useEffect(() => { const id = setInterval(handleRefresh, 30_000); return () => clearInterval(id); }, [handleRefresh]);
 
@@ -473,7 +660,13 @@ export default function DashboardPage() {
     const hasAnyLend = hasPasLend || hasUsdcLend;
     const hasAnything = hasAnyBorrow || hasAnyLend;
     const totalRepayments = portfolio.pasRepaymentCount + portfolio.lendingRepaymentCount;
-    const totalDefaults = portfolio.pasDefaultCount + portfolio.lendingDefaultCount;
+    const totalLiquidations = portfolio.pasLiquidationCount + portfolio.lendingLiquidationCount;
+    const combinedDeposited = portfolio.lendingTotalDepositedEver + portfolio.pasTotalDepositedEver;
+    const earliestBlock =
+        portfolio.lendingFirstSeenBlock > 0n && portfolio.pasFirstSeenBlock > 0n
+            ? portfolio.lendingFirstSeenBlock < portfolio.pasFirstSeenBlock ? portfolio.lendingFirstSeenBlock : portfolio.pasFirstSeenBlock
+            : portfolio.lendingFirstSeenBlock > 0n ? portfolio.lendingFirstSeenBlock
+            : portfolio.pasFirstSeenBlock;
 
     return (
         <PageShell title="Dashboard" subtitle="Protocol overview, active positions, and credit profile.">
@@ -619,6 +812,14 @@ export default function DashboardPage() {
                         </div>
                     )}
 
+                    {/* lending history */}
+                    {(lendHistory.length > 0 || historyLoading) && (
+                        <div className="space-y-3">
+                            <SectionHeading label="Lending History" />
+                            <LendingHistoryTable entries={lendHistory} loading={historyLoading} />
+                        </div>
+                    )}
+
                     {/* credit profile */}
                     <div className="space-y-3">
                         <SectionHeading label="Credit Profile" />
@@ -628,9 +829,10 @@ export default function DashboardPage() {
                             collateralRatioBps={score.collateralRatioBps}
                             interestRateBps={score.interestRateBps}
                             repaymentCount={totalRepayments}
-                            defaultCount={totalDefaults}
-                            governanceVotes={portfolio.governance[0]}
-                            governanceConviction={portfolio.governance[1]}
+                            liquidationCount={totalLiquidations}
+                            totalDepositedEver={combinedDeposited}
+                            firstSeenBlock={earliestBlock}
+                            currentBlock={score.blockNumber}
                         />
                     </div>
                 </>

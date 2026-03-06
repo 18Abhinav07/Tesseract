@@ -1,13 +1,20 @@
 # Latest Deployment Addresses (Polkadot EVM Testnet)
 
 - Network RPC: https://eth-rpc-testnet.polkadot.io/
-- **KredioLending (v4 — adminForceClose): 0xcf18DC673511885e2FC4aEafEc734bC408A9bA9A**
-- **KredioPASMarket (v4 — adminForceClose): 0x6345aE4ff56F3b74c32221180afbF710371Deed5**
+- **KredioLending (v5 — new credit score): 0x95628ae051Ad15dBf44cb0A965F2f6D9eC8baE37**
+- **KredioPASMarket (v5 — new credit score): 0x879F48C0f1982F6Bb7932ed651f278e47c261E03**
+- **KredioXCMSettler (v1 — Phase 3 foundation): PENDING DEPLOY**
+- **KredioAccountRegistry (v1 — Phase 3 foundation): PENDING DEPLOY**
 - Mock USDC: 0x5998cE005b4f3923c988Ae31940fAa1DEAC0c646
 - KreditAgent: 0x8c13E6fFDf27bB51304Efff108C9B646d148E5F3
-- GovernanceCache: 0xe4DE7eadE2c0A65BdA6863Ad7bA22416c77F3e55
+- GovernanceCache: 0xe4DE7eadE2c0A65BdA6863Ad7bA22416c77F3e55 (retained, not used by scoring)
 - MockPASOracle: 0x1494432a8Af6fa8c03C0d7DD7720E298D85C55c7
 - KredioSwap (v1): 0xaF1d183F4550500Beb517A3249780290A88E6e39
+
+Credit score system (v5):
+- Score inputs: repayments + liquidations + totalDepositedEver + firstSeenBlock
+- Components: Repayment History (55pts) + Lending Volume (35pts) + Account Age (10pts)
+- Tiers: ANON(0-14) / BRONZE(15-29) / SILVER(30-49) / GOLD(50-64) / PLATINUM(65-79) / DIAMOND(80-100)
 
 Previous deployments:
 - KredioLending (v3): 0x717A1e2967af17CbE92abd70072aCe823a9B22B4

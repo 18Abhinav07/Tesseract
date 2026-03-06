@@ -2,7 +2,6 @@
 pragma solidity ^0.8.24;
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {IGovernanceCache} from "./interfaces/IGovernanceCache.sol";
 
 interface IMockUSDC {
     function balanceOf(
@@ -22,35 +21,20 @@ interface IMockUSDC {
 interface IKreditAgent {
     // Interfaces are kept for clarity; calls use SCALE shim via low-level call.
     function compute_score(
-        uint64,
-        uint64,
-        uint64,
-        uint64,
-        uint64
+        uint64 repayments,
+        uint64 liquidations,
+        uint64 deposit_tier,
+        uint64 blocks_since_first
     ) external view returns (uint64);
-    function collateral_ratio(
-        uint64
-    ) external view returns (uint64);
-    function interest_rate(
-        uint64
-    ) external view returns (uint64);
-    function tier(
-        uint64
-    ) external view returns (uint8);
-    function reasoning(
-        uint64,
-        uint64,
-        uint64,
-        uint64,
-        uint64
-    ) external view returns (bytes32);
+    function collateral_ratio(uint64 score) external view returns (uint64);
+    function interest_rate(uint64 score) external view returns (uint64);
+    function tier(uint64 score) external view returns (uint8);
 }
 
 contract KredioLending is ReentrancyGuard {
     address public admin;
 
     // External dependencies
-    IGovernanceCache public govCache;
     IMockUSDC public usdc;
     address public kreditAgent;
 
@@ -77,9 +61,13 @@ contract KredioLending is ReentrancyGuard {
     // Borrower mappings
     mapping(address => uint256) public collateralBalance;
     mapping(address => uint64) public repaymentCount;
-    mapping(address => uint64) public defaultCount;
+    mapping(address => uint64) public liquidationCount;
     mapping(address => Position) public positions;
     mapping(address => uint256) public demoRateMultiplier; // Optional per-borrower rate boost for demoing liquidations
+
+    // Credit score inputs
+    mapping(address => uint256) public totalDepositedEver;  // cumulative lifetime deposits (never decrements)
+    mapping(address => uint256) public firstSeenBlock;      // block of first deposit(), never updated after
 
     struct Position {
         uint256 collateral;
@@ -98,9 +86,9 @@ contract KredioLending is ReentrancyGuard {
         uint8 tier,
         uint32 collateralRatioBps,
         uint32 interestRateBps,
-        uint64 balanceTier,
-        uint64 govVotes,
-        uint64 repayments
+        uint64 depositTier,
+        uint64 repayments,
+        uint64 liquidations
     );
     event CollateralDeposited(address indexed user, uint256 amount);
     event Borrowed(address indexed user, uint256 amount, uint8 tier, uint32 ratioBps);
@@ -123,23 +111,17 @@ contract KredioLending is ReentrancyGuard {
         return address(usdc);
     }
 
-    function getGovCache() external view returns (address) {
-        return address(govCache);
-    }
-
     modifier onlyAdmin() {
         require(msg.sender == admin, "not admin");
         _;
     }
 
     constructor(
-        address _govCache,
         address _usdc,
         address _kreditAgent
     ) {
-        require(_govCache != address(0) && _usdc != address(0) && _kreditAgent != address(0), "zero addr");
+        require(_usdc != address(0) && _kreditAgent != address(0), "zero addr");
         admin = msg.sender;
-        govCache = IGovernanceCache(_govCache);
         usdc = IMockUSDC(_usdc);
         kreditAgent = _kreditAgent;
     }
@@ -150,12 +132,14 @@ contract KredioLending is ReentrancyGuard {
     function getScore(
         address user
     ) public view returns (uint64, uint8, uint32, uint32) {
-        uint64 balanceTier = _balanceTier(user);
-        (uint64 votes, uint8 conviction,) = govCache.getGovernanceData(user);
+        uint64 depositTier = _depositTier(user);
         uint64 repayments = repaymentCount[user];
-        uint64 defaults = defaultCount[user];
+        uint64 liquidations = liquidationCount[user];
+        uint64 blocksSinceFirst = firstSeenBlock[user] > 0
+            ? uint64(block.number - firstSeenBlock[user])
+            : 0;
 
-        uint64 score = _callAgent5(SEL_COMPUTE_SCORE, balanceTier, votes, uint64(conviction), repayments, defaults);
+        uint64 score = _callAgent4(SEL_COMPUTE_SCORE, repayments, liquidations, depositTier, blocksSinceFirst);
 
         uint64 ratio = _callAgent1(SEL_COLLATERAL_RATIO, score);
         uint64 rate = _callAgent1(SEL_INTEREST_RATE, score);
@@ -168,6 +152,10 @@ contract KredioLending is ReentrancyGuard {
         uint256 amount
     ) external nonReentrant {
         require(amount > 0, "zero amt");
+        if (firstSeenBlock[msg.sender] == 0) {
+            firstSeenBlock[msg.sender] = block.number;
+        }
+        totalDepositedEver[msg.sender] += amount;
         _harvest(msg.sender);
         depositBalance[msg.sender] += amount;
         totalDeposited += amount;
@@ -390,17 +378,16 @@ contract KredioLending is ReentrancyGuard {
         return uint8(data[1]);
     }
 
-    function _callAgent5(
+    function _callAgent4(
         bytes4 selector,
         uint64 a,
         uint64 b,
         uint64 c,
-        uint64 d,
-        uint64 e
+        uint64 d
     ) internal view returns (uint64) {
-        bytes memory input = abi.encodePacked(selector, _le64(a), _le64(b), _le64(c), _le64(d), _le64(e));
+        bytes memory input = abi.encodePacked(selector, _le64(a), _le64(b), _le64(c), _le64(d));
         (bool ok, bytes memory data) = kreditAgent.staticcall(input);
-        require(ok && data.length >= 9 && data[0] == 0x00, "agent5 fail");
+        require(ok && data.length >= 9 && data[0] == 0x00, "agent4 fail");
         return _fromLE64(data, 1);
     }
 
@@ -445,7 +432,7 @@ contract KredioLending is ReentrancyGuard {
 
         _distributeInterest(interest);
         totalBorrowed -= p.debt;
-        defaultCount[borrower] += 1;
+        liquidationCount[borrower] += 1;
 
         uint256 premium = (totalOwed * 10_500) / 10_000;
         uint256 payout = premium <= p.collateral ? premium : p.collateral;
@@ -479,14 +466,17 @@ contract KredioLending is ReentrancyGuard {
         }
     }
 
-    function _balanceTier(
+    function _depositTier(
         address user
     ) internal view returns (uint64) {
-        uint256 bal = user.balance;
-        if (bal >= 10_000 ether) return 4;
-        if (bal >= 1000 ether) return 3;
-        if (bal >= 100 ether) return 2;
-        if (bal >= 10 ether) return 1;
+        uint256 d = totalDepositedEver[user];
+        if (d >= 100_000_000_000) return 7;
+        if (d >=  75_000_000_000) return 6;
+        if (d >=  55_000_000_000) return 5;
+        if (d >=  35_000_000_000) return 4;
+        if (d >=  20_000_000_000) return 3;
+        if (d >=  10_000_000_000) return 2;
+        if (d >=   5_000_000_000) return 1;
         return 0;
     }
 

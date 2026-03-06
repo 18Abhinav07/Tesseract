@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 import "forge-std/Script.sol";
 import "../evm/KredioLending.sol";
 import "../evm/KredioPASMarket.sol";
+import "../evm/KredioXCMSettler.sol";
+import "../evm/KredioAccountRegistry.sol";
 
 interface IMintable {
     function mint(
@@ -39,6 +41,11 @@ contract Deploy is Script {
     address constant MUSDC = 0x5998cE005b4f3923c988Ae31940fAa1DEAC0c646;
     address constant ORACLE = 0x1494432a8Af6fa8c03C0d7DD7720E298D85C55c7;
     address constant KREDIT_AGENT = 0x8c13e6FfDF27BB51304EfFF108c9b646d148e5f3;
+    address constant KREDIT_SWAP = 0xaF1d183F4550500Beb517A3249780290A88E6e39;
+
+    // SR25519 precompile address on Asset Hub EVM (set to address(0) to start
+    // in attested-only mode; update once confirmed on Hub EVM testnet).
+    address constant SR25519_PRECOMPILE = address(0);
 
     // Pool liquidity seed: 20,000 mUSDC (6 decimals) per pool
     uint256 constant POOL_SEED = 20_000_000_000; // 20,000 mUSDC atoms
@@ -48,10 +55,10 @@ contract Deploy is Script {
         vm.startBroadcast(pk);
 
         // ── 1. Deploy KredioLending ────────────────────────────────────────
-        KredioLending lending = new KredioLending(GOV_CACHE, MUSDC, KREDIT_AGENT);
+        KredioLending lending = new KredioLending(MUSDC, KREDIT_AGENT);
 
         // ── 2. Deploy KredioPASMarket ──────────────────────────────────────
-        KredioPASMarket pasMarket = new KredioPASMarket(GOV_CACHE, MUSDC, KREDIT_AGENT, ORACLE);
+        KredioPASMarket pasMarket = new KredioPASMarket(MUSDC, KREDIT_AGENT, ORACLE);
 
         // ── 3. Seed lending pool (lender deposit so totalDeposited > 0) ────
         IMintable musdc = IMintable(MUSDC);
@@ -64,16 +71,30 @@ contract Deploy is Script {
         musdc.approve(address(pasMarket), POOL_SEED);
         pasMarket.deposit(POOL_SEED);
 
+        // ── 5. Deploy KredioXCMSettler ─────────────────────────────────────
+        KredioXCMSettler xcmSettler = new KredioXCMSettler(
+            address(pasMarket),
+            address(lending),
+            KREDIT_SWAP,
+            MUSDC
+        );
+
+        // ── 6. Deploy KredioAccountRegistry ───────────────────────────────
+        KredioAccountRegistry accountRegistry = new KredioAccountRegistry(SR25519_PRECOMPILE);
+
         vm.stopBroadcast();
 
         // ── Print new addresses ────────────────────────────────────────────
         console.log("=== NEW DEPLOYMENT ADDRESSES ===");
-        console.log("KredioLending:  ", address(lending));
-        console.log("KredioPASMarket:", address(pasMarket));
+        console.log("KredioLending:          ", address(lending));
+        console.log("KredioPASMarket:        ", address(pasMarket));
+        console.log("KredioXCMSettler:       ", address(xcmSettler));
+        console.log("KredioAccountRegistry:  ", address(accountRegistry));
         console.log("--- reused ---");
-        console.log("MockUSDC:       ", MUSDC);
-        console.log("GovernanceCache:", GOV_CACHE);
-        console.log("MockPASOracle:  ", ORACLE);
-        console.log("KreditAgent:    ", KREDIT_AGENT);
+        console.log("MockUSDC:               ", MUSDC);
+        console.log("GovernanceCache:        ", GOV_CACHE);
+        console.log("MockPASOracle:          ", ORACLE);
+        console.log("KreditAgent:            ", KREDIT_AGENT);
+        console.log("KredioSwap:             ", KREDIT_SWAP);
     }
 }
