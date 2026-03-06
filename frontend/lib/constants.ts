@@ -123,4 +123,26 @@ export const ABIS = {
         'function setGovernanceData(address user, uint64 voteCount, uint8 maxConviction) external',
         'function admin() view returns (address)',
     ]),
+
+    // ── ETH Bridge contracts ──────────────────────────────────────────────
+    ETH_BRIDGE_INBOX: parseAbi([
+        'function deposit(bytes32 hubRecipient) payable',
+        'function MIN_DEPOSIT() view returns (uint256)',
+        'function MAX_DEPOSIT() view returns (uint256)',
+        'function depositCount() view returns (uint256)',
+        'function deposits(uint256 id) view returns (address depositor, uint256 amount, bytes32 hubRecipient, uint256 timestamp)',
+        'function lockedBalance() view returns (uint256)',
+        'event EthDeposited(uint256 indexed depositId, address indexed from, uint256 amount, bytes32 indexed hubRecipient)',
+    ]),
+
+    KREDIO_BRIDGE_MINTER: parseAbi([
+        'function processDeposit(bytes32 sourceTxHash, address hubRecipient, address sourceUser, uint256 ethAmount, uint256 mUSDCOut, uint32 sourceChainId) external',
+        'function initiateRedeem(bytes32 sourceTxHash, uint256 redeemAmount) external',
+        'function getUserDeposits(address user) view returns (bytes32[])',
+        'function deposits(bytes32 txHash) view returns (uint32 sourceChainId, address sourceUser, address hubRecipient, uint256 ethAmount, uint256 mUSDCMinted, uint256 timestamp, bool redeemed)',
+        'function relayer() view returns (address)',
+        'function setRelayer(address newRelayer) external',
+        'event DepositProcessed(bytes32 indexed sourceTxHash, address indexed hubRecipient, uint256 mUSDCMinted, uint32 sourceChainId)',
+        'event Redeemed(bytes32 indexed sourceTxHash, address indexed user, uint256 amount)',
+    ]),
 };

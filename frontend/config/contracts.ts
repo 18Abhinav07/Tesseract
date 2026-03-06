@@ -10,7 +10,7 @@ export const CONTRACTS = {
     KREDITAGENT: '0x8c13E6fFDf27bB51304Efff108C9B646d148E5F3',
     CHAIN_ID: 420420417,
     RPC: 'https://eth-rpc-testnet.polkadot.io/',
-    EXPLORER: 'https://paseo.subscan.io',
+    EXPLORER: 'https://blockscout-testnet.polkadot.io',
     FAUCET: 'https://faucet.polkadot.io/',
 } as const;
 
@@ -43,3 +43,17 @@ export const KREDIO_SWAP_ABI = [
 export type AddressLike = `0x${string}`;
 
 export const asAddress = (value: string): AddressLike => getAddress(value);
+
+// ─── ETH Bridge ────────────────────────────────────────────────────────────
+// Fill in INBOX_SEPOLIA and BRIDGE_MINTER after deploying the bridge contracts.
+// See contracts/script/DeployBridge.s.sol for deploy instructions.
+export const BRIDGE = {
+    // EthBridgeInbox deployed on Ethereum Sepolia (chainId 11155111)
+    INBOX_SEPOLIA: (process.env.NEXT_PUBLIC_INBOX_SEPOLIA ?? '') as `0x${string}`,
+    // KredioBridgeMinter deployed on Hub (chainId 420420417)
+    MINTER: (process.env.NEXT_PUBLIC_BRIDGE_MINTER ?? '') as `0x${string}`,
+    // Backend service URL (oracle feeder + bridge relayer)
+    BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:3002',
+    // Sepolia chain ID
+    SEPOLIA_CHAIN_ID: 11155111,
+} as const;

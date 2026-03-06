@@ -212,6 +212,7 @@ function BorrowStep({ collateralAtoms, maxBorrowAtoms, onSuccess }: {
     const [busy, setBusy] = useState(false);
     const [success, setSuccess] = useState(false);
     const [statusMsg, setStatusMsg] = useState('');
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     const borrowAtoms: bigint = (() => {
         if (manualInput && Number(manualInput) > 0) {
@@ -230,12 +231,15 @@ function BorrowStep({ collateralAtoms, maxBorrowAtoms, onSuccess }: {
 
     const handleBorrow = async () => {
         if (borrowAtoms === 0n) return;
+        setErrorMsg(null);
         setBusy(true); setStatusMsg('Waiting for MetaMask…');
         const res = await actions.borrowLending(borrowAtoms);
         if (res.ok) {
             setStatusMsg('Confirming…');
             await portfolio.refresh();
             setSuccess(true); onSuccess();
+        } else {
+            setErrorMsg(res.error);
         }
         setBusy(false); setStatusMsg('');
     };
@@ -285,13 +289,21 @@ function BorrowStep({ collateralAtoms, maxBorrowAtoms, onSuccess }: {
             {Number(estHealthBps) < 15000 && borrowAtoms > 0n && Number(estHealthBps) < 999998 && (
                 <StateNotice tone="warning" message="Health ratio is low — consider borrowing less." />
             )}
-            <button onClick={handleBorrow} disabled={borrowAtoms === 0n || busy}
-                className={cn('w-full rounded-xl px-4 py-3 text-sm font-semibold transition-all flex items-center justify-center gap-2',
-                    busy ? 'bg-white/5 border border-white/10 text-slate-400 cursor-not-allowed'
-                        : borrowAtoms === 0n ? 'bg-white/5 border border-white/10 text-slate-600 cursor-not-allowed'
-                            : 'bg-emerald-700 hover:bg-emerald-600 text-white')}>
-                {busy ? <><Spinner />{statusMsg}</> : `Borrow ${borrowDisplay} mUSDC`}
-            </button>
+            {errorMsg ? (
+                <div className="flex items-center gap-3 rounded-xl border border-rose-500/20 bg-rose-500/8 px-4 py-3">
+                    <span className="text-rose-400 text-sm shrink-0">✕</span>
+                    <span className="text-sm text-rose-300 flex-1 min-w-0 truncate">{errorMsg}</span>
+                    <button onClick={() => setErrorMsg(null)} className="text-slate-500 hover:text-white text-sm leading-none shrink-0" aria-label="Dismiss">✕</button>
+                </div>
+            ) : (
+                <button onClick={handleBorrow} disabled={borrowAtoms === 0n || busy}
+                    className={cn('w-full rounded-xl px-4 py-3 text-sm font-semibold transition-all flex items-center justify-center gap-2',
+                        busy ? 'bg-white/5 border border-white/10 text-slate-400 cursor-not-allowed'
+                            : borrowAtoms === 0n ? 'bg-white/5 border border-white/10 text-slate-600 cursor-not-allowed'
+                                : 'bg-emerald-700 hover:bg-emerald-600 text-white')}>
+                    {busy ? <><Spinner />{statusMsg}</> : `Borrow ${borrowDisplay} mUSDC`}
+                </button>
+            )}
         </div>
     );
 }

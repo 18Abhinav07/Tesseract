@@ -605,7 +605,7 @@ function LendingHistoryTable({ entries, loading }: { entries: LendHistoryEntry[]
                                     <td className="px-4 py-2.5 text-right">
                                         {e.txHash ? (
                                             <a
-                                                href={`https://paseo.subscan.io/tx/${e.txHash}`}
+                                                href={`https://blockscout-testnet.polkadot.io/tx/${e.txHash}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="text-cyan-400 hover:text-cyan-300 font-mono"

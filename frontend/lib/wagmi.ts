@@ -1,4 +1,5 @@
 import { defineChain } from 'viem'
+import { sepolia } from 'viem/chains'
 import { http, createConfig } from 'wagmi'
 import { injected } from 'wagmi/connectors'
 import { CONTRACTS } from '../config/contracts'
@@ -16,13 +17,22 @@ export const passetHub = defineChain({
     testnet: true,
 });
 
+// Sepolia is supported for the ETH bridge inbox deposits.
+// MetaMask will auto-switch to it when the user selects "Ethereum Sepolia"
+// in the bridge UI (useSwitchChain({ chainId: sepolia.id })).
+export { sepolia };
+
+export const SEPOLIA_CHAIN_ID = sepolia.id; // 11155111
+
 export const wagmiConfig = createConfig({
-    chains: [passetHub],
+    chains: [passetHub, sepolia],
     connectors: [
         injected(),
     ],
     transports: {
         [passetHub.id]: http(CONTRACTS.RPC),
+        // Explicit public RPC — viem's default (thirdweb) blocks CORS from localhost
+        [sepolia.id]: http('https://ethereum-sepolia-rpc.publicnode.com'),
     },
 });
 

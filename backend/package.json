@@ -1,0 +1,20 @@
+{
+    "name": "kredio-backend",
+    "version": "1.0.0",
+    "description": "Kredio unified backend: PAS oracle feeder + ETH bridge relayer",
+    "main": "server.js",
+    "scripts": {
+        "dev": "node server.js",
+        "start": "NODE_ENV=production node server.js",
+        "start:demo": "MODE=DEMO node server.js",
+        "start:real": "MODE=REAL node server.js",
+        "restart": "kill $(lsof -ti :${PORT:-3002}) 2>/dev/null; node server.js",
+        "stop": "kill $(lsof -ti :${PORT:-3002}) 2>/dev/null && echo stopped || echo not running"
+    },
+    "dependencies": {
+        "cors": "^2.8.5",
+        "dotenv": "^16.4.5",
+        "ethers": "^6.0.0",
+        "express": "^4.19.2"
+    }
+}
