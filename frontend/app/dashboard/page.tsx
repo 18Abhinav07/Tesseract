@@ -29,21 +29,38 @@ function Check() {
         </svg>
     );
 }
-function InfoRow({ label, value, tone }: { label: string; value: string; tone?: 'green' | 'yellow' | 'red' }) {
+function InfoRow({ label, value, tone }: { label: string; value: React.ReactNode; tone?: 'green' | 'yellow' | 'red' | 'blue' | 'purple' }) {
     return (
-        <div className="flex items-center justify-between text-xs py-1.5 border-b border-white/5 last:border-0">
+        <div className="flex items-center justify-between text-[13px] py-2.5 border-b border-white/5 last:border-0 group/row hover:bg-white/[0.02] px-3 -mx-3 rounded-lg transition-colors">
             <span className="text-slate-400">{label}</span>
-            <span className={cn('font-medium',
-                tone === 'green' ? 'text-emerald-300' : tone === 'yellow' ? 'text-amber-300' : tone === 'red' ? 'text-rose-300' : 'text-slate-200'
+            <span className={cn('font-semibold font-mono tracking-tight',
+                tone === 'green' ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]' : 
+                tone === 'yellow' ? 'text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.3)]' : 
+                tone === 'red' ? 'text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.3)]' : 
+                tone === 'blue' ? 'text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.3)]' : 
+                tone === 'purple' ? 'text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.3)]' : 
+                'text-slate-100'
             )}>{value}</span>
         </div>
     );
 }
-function MetricCard({ label, value, tone }: { label: string; value: string; tone?: 'green' | 'red' }) {
+function MetricCard({ label, value, tone }: { label: string; value: string; tone?: 'green' | 'red' | 'blue' | 'purple' }) {
     return (
-        <div className="rounded-xl border border-white/10 bg-black/25 p-4 hover:border-white/20 transition-colors">
-            <p className="text-[11px] uppercase tracking-wider text-slate-400">{label}</p>
-            <p className={cn('text-xl font-semibold mt-1', tone === 'green' ? 'text-emerald-300' : tone === 'red' ? 'text-rose-300' : 'text-white')}>{value}</p>
+        <div className="relative group overflow-hidden rounded-2xl border border-white/5 bg-[#080B12]/80 backdrop-blur-xl p-5 hover:border-white/10 transition-all duration-300 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
+            <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">{label}</p>
+            <p className={cn('text-2xl font-black tracking-tight', 
+                tone === 'green' ? 'text-emerald-400' : 
+                tone === 'red' ? 'text-rose-400' : 
+                tone === 'blue' ? 'text-cyan-400' :
+                tone === 'purple' ? 'text-purple-400' :
+                'text-white')}>{value}</p>
+            {tone && (
+                <div className={cn("absolute -bottom-8 -right-8 w-32 h-32 rounded-full blur-[3rem] opacity-30 group-hover:opacity-50 transition-opacity duration-500 pointer-events-none",
+                    tone === 'green' ? 'bg-emerald-500' : tone === 'red' ? 'bg-rose-500' : tone === 'blue' ? 'bg-cyan-500' : 'bg-purple-500'
+                )} />
+            )}
+            <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
     );
 }
@@ -71,15 +88,24 @@ function HealthBar({ ratio }: { ratio: bigint }) {
     const tone = healthTone(ratio);
     const lbl = healthLabel(ratio);
     return (
-        <div className="space-y-1.5">
-            <div className="flex justify-between text-xs">
-                <span className="text-slate-400">Health</span>
-                <span className={cn('font-medium', tone === 'green' ? 'text-emerald-300' : tone === 'yellow' ? 'text-amber-300' : 'text-rose-300')}>
-                    {isFinite(num) ? num.toFixed(2) : '—'} — {lbl}
+        <div className="space-y-2 mt-4">
+            <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-500 uppercase tracking-widest text-[10px] font-bold">Position Health</span>
+                <span className={cn('px-2 py-0.5 rounded-md font-bold text-[10px] uppercase tracking-wider border shadow-sm', 
+                    tone === 'green' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 shadow-emerald-500/10' : 
+                    tone === 'yellow' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400 shadow-amber-500/10' : 
+                    'bg-rose-500/10 border-rose-500/20 text-rose-400 animate-pulse shadow-rose-500/10')}>
+                    {isFinite(num) ? num.toFixed(2) : '—'} • {lbl}
                 </span>
             </div>
-            <div className="w-full h-1.5 rounded-full bg-white/10">
-                <div className={cn('h-full rounded-full transition-all', tone === 'green' ? 'bg-emerald-500' : tone === 'yellow' ? 'bg-amber-500' : 'bg-rose-500')} style={{ width: `${pct}%` }} />
+            <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden ring-1 ring-inset ring-white/5">
+                <div className={cn('h-full rounded-full transition-all duration-500 relative', 
+                    tone === 'green' ? 'bg-gradient-to-r from-emerald-600 to-emerald-400' : 
+                    tone === 'yellow' ? 'bg-gradient-to-r from-amber-600 to-amber-400' : 
+                    'bg-gradient-to-r from-rose-600 to-rose-400'
+                )} style={{ width: `${pct}%` }}>
+                    <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent" />
+                </div>
             </div>
         </div>
     );
@@ -121,16 +147,19 @@ function PASBorrowCard({ collateralWei, debtAtoms, accruedAtoms, totalOwedAtoms,
     if (collateralWei === 0n && debtAtoms === 0n && repayPhase === 'idle' && withdrawPhase === 'idle') return null;
 
     return (
-        <div className="rounded-2xl border border-white/10 bg-black/30 backdrop-blur-xl p-5 space-y-4">
-            <div className="flex items-center justify-between">
+        <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-[#080B12]/80 backdrop-blur-xl p-6 shadow-2xl transition-all duration-300 hover:border-white/10 group flex flex-col gap-4">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
+            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+            <div className="flex items-center justify-between relative z-10">
                 <div>
-                    <h3 className="text-sm font-semibold text-white">PAS Market</h3>
-                    <p className="text-xs text-slate-400">PAS collateral — mUSDC borrow</p>
+                    <h3 className="text-[15px] font-bold text-white tracking-tight">PAS Market</h3>
+                    <p className="text-[11px] font-medium text-slate-400 mt-0.5">PAS collateral — mUSDC borrow</p>
                 </div>
-                <span className={cn('px-2.5 py-1 rounded-full text-xs font-semibold border', tone === 'green' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : tone === 'yellow' ? 'border-amber-500/30 bg-amber-500/10 text-amber-300' : 'border-rose-500/30 bg-rose-500/10 text-rose-300 animate-pulse')}>{lbl}</span>
+                <span className={cn('px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border shadow-sm', tone === 'green' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 shadow-emerald-500/10' : tone === 'yellow' ? 'border-amber-500/30 bg-amber-500/10 text-amber-400 shadow-amber-500/10' : 'border-rose-500/30 bg-rose-500/10 text-rose-400 animate-pulse shadow-rose-500/10')}>{lbl}</span>
             </div>
-            <div className={cn('transition-opacity', actionOpen ? 'opacity-60' : 'opacity-100')}>
-                <div className="rounded-xl border border-white/5 bg-black/20 px-4 py-3">
+            <div className={cn('transition-opacity relative z-10', actionOpen ? 'opacity-60' : 'opacity-100')}>
+                <div className="rounded-xl border border-white/[0.03] bg-black/40 px-4 py-2 shadow-inner">
                     <InfoRow label="PAS Collateral" value={`${fmt18(collateralWei, 4)} PAS${oracleUsd > 0 ? ` (~$${collateralUsd.toFixed(2)})` : ''}`} />
                     <InfoRow label="Borrowed" value={`${fmt6(debtAtoms)} mUSDC`} />
                     <InfoRow label="Interest owed" value={`${fmt6(accruedAtoms, 6)} mUSDC`} />
@@ -220,16 +249,19 @@ function USDCBorrowCard({ collateralAtoms, debtAtoms, accruedAtoms, totalOwedAto
     if (collateralAtoms === 0n && debtAtoms === 0n && repayPhase === 'idle' && withdrawPhase === 'idle') return null;
 
     return (
-        <div className="rounded-2xl border border-white/10 bg-black/30 backdrop-blur-xl p-5 space-y-4">
-            <div className="flex items-center justify-between">
+        <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-[#080B12]/80 backdrop-blur-xl p-6 shadow-2xl transition-all duration-300 hover:border-white/10 group flex flex-col gap-4">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
+            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+            <div className="flex items-center justify-between relative z-10">
                 <div>
-                    <h3 className="text-sm font-semibold text-white">USDC Market</h3>
-                    <p className="text-xs text-slate-400">mUSDC collateral — mUSDC borrow</p>
+                    <h3 className="text-[15px] font-bold text-white tracking-tight">USDC Market</h3>
+                    <p className="text-[11px] font-medium text-slate-400 mt-0.5">mUSDC collateral — mUSDC borrow</p>
                 </div>
-                <span className={cn('px-2.5 py-1 rounded-full text-xs font-semibold border', tone === 'green' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : tone === 'yellow' ? 'border-amber-500/30 bg-amber-500/10 text-amber-300' : 'border-rose-500/30 bg-rose-500/10 text-rose-300 animate-pulse')}>{lbl}</span>
+                <span className={cn('px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border shadow-sm', tone === 'green' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 shadow-emerald-500/10' : tone === 'yellow' ? 'border-amber-500/30 bg-amber-500/10 text-amber-400 shadow-amber-500/10' : 'border-rose-500/30 bg-rose-500/10 text-rose-400 animate-pulse shadow-rose-500/10')}>{lbl}</span>
             </div>
-            <div className={cn('transition-opacity', actionOpen ? 'opacity-60' : 'opacity-100')}>
-                <div className="rounded-xl border border-white/5 bg-black/20 px-4 py-3">
+            <div className={cn('transition-opacity relative z-10', actionOpen ? 'opacity-60' : 'opacity-100')}>
+                <div className="rounded-xl border border-white/[0.03] bg-black/40 px-4 py-2 shadow-inner">
                     <InfoRow label="mUSDC Collateral" value={`${fmt6(collateralAtoms)} mUSDC`} />
                     <InfoRow label="Borrowed" value={`${fmt6(debtAtoms)} mUSDC`} />
                     <InfoRow label="Interest owed" value={`${fmt6(accruedAtoms, 6)} mUSDC`} />
@@ -316,12 +348,15 @@ function LendCard({ label, subtitle, depositAtoms, yieldAtoms, utilizationBps, c
     if (depositAtoms === 0n && harvestPhase === 'idle' && withdrawPhase === 'idle') return null;
 
     return (
-        <div className="rounded-2xl border border-white/10 bg-black/30 backdrop-blur-xl p-5 space-y-4">
-            <div>
-                <h3 className="text-sm font-semibold text-white">{label}</h3>
-                <p className="text-xs text-slate-400">{subtitle}</p>
+        <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-[#080B12]/80 backdrop-blur-xl p-6 shadow-2xl transition-all duration-300 hover:border-white/10 group flex flex-col gap-4">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
+            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+            <div className="relative z-10">
+                <h3 className="text-[15px] font-bold text-white tracking-tight">{label}</h3>
+                <p className="text-[11px] font-medium text-slate-400 mt-0.5">{subtitle}</p>
             </div>
-            <div className="rounded-xl border border-white/5 bg-black/20 px-4 py-3">
+            <div className="rounded-xl border border-white/[0.03] bg-black/40 px-4 py-2 shadow-inner relative z-10">
                 <InfoRow label="Deposited" value={`${depositDisplay} mUSDC`} tone={depositAtoms > 0n ? 'green' : undefined} />
                 <InfoRow label="Pending yield" value={`${yieldDisplay} mUSDC`} tone={yieldAtoms > 0n ? 'yellow' : undefined} />
                 <InfoRow label="Pool APY (est.)" value={apr} />
@@ -449,25 +484,46 @@ function CreditProfile({ scoreValue, tier, collateralRatioBps, interestRateBps, 
     const depUSD = (Number(totalDepositedEver) / 1e6).toFixed(0);
 
     return (
-        <div className="rounded-2xl border border-white/10 bg-black/30 backdrop-blur-xl p-5 space-y-4">
-            <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-white">Credit Profile</h3>
-                <span className={cn('px-2.5 py-1 rounded-full text-xs font-semibold border', tierBadge)}>{scoreTierLabel}</span>
-            </div>
-            <div className="space-y-2">
-                <div className="flex justify-between text-xs">
-                    <span className="text-slate-400">Credit Score</span>
-                    <span className={cn('font-bold text-sm', scoreTone)}>{score > 0 ? score : '—'} / 100</span>
+        <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-[#080B12]/80 backdrop-blur-xl p-6 shadow-2xl transition-all duration-300 hover:border-white/10 group flex flex-col gap-4">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
+            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+            <div className="relative z-10 flex flex-col md:flex-row gap-8 items-center md:items-stretch">
+                {/* Left: Circular Score Gauge */}
+                <div className="flex-shrink-0 relative w-40 h-40 flex items-center justify-center">
+                    <svg width="100%" height="100%" viewBox="0 0 100 100" className="rotate-[-90deg] overflow-visible">
+                        <circle cx="50" cy="50" r="45" fill="none" className="stroke-white/5" strokeWidth="6" />
+                        {score > 0 && (
+                            <circle 
+                                cx="50" cy="50" r="45" fill="none" 
+                                className={cn('transition-all duration-1000 ease-out', scoreTone.replace('text-', 'stroke-'))} 
+                                style={{ filter: `drop-shadow(0 0 8px currentColor)` }}
+                                strokeWidth="6" 
+                                strokeDasharray="283" 
+                                strokeDashoffset={283 - (283 * scorePct) / 100} 
+                                strokeLinecap="round" 
+                            />
+                        )}
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center mt-1">
+                        <span className={cn('font-black text-4xl tracking-tighter drop-shadow-sm', scoreTone)}>{score > 0 ? score : '—'}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-1">out of 100</span>
+                    </div>
                 </div>
-                <div className="w-full h-2 rounded-full bg-white/10">
-                    <div className={cn('h-full rounded-full transition-all', scoreBarColor)} style={{ width: `${scorePct}%` }} />
+
+                {/* Right: Tiers and Max LTV */}
+                <div className="flex-1 w-full space-y-4 flex flex-col justify-center">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-[15px] font-bold text-white tracking-tight">Credit Profile</h3>
+                        <span className={cn('px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider border shadow-sm', tierBadge)}>{scoreTierLabel}</span>
+                    </div>
+                    <div className="rounded-xl border border-white/[0.03] bg-black/40 px-4 py-2 shadow-inner space-y-1">
+                        <InfoRow label="Protocol Max LTV" value={maxLTV} />
+                        <InfoRow label="Base Borrow Rate" value={borrowRate} />
+                    </div>
                 </div>
             </div>
-            <div className="rounded-xl border border-white/5 bg-black/20 px-4 py-3">
-                <InfoRow label="Max LTV" value={maxLTV} />
-                <InfoRow label="Borrow rate" value={borrowRate} />
-            </div>
-            <div className="rounded-xl border border-white/5 bg-black/10 overflow-hidden">
+            <div className="rounded-xl border border-white/[0.05] bg-white/[0.01] overflow-hidden relative z-10">
                 <button onClick={() => setExpanded(v => !v)} className="w-full flex items-center justify-between px-4 py-3 text-xs text-slate-400 hover:text-white transition-colors">
                     <span>Score breakdown</span>
                     <span className={cn('transition-transform inline-block', expanded ? 'rotate-180' : '')}>▾</span>
@@ -547,6 +603,11 @@ const TYPE_META: Record<LendHistoryEntry['type'], { label: string; color: string
 };
 
 function LendingHistoryTable({ entries, loading }: { entries: LendHistoryEntry[]; loading: boolean }) {
+    const [page, setPage] = useState(1);
+    const ITEMS_PER_PAGE = 10;
+    const totalPages = Math.max(1, Math.ceil(entries.length / ITEMS_PER_PAGE));
+    const paginatedEntries = entries.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+
     const totalYieldUSDC = entries.filter(e => e.type === 'yield').reduce((s, e) => s + e.amount, 0n);
     const totalDeposited = entries.filter(e => e.type === 'deposit').reduce((s, e) => s + e.amount, 0n);
     const totalWithdrawn = entries.filter(e => e.type === 'withdraw').reduce((s, e) => s + e.amount, 0n);
@@ -564,51 +625,54 @@ function LendingHistoryTable({ entries, loading }: { entries: LendHistoryEntry[]
     }
 
     return (
-        <div className="rounded-2xl border border-white/10 bg-black/30 backdrop-blur-xl p-5 space-y-4">
+        <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-[#080B12]/80 backdrop-blur-xl p-6 shadow-2xl transition-all duration-300 hover:border-white/10 group flex flex-col gap-4">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
+            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
             {/* summary strip */}
-            <div className="grid grid-cols-3 gap-3">
-                <div className="rounded-xl border border-white/5 bg-black/20 px-4 py-3">
-                    <p className="text-[11px] uppercase tracking-wider text-slate-500">Total Deposited</p>
-                    <p className="text-sm font-semibold text-white mt-1">{fmt6(totalDeposited)} mUSDC</p>
+            <div className="grid grid-cols-3 gap-3 relative z-10">
+                <div className="rounded-xl border border-white/[0.03] bg-black/40 px-4 py-3 shadow-inner">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Total Deposited</p>
+                    <p className="text-[15px] font-black tracking-tight text-white mt-1">{fmt6(totalDeposited)} mUSDC</p>
                 </div>
-                <div className="rounded-xl border border-white/5 bg-black/20 px-4 py-3">
-                    <p className="text-[11px] uppercase tracking-wider text-slate-500">Total Withdrawn</p>
-                    <p className="text-sm font-semibold text-white mt-1">{fmt6(totalWithdrawn)} mUSDC</p>
+                <div className="rounded-xl border border-white/[0.03] bg-black/40 px-4 py-3 shadow-inner">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Total Withdrawn</p>
+                    <p className="text-[15px] font-black tracking-tight text-white mt-1">{fmt6(totalWithdrawn)} mUSDC</p>
                 </div>
-                <div className="rounded-xl border border-amber-500/10 bg-amber-500/5 px-4 py-3">
-                    <p className="text-[11px] uppercase tracking-wider text-amber-500/70">Yield Earned</p>
-                    <p className="text-sm font-semibold text-amber-300 mt-1">{fmt6(totalYieldUSDC, 6)} mUSDC</p>
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 shadow-[0_0_15px_rgba(245,158,11,0.1)]">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-amber-500">Yield Earned</p>
+                    <p className="text-[15px] font-black tracking-tight text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)] mt-1">{fmt6(totalYieldUSDC, 6)} mUSDC</p>
                 </div>
             </div>
 
             {/* event log */}
-            <div className="overflow-x-auto rounded-xl border border-white/5">
+            <div className="overflow-x-auto rounded-xl border border-white/5 relative z-10">
                 <table className="w-full text-xs">
                     <thead>
-                        <tr className="border-b border-white/5">
-                            <th className="text-left px-4 py-2.5 text-slate-500 font-medium">Type</th>
-                            <th className="text-left px-4 py-2.5 text-slate-500 font-medium">Market</th>
-                            <th className="text-right px-4 py-2.5 text-slate-500 font-medium">Amount (mUSDC)</th>
-                            <th className="text-right px-4 py-2.5 text-slate-500 font-medium">Block</th>
-                            <th className="text-right px-4 py-2.5 text-slate-500 font-medium">Tx</th>
+                        <tr className="border-b border-white/5 bg-white/[0.02]">
+                            <th className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">Type</th>
+                            <th className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">Market</th>
+                            <th className="text-right px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">Amount (mUSDC)</th>
+                            <th className="text-right px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">Block</th>
+                            <th className="text-right px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">Tx</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {entries.map((e, i) => {
+                        {paginatedEntries.map((e, i) => {
                             const meta = TYPE_META[e.type];
                             return (
-                                <tr key={i} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
-                                    <td className={`px-4 py-2.5 font-medium ${meta.color}`}>{meta.label}</td>
-                                    <td className="px-4 py-2.5 text-slate-300">{e.market}</td>
-                                    <td className="px-4 py-2.5 text-right text-slate-200">{fmt6(e.amount, 6)}</td>
-                                    <td className="px-4 py-2.5 text-right text-slate-500">{e.blockNumber.toString()}</td>
-                                    <td className="px-4 py-2.5 text-right">
+                                <tr key={i} className="border-b border-white/5 last:border-0 hover:bg-white/[0.03] transition-colors font-mono tracking-tight">
+                                    <td className={`px-4 py-3 font-semibold ${meta.color}`}>{meta.label}</td>
+                                    <td className="px-4 py-3 text-slate-400">{e.market}</td>
+                                    <td className="px-4 py-3 text-right font-medium text-slate-200">{fmt6(e.amount, 6)}</td>
+                                    <td className="px-4 py-3 text-right text-slate-500/70">{e.blockNumber.toString()}</td>
+                                    <td className="px-4 py-3 text-right">
                                         {e.txHash ? (
                                             <a
                                                 href={`https://blockscout-testnet.polkadot.io/tx/${e.txHash}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="text-cyan-400 hover:text-cyan-300 font-mono"
+                                                className="text-cyan-400 hover:text-cyan-300 transition-colors"
                                             >
                                                 {e.txHash.slice(0, 8)}…
                                             </a>
@@ -620,19 +684,47 @@ function LendingHistoryTable({ entries, loading }: { entries: LendHistoryEntry[]
                     </tbody>
                 </table>
             </div>
+
+            {totalPages > 1 && (
+                <div className="flex items-center justify-between border-t border-white/5 pt-3 mt-1 relative z-10">
+                    <span className="text-xs text-slate-500">Page {page} of {totalPages}</span>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            disabled={page === 1}
+                            className="px-3 py-1.5 rounded bg-white/5 hover:bg-white/10 text-xs font-semibold text-white disabled:opacity-30 disabled:hover:bg-white/5 transition-colors"
+                        >
+                            Prev
+                        </button>
+                        <button
+                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                            disabled={page === totalPages}
+                            className="px-3 py-1.5 rounded bg-white/5 hover:bg-white/10 text-xs font-semibold text-white disabled:opacity-30 disabled:hover:bg-white/5 transition-colors"
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
 
 // ── Section heading ───────────────────────────────────────────────────────
 function SectionHeading({ label }: { label: string }) {
-    return <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-500">{label}</h2>;
+    return (
+        <div className="flex items-center gap-4 mb-2 w-full">
+            <h2 className="text-sm font-black uppercase tracking-[0.2em] text-white/90 drop-shadow-sm shrink-0">{label}</h2>
+            <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
+        </div>
+    );
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
     const { address, isConnected } = useAccount();
+    const [activeTab, setActiveTab] = useState<'overview' | 'borrow' | 'lend' | 'history'>('overview');
     const { lending, pasMarket, oracle, loading: globalLoading, error: globalError, refresh: refreshGlobal } = useGlobalProtocolData();
     const { score, refresh: refreshScore } = useUserScore();
     const portfolio = useUserPortfolio();
@@ -672,41 +764,14 @@ export default function DashboardPage() {
         <PageShell title="Dashboard" subtitle="Protocol overview, active positions, and credit profile.">
 
             {/* ── Protocol metrics ── */}
-            <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <MetricCard label="Total Liquidity" value={`${fmtToken(lending.totalDeposited + pasMarket.totalDeposited, 6, 2)} mUSDC`} />
-                <MetricCard label="Total Borrowed" value={`${fmtToken(lending.totalBorrowed + pasMarket.totalBorrowed, 6, 2)} mUSDC`} />
+            <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <MetricCard label="Total Liquidity" value={`${fmtToken(lending.totalDeposited + pasMarket.totalDeposited, 6, 2)} mUSDC`} tone="blue" />
+                <MetricCard label="Total Borrowed" value={`${fmtToken(lending.totalBorrowed + pasMarket.totalBorrowed, 6, 2)} mUSDC`} tone="purple" />
                 <MetricCard label="Oracle" value={oracle.isCrashed ? 'Crash Mode' : 'Healthy'} tone={oracle.isCrashed ? 'red' : 'green'} />
-                <MetricCard label="Credit Tier" value={isConnected ? tierLabel(score.tier) : '—'} />
+                <MetricCard label="Credit Tier" value={isConnected ? tierLabel(score.tier) : '—'} tone={isConnected ? 'green' : undefined} />
             </section>
 
-            {/* ── Market detail ── */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                <div className="rounded-2xl border border-white/10 bg-black/30 backdrop-blur-xl p-5 space-y-3">
-                    <div className="flex items-center justify-between mb-1">
-                        <div>
-                            <h2 className="text-sm font-semibold text-white">USDC Lending Market</h2>
-                            <p className="text-xs text-slate-400 mt-0.5">KredioLending — mUSDC deposits</p>
-                        </div>
-                        <Link href="/markets/usdc" className="text-xs text-slate-400 hover:text-white border border-white/10 px-2.5 py-1.5 rounded-lg hover:bg-white/5 transition-colors">Details</Link>
-                    </div>
-                    <InfoRow label="Total Deposited" value={`${fmtToken(lending.totalDeposited, 6, 2)} mUSDC`} />
-                    <InfoRow label="Total Borrowed" value={`${fmtToken(lending.totalBorrowed, 6, 2)} mUSDC`} />
-                    <InfoRow label="Utilization" value={bpsToPercent(lending.utilizationBps)} />
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-black/30 backdrop-blur-xl p-5 space-y-3">
-                    <div className="flex items-center justify-between mb-1">
-                        <div>
-                            <h2 className="text-sm font-semibold text-white">PAS Collateral Market</h2>
-                            <p className="text-xs text-slate-400 mt-0.5">KredioPASMarket — PAS-backed borrowing</p>
-                        </div>
-                        <Link href="/markets/pas" className="text-xs text-slate-400 hover:text-white border border-white/10 px-2.5 py-1.5 rounded-lg hover:bg-white/5 transition-colors">Details</Link>
-                    </div>
-                    <InfoRow label="Total Deposited" value={`${fmtToken(pasMarket.totalDeposited, 6, 2)} mUSDC`} />
-                    <InfoRow label="Total Borrowed" value={`${fmtToken(pasMarket.totalBorrowed, 6, 2)} mUSDC`} />
-                    <InfoRow label="Utilization" value={bpsToPercent(pasMarket.utilizationBps)} />
-                    <InfoRow label="PAS Price" value={fmtOraclePrice8(oracle.price8)} tone={oracle.isCrashed ? 'red' : undefined} />
-                </div>
-            </div>
+            {/* ── Removed redundant market detail section ── */}
 
             {/* ── Wallet positions ── */}
             {!isConnected && (
@@ -717,13 +782,32 @@ export default function DashboardPage() {
             )}
 
             {isConnected && (
-                <>
-                    {/* refresh bar */}
-                    <div className="flex items-center justify-between">
-                        <SectionHeading label="My Positions" />
-                        <div className="flex items-center gap-3">
-                            <span className="text-xs text-slate-500">{secondsAgo}s ago</span>
-                            <button onClick={handleRefresh} disabled={portfolio.loading} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-colors disabled:opacity-50">
+                <div className="mt-8 flex flex-col gap-6">
+
+                    {/* ── Tab Navigation ── */}
+                    <div className="flex items-center gap-2 border-b border-white/10 pb-4 overflow-x-auto no-scrollbar">
+                        {[
+                            { id: 'overview', label: 'Credit Overview' },
+                            { id: 'borrow', label: 'Borrow Positions' },
+                            { id: 'lend', label: 'Lending Market' },
+                            { id: 'history', label: 'Tx History' }
+                        ].map(t => (
+                            <button
+                                key={t.id}
+                                onClick={() => setActiveTab(t.id as any)}
+                                className={cn('px-5 py-2.5 rounded-xl text-sm font-bold tracking-wide transition-all duration-300 whitespace-nowrap',
+                                    activeTab === t.id
+                                        ? 'bg-white/10 text-white shadow-[0_0_15px_rgba(255,255,255,0.05)] ring-1 ring-white/20'
+                                        : 'bg-transparent text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                                )}
+                            >
+                                {t.label}
+                            </button>
+                        ))}
+                        <div className="flex-1" />
+                        <div className="flex items-center gap-3 shrink-0">
+                            <span className="text-xs text-slate-500 font-medium">{secondsAgo}s ago</span>
+                            <button onClick={handleRefresh} disabled={portfolio.loading} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all duration-300 disabled:opacity-50">
                                 <span className={cn(portfolio.loading ? 'animate-spin' : '')}>↻</span> Refresh
                             </button>
                         </div>
@@ -731,111 +815,129 @@ export default function DashboardPage() {
 
                     {/* loading */}
                     {portfolio.loading && !hasAnything && (
-                        <div className="space-y-3">
-                            {[1, 2].map(i => <div key={i} className="rounded-2xl border border-white/5 bg-black/20 p-5 h-36 animate-pulse" />)}
+                        <div className="space-y-3 mt-4">
+                            {[1].map(i => <div key={i} className="rounded-2xl border border-white/5 bg-[#080B12]/80 backdrop-blur-xl p-5 h-64 animate-pulse" />)}
                         </div>
                     )}
 
-                    {/* no positions */}
-                    {!portfolio.loading && !hasAnything && (
-                        <div className="rounded-2xl border border-white/10 bg-black/30 backdrop-blur-xl px-6 py-10 flex flex-col items-center gap-4 text-center">
-                            <p className="text-slate-200 text-sm font-medium">No active positions</p>
-                            <p className="text-slate-500 text-xs">Start lending or borrowing to see your positions here</p>
-                            <div className="flex gap-3 pt-1">
-                                <Link href="/lend/usdc" className="px-5 py-2 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors">Start Lending</Link>
-                                <Link href="/borrow/usdc" className="px-5 py-2 rounded-xl text-sm font-semibold border border-white/10 bg-white/5 hover:bg-white/10 text-slate-200 hover:text-white transition-colors">Start Borrowing</Link>
-                            </div>
+                    {!portfolio.loading && (
+                        <div className="mt-2 min-h-[500px]">
+
+                            {/* ── Tab: Overview ── */}
+                            {activeTab === 'overview' && (
+                                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                                    <div className="max-w-2xl">
+                                        <SectionHeading label="Credit Identity" />
+                                        <CreditProfile
+                                            scoreValue={score.score}
+                                            tier={score.tier}
+                                            collateralRatioBps={score.collateralRatioBps}
+                                            interestRateBps={score.interestRateBps}
+                                            repaymentCount={totalRepayments}
+                                            liquidationCount={totalLiquidations}
+                                            totalDepositedEver={combinedDeposited}
+                                            firstSeenBlock={earliestBlock}
+                                            currentBlock={score.blockNumber}
+                                        />
+                                    </div>
+                                    {!hasAnything && (
+                                        <div className="rounded-2xl border border-white/5 bg-[#080B12]/80 px-6 py-12 flex flex-col items-center gap-3 text-center">
+                                            <p className="text-white text-base font-bold">No active positions</p>
+                                            <p className="text-slate-400 text-[13px] max-w-sm">Use the tabs above to explore Lending or Borrowing and begin building your reputation score.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* ── Tab: Borrow ── */}
+                            {activeTab === 'borrow' && (
+                                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                                    <SectionHeading label="Your Loans" />
+                                    {!hasAnyBorrow ? (
+                                         <div className="rounded-2xl border border-white/5 bg-[#080B12]/50 px-6 py-12 text-center">
+                                            <p className="text-slate-400 text-sm mb-4">You have no open borrowing positions.</p>
+                                            <Link href="/borrow/usdc" className="px-6 py-2.5 rounded-xl text-sm font-bold border border-white/10 bg-white/5 hover:bg-indigo-600 text-slate-200 hover:text-white transition-colors">Open a Borrow Position</Link>
+                                         </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl">
+                                            {hasPasBorrow && (
+                                                <PASBorrowCard
+                                                    collateralWei={portfolio.pasPosition[0]}
+                                                    debtAtoms={portfolio.pasPosition[2]}
+                                                    accruedAtoms={portfolio.pasPosition[3]}
+                                                    totalOwedAtoms={portfolio.pasPosition[4]}
+                                                    healthRatio={portfolio.pasHealthRatio}
+                                                    oraclePrice8={oracle.price8}
+                                                    ltvBps={ltvBps}
+                                                    onRefresh={handleRefresh}
+                                                />
+                                            )}
+                                            {hasUsdcBorrow && (
+                                                <USDCBorrowCard
+                                                    collateralAtoms={portfolio.lendingPosition[0]}
+                                                    debtAtoms={portfolio.lendingPosition[1]}
+                                                    accruedAtoms={portfolio.lendingPosition[2]}
+                                                    totalOwedAtoms={portfolio.lendingPosition[3]}
+                                                    healthRatio={portfolio.lendingHealthRatio}
+                                                    onRefresh={handleRefresh}
+                                                />
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* ── Tab: Lend ── */}
+                            {activeTab === 'lend' && (
+                                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                                    <SectionHeading label="Deposited Capital" />
+                                    {!hasAnyLend ? (
+                                         <div className="rounded-2xl border border-white/5 bg-[#080B12]/50 px-6 py-12 text-center">
+                                            <p className="text-slate-400 text-sm mb-4">You have no active lending deposits.</p>
+                                            <Link href="/lend/usdc" className="px-6 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors">Start Yield Farming</Link>
+                                         </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl">
+                                            {hasPasLend && (
+                                                <LendCard
+                                                    label="PAS Market — Lending"
+                                                    subtitle="mUSDC deposited to PAS-collateral pool"
+                                                    depositAtoms={portfolio.pasDeposit}
+                                                    yieldAtoms={portfolio.pasPendingYield}
+                                                    utilizationBps={pasMarket.utilizationBps}
+                                                    contractAddr={config.pasMarket}
+                                                    abi={ABIS.KREDIO_PAS_MARKET}
+                                                    onRefresh={handleRefresh}
+                                                />
+                                            )}
+                                            {hasUsdcLend && (
+                                                <LendCard
+                                                    label="USDC Market — Lending"
+                                                    subtitle="mUSDC deposited to KredioLending pool"
+                                                    depositAtoms={portfolio.lendingDeposit}
+                                                    yieldAtoms={portfolio.lendingPendingYield}
+                                                    utilizationBps={lending.utilizationBps}
+                                                    contractAddr={config.lending}
+                                                    abi={ABIS.KREDIO_LENDING}
+                                                    onRefresh={handleRefresh}
+                                                />
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* ── Tab: History ── */}
+                            {activeTab === 'history' && (
+                                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                                    <SectionHeading label="Lending Logs" />
+                                    <LendingHistoryTable entries={lendHistory} loading={historyLoading} />
+                                </div>
+                            )}
+
                         </div>
                     )}
-
-                    {/* borrow positions */}
-                    {hasAnyBorrow && (
-                        <div className="space-y-3">
-                            <SectionHeading label="Borrow Positions" />
-                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                                {hasPasBorrow && (
-                                    <PASBorrowCard
-                                        collateralWei={portfolio.pasPosition[0]}
-                                        debtAtoms={portfolio.pasPosition[2]}
-                                        accruedAtoms={portfolio.pasPosition[3]}
-                                        totalOwedAtoms={portfolio.pasPosition[4]}
-                                        healthRatio={portfolio.pasHealthRatio}
-                                        oraclePrice8={oracle.price8}
-                                        ltvBps={ltvBps}
-                                        onRefresh={handleRefresh}
-                                    />
-                                )}
-                                {hasUsdcBorrow && (
-                                    <USDCBorrowCard
-                                        collateralAtoms={portfolio.lendingPosition[0]}
-                                        debtAtoms={portfolio.lendingPosition[1]}
-                                        accruedAtoms={portfolio.lendingPosition[2]}
-                                        totalOwedAtoms={portfolio.lendingPosition[3]}
-                                        healthRatio={portfolio.lendingHealthRatio}
-                                        onRefresh={handleRefresh}
-                                    />
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* lend positions */}
-                    {hasAnyLend && (
-                        <div className="space-y-3">
-                            <SectionHeading label="Lend Positions" />
-                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                                {hasPasLend && (
-                                    <LendCard
-                                        label="PAS Market — Lending"
-                                        subtitle="mUSDC deposited to PAS-collateral pool"
-                                        depositAtoms={portfolio.pasDeposit}
-                                        yieldAtoms={portfolio.pasPendingYield}
-                                        utilizationBps={pasMarket.utilizationBps}
-                                        contractAddr={config.pasMarket}
-                                        abi={ABIS.KREDIO_PAS_MARKET}
-                                        onRefresh={handleRefresh}
-                                    />
-                                )}
-                                {hasUsdcLend && (
-                                    <LendCard
-                                        label="USDC Market — Lending"
-                                        subtitle="mUSDC deposited to KredioLending pool"
-                                        depositAtoms={portfolio.lendingDeposit}
-                                        yieldAtoms={portfolio.lendingPendingYield}
-                                        utilizationBps={lending.utilizationBps}
-                                        contractAddr={config.lending}
-                                        abi={ABIS.KREDIO_LENDING}
-                                        onRefresh={handleRefresh}
-                                    />
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* lending history */}
-                    {(lendHistory.length > 0 || historyLoading) && (
-                        <div className="space-y-3">
-                            <SectionHeading label="Lending History" />
-                            <LendingHistoryTable entries={lendHistory} loading={historyLoading} />
-                        </div>
-                    )}
-
-                    {/* credit profile */}
-                    <div className="space-y-3">
-                        <SectionHeading label="Credit Profile" />
-                        <CreditProfile
-                            scoreValue={score.score}
-                            tier={score.tier}
-                            collateralRatioBps={score.collateralRatioBps}
-                            interestRateBps={score.interestRateBps}
-                            repaymentCount={totalRepayments}
-                            liquidationCount={totalLiquidations}
-                            totalDepositedEver={combinedDeposited}
-                            firstSeenBlock={earliestBlock}
-                            currentBlock={score.blockNumber}
-                        />
-                    </div>
-                </>
+                </div>
             )}
 
             {globalError && <StateNotice tone="error" message={globalError} />}
