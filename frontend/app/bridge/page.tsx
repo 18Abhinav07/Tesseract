@@ -56,11 +56,11 @@ const XCM_STAGES: XcmStatusStage[] = [
 
 // ─── ETH pipeline status labels (chain-prefixed) ──────────────────────────────────
 const BRIDGE_STATUS_LABELS: Partial<Record<BridgeStatus, string>> = {
-    'switching-chain':  '[Sepolia] Switching network…',
-    'depositing':       '[Sepolia] Locking ETH in inbox contract…',
+    'switching-chain': '[Sepolia] Switching network…',
+    'depositing': '[Sepolia] Locking ETH in inbox contract…',
     'awaiting-receipt': '[Sepolia] Waiting for confirmation…',
-    'verifying':        '[Sepolia → Hub] Verifying deposit & minting…',
-    'minting':          '[Hub] Minting mUSDC on Polkadot Hub…',
+    'verifying': '[Sepolia → Hub] Verifying deposit & minting…',
+    'minting': '[Hub] Minting mUSDC on Polkadot Hub…',
 };
 function statusToStepLabel(s: BridgeStatus): string {
     return BRIDGE_STATUS_LABELS[s] ?? 'Finishing up…';
