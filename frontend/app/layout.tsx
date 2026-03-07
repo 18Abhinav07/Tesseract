@@ -14,14 +14,14 @@ import { ActionLogPanel } from '../components/modules/ActionLogPanel'
 import { WalletPanel } from '../components/modules/WalletPanel'
 import '../styles/theme.css'
 import '@rainbow-me/rainbowkit/styles.css'
-import { Plus_Jakarta_Sans } from 'next/font/google'
+import { Outfit } from 'next/font/google'
 import { formatDisplayBalance } from '../lib/utils'
 import config, { isDeployed } from '../lib/addresses'
 import { TUSDC } from '../lib/tokens'
 
-const jakarta = Plus_Jakarta_Sans({
+const outfit = Outfit({
     subsets: ['latin'],
-    variable: '--font-jakarta'
+    variable: '--font-outfit'
 })
 
 const queryClient = new QueryClient()
@@ -228,7 +228,7 @@ function Navbar() {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
     return (
-        <html lang="en" className={`dark ${jakarta.variable}`} suppressHydrationWarning>
+        <html lang="en" className={outfit.variable} suppressHydrationWarning>
             <body className="bg-slate-950 min-h-screen text-slate-100 font-sans antialiased overflow-x-hidden">
                 <WagmiProvider config={wagmiConfig}>
                     <QueryClientProvider client={queryClient}>

@@ -71,6 +71,10 @@ contract KredioLending is ReentrancyGuard {
     mapping(address => Position) public positions;
     mapping(address => uint256) public demoRateMultiplier; // Optional per-borrower rate boost for demoing liquidations
 
+    /// @notice Global interest tick multiplier applied to ALL positions (0 = disabled = 1x).
+    /// @dev 525600 ≈ one year per second; 60 ≈ one minute of interest per second.
+    uint256 public globalTick;
+
     // Credit score inputs
     mapping(address => uint256) public totalDepositedEver; // cumulative lifetime deposits (never decrements)
     mapping(address => uint256) public firstSeenBlock; // block of first deposit(), never updated after
@@ -107,6 +111,10 @@ contract KredioLending is ReentrancyGuard {
     event YieldHarvested(address indexed lender, uint256 amount);
     event FeeSwept(address indexed to, uint256 amount);
     event DemoMultiplierSet(address indexed borrower, uint256 multiplier);
+    event GlobalTickSet(uint256 tick);
+    event UserScoreReset(address indexed user);
+    event PoolTicked(uint256 totalInterestDistributed);
+    event HardReset(address indexed to, uint256 usdcSwept);
 
     // Convenience getters for checklist tooling
     function getAgent() external view returns (address) {
@@ -318,9 +326,115 @@ contract KredioLending is ReentrancyGuard {
         address borrower,
         uint256 multiplier
     ) external onlyAdmin {
-        require(multiplier <= 1000, "max 1000x");
+        require(multiplier <= 1_000_000, "max 1M");
         demoRateMultiplier[borrower] = multiplier;
         emit DemoMultiplierSet(borrower, multiplier);
+    }
+
+    /// @notice Set global interest tick multiplier for ALL positions simultaneously.
+    /// @param tick 0 = disabled (1x normal), N = Nx accelerated. 60 = 1 sec equals 1 min of interest.
+    function adminSetGlobalTick(uint256 tick) external onlyAdmin {
+        require(tick <= 1_000_000, "max 1M");
+        globalTick = tick;
+        emit GlobalTickSet(tick);
+    }
+
+    /// @notice Reset a single user's credit score history.
+    function adminResetUserScore(address user) external onlyAdmin {
+        repaymentCount[user] = 0;
+        liquidationCount[user] = 0;
+        firstSeenBlock[user] = 0;
+        totalDepositedEver[user] = 0;
+        demoRateMultiplier[user] = 0;
+        emit UserScoreReset(user);
+    }
+
+    /// @notice Batch-reset credit score history for multiple users.
+    function adminResetUserScores(address[] calldata users) external onlyAdmin {
+        for (uint256 i = 0; i < users.length; i++) {
+            repaymentCount[users[i]] = 0;
+            liquidationCount[users[i]] = 0;
+            firstSeenBlock[users[i]] = 0;
+            totalDepositedEver[users[i]] = 0;
+            demoRateMultiplier[users[i]] = 0;
+            emit UserScoreReset(users[i]);
+        }
+    }
+
+    /// @notice Batch force-close positions and return USDC collateral. Absorbs unpaid debt.
+    function adminForceCloseAll(address[] calldata users) external onlyAdmin nonReentrant {
+        for (uint256 i = 0; i < users.length; i++) {
+            address user = users[i];
+            Position storage p = positions[user];
+            uint256 collateralToReturn = 0;
+
+            if (p.active) {
+                if (p.debt <= totalBorrowed) totalBorrowed -= p.debt;
+                else totalBorrowed = 0;
+                collateralToReturn += p.collateral;
+                delete positions[user];
+            }
+
+            uint256 pendingCollateral = collateralBalance[user];
+            if (pendingCollateral > 0) {
+                collateralBalance[user] = 0;
+                collateralToReturn += pendingCollateral;
+            }
+
+            if (collateralToReturn > 0) {
+                require(usdc.transfer(user, collateralToReturn), "bulk force-close fail");
+            }
+            emit CollateralWithdrawn(user, collateralToReturn);
+        }
+    }
+
+    /// @notice Force-withdraw deposits for a batch of lenders without the normal liquidity check.
+    /// @dev Call after adminForceCloseAll so totalBorrowed = 0. Absorbs any yield shortfall.
+    function adminBulkWithdrawDeposits(address[] calldata depositors) external onlyAdmin nonReentrant {
+        for (uint256 i = 0; i < depositors.length; i++) {
+            address depositor = depositors[i];
+            uint256 amount = depositBalance[depositor];
+            if (amount == 0) continue;
+            depositBalance[depositor] = 0;
+            yieldDebt[depositor] = 0;
+            if (totalDeposited >= amount) totalDeposited -= amount;
+            else totalDeposited = 0;
+            require(usdc.transfer(depositor, amount), "bulk withdraw fail");
+            emit Withdrawn(depositor, amount);
+        }
+    }
+
+    /// @notice Force-accrue interest for borrowers and immediately distribute it as yield to lenders.
+    /// @dev Capitalises accrued interest into the borrower's principal and resets their clock.
+    ///      This lets lenders see real-time yield growth without waiting for borrower repayments.
+    function adminTickPool(address[] calldata borrowers) external onlyAdmin nonReentrant {
+        uint256 totalInterest = 0;
+        for (uint256 i = 0; i < borrowers.length; i++) {
+            Position storage p = positions[borrowers[i]];
+            if (!p.active) continue;
+            uint256 interest = _accruedInterest(borrowers[i], p);
+            if (interest == 0) continue;
+            p.debt += interest;
+            p.openedAt = block.timestamp;
+            totalBorrowed += interest;
+            _distributeInterest(interest);
+            totalInterest += interest;
+        }
+        emit PoolTicked(totalInterest);
+    }
+
+    /// @notice Nuclear reset: zero all pool accounting and sweep all USDC to admin.
+    /// @dev ALL user deposits are sent to `to`. For testnet fresh-start resets only.
+    function adminHardReset(address to) external onlyAdmin nonReentrant {
+        require(to != address(0), "zero addr");
+        totalBorrowed = 0;
+        totalDeposited = 0;
+        accYieldPerShare = 0;
+        protocolFees = 0;
+        globalTick = 0;
+        uint256 bal = usdc.balanceOf(address(this));
+        if (bal > 0) require(usdc.transfer(to, bal), "sweep fail");
+        emit HardReset(to, bal);
     }
 
     // -------- TIER 2: Risk Management --------
@@ -500,14 +614,19 @@ contract KredioLending is ReentrancyGuard {
         }
     }
 
+    function _effectiveMultiplier(address borrower) internal view returns (uint256) {
+        uint256 userM = demoRateMultiplier[borrower];
+        uint256 effM = globalTick > userM ? globalTick : userM;
+        return effM == 0 ? 1 : effM;
+    }
+
     function _accruedInterest(
         address borrower,
         Position storage p
     ) internal view returns (uint256) {
         if (!p.active) return 0;
         uint256 elapsed = block.timestamp - p.openedAt;
-        uint256 multiplier = demoRateMultiplier[borrower];
-        uint256 rate = multiplier > 0 ? p.interestBps * multiplier : p.interestBps;
+        uint256 rate = uint256(p.interestBps) * _effectiveMultiplier(borrower);
         return (p.debt * rate * elapsed) / (BPS_DIVISOR * 365 days);
     }
 
@@ -517,8 +636,7 @@ contract KredioLending is ReentrancyGuard {
     ) internal view returns (uint256) {
         if (!p.active) return 0;
         uint256 elapsed = block.timestamp - p.openedAt;
-        uint256 multiplier = demoRateMultiplier[borrower];
-        uint256 rate = multiplier > 0 ? p.interestBps * multiplier : p.interestBps;
+        uint256 rate = uint256(p.interestBps) * _effectiveMultiplier(borrower);
         return (p.debt * rate * elapsed) / (BPS_DIVISOR * 365 days);
     }
 }

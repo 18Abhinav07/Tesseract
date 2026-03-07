@@ -1,35 +1,98 @@
 "use client";
 
-import { useState } from 'react';
-import { useAccount } from 'wagmi';
+import { useCallback, useState } from 'react';
+import { useAccount, useReadContract } from 'wagmi';
 import config from '../../lib/addresses';
 import { validAddress } from '../../lib/input';
 import { useProtocolActions } from '../../hooks/useProtocolActions';
 import { useActionLog } from '../../components/providers/ActionLogProvider';
 import { ActionButton, ActionInput, Grid, PageShell, Panel, StatRow } from '../../components/modules/ProtocolUI';
 import { useAccess } from '../../hooks/useAccess';
+import { ABIS } from '../../lib/constants';
+
+// ─── Per-action busy tracking ─────────────────────────────────────────────────
+function useActionBusy() {
+    const [busy, setBusy] = useState<Set<string>>(new Set());
+    const isBusy = (key: string) => busy.has(key);
+    const withBusy = useCallback(
+        async (key: string, fn: () => Promise<{ ok: boolean }>) => {
+            setBusy(prev => new Set(prev).add(key));
+            try { await fn(); } finally {
+                setBusy(prev => { const s = new Set(prev); s.delete(key); return s; });
+            }
+        },
+        [],
+    );
+    return { isBusy, withBusy };
+}
+
+function parseAddresses(raw: string): `0x${string}`[] {
+    return raw.split(',').map(s => s.trim()).filter(s => /^0x[0-9a-fA-F]{40}$/.test(s)) as `0x${string}`[];
+}
+
+function fmt6(v: bigint | undefined) {
+    if (v === undefined) return '—';
+    return (Number(v) / 1e6).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 });
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+    return <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-400 mt-2 mb-0">{children}</h2>;
+}
+
+function InfoBox({ children }: { children: React.ReactNode }) {
+    return <div className="rounded-xl border border-white/5 bg-white/[0.03] px-4 py-3 text-xs text-slate-400 leading-relaxed">{children}</div>;
+}
+
+const TICK_PRESETS = [
+    { label: '1× (normal)', value: '0' },
+    { label: '60× (1 sec = 1 min)', value: '60' },
+    { label: '3600× (1 sec = 1 hr)', value: '3600' },
+    { label: '86400× (1 sec = 1 day)', value: '86400' },
+    { label: '525600× (1 sec = 1 yr)', value: '525600' },
+];
 
 export default function AdminPage() {
     const { address, isConnected } = useAccount();
     const { isAdmin, isWrongNetwork } = useAccess();
     const actions = useProtocolActions();
     const { logAction } = useActionLog();
+    const { isBusy, withBusy } = useActionBusy();
 
-    const [busy, setBusy] = useState(false);
     const [targetUser, setTargetUser] = useState('');
     const [receiver, setReceiver] = useState('');
-    const [multiplier, setMultiplier] = useState('12000');
+    const [bulkUsers, setBulkUsers] = useState('');
+    const [multiplier, setMultiplier] = useState('60');
+    const [tickValue, setTickValue] = useState('60');
     const [oraclePrice8, setOraclePrice8] = useState('100000000');
     const [votes, setVotes] = useState('100');
     const [conviction, setConviction] = useState('2');
-    const [ltvBps, setLtvBps] = useState('7000');
-    const [liqBonusBps, setLiqBonusBps] = useState('500');
+    const [ltvBps, setLtvBps] = useState('6500');
+    const [liqBonusBps, setLiqBonusBps] = useState('800');
     const [staleness, setStaleness] = useState('3600');
-    const [feeBps, setFeeBps] = useState('250');
+    const [feeBps, setFeeBps] = useState('1000');
 
-    const safeTarget = validAddress(targetUser);
-    const safeReceiver = validAddress(receiver);
-    const numeric = (value: string) => (/^\d+$/.test(value.trim()) ? BigInt(value.trim()) : null);
+    const safeTarget = validAddress(targetUser) as `0x${string}` | null;
+    const safeReceiver = validAddress(receiver) as `0x${string}` | null;
+    const bulkAddrs = parseAddresses(bulkUsers);
+    const numeric = (s: string) => (/^\d+$/.test(s.trim()) ? BigInt(s.trim()) : null);
+
+    const { data: lendingTick } = useReadContract({ address: config.lending, abi: ABIS.KREDIO_LENDING, functionName: 'globalTick', query: { refetchInterval: 5000 } });
+    const { data: pasTick } = useReadContract({ address: config.pasMarket, abi: ABIS.KREDIO_PAS_MARKET, functionName: 'globalTick', query: { refetchInterval: 5000 } });
+    const { data: lendingTotalDeposited } = useReadContract({ address: config.lending, abi: ABIS.KREDIO_LENDING, functionName: 'totalDeposited', query: { refetchInterval: 5000 } });
+    const { data: lendingTotalBorrowed } = useReadContract({ address: config.lending, abi: ABIS.KREDIO_LENDING, functionName: 'totalBorrowed', query: { refetchInterval: 5000 } });
+    const { data: pasTotalDeposited } = useReadContract({ address: config.pasMarket, abi: ABIS.KREDIO_PAS_MARKET, functionName: 'totalDeposited', query: { refetchInterval: 5000 } });
+    const { data: pasTotalBorrowed } = useReadContract({ address: config.pasMarket, abi: ABIS.KREDIO_PAS_MARKET, functionName: 'totalBorrowed', query: { refetchInterval: 5000 } });
+    const { data: lendingFees } = useReadContract({ address: config.lending, abi: ABIS.KREDIO_LENDING, functionName: 'protocolFees', query: { refetchInterval: 5000 } });
+    const { data: pasFees } = useReadContract({ address: config.pasMarket, abi: ABIS.KREDIO_PAS_MARKET, functionName: 'protocolFees', query: { refetchInterval: 5000 } });
+
+    const run = useCallback(
+        async (key: string, fn: () => Promise<{ ok: boolean }>) => {
+            if (!isConnected) { logAction({ level: 'warning', action: key, detail: 'Connect wallet first', market: 'system' }); return; }
+            if (isWrongNetwork) { logAction({ level: 'warning', action: key, detail: 'Switch to Polkadot Hub', market: 'system' }); return; }
+            withBusy(key, fn);
+        },
+        [isConnected, isWrongNetwork, logAction, withBusy],
+    );
 
     if (!isAdmin) {
         return (
@@ -42,168 +105,236 @@ export default function AdminPage() {
         );
     }
 
-    const run = async (fn: () => Promise<{ ok: boolean }>) => {
-        if (!isConnected) {
-            logAction({ level: 'warning', action: 'Admin gate', detail: 'Connect wallet before admin actions', market: 'system' });
-            return;
-        }
-        if (isWrongNetwork) {
-            logAction({ level: 'warning', action: 'Admin gate', detail: 'Switch to Polkadot Hub before admin actions', market: 'system' });
-            return;
-        }
-        setBusy(true);
-        await fn();
-        setBusy(false);
-    };
-
     return (
-        <PageShell title="Admin" subtitle="Owner-only controls for risk, emergency response and protocol operations.">
+        <PageShell title="Admin" subtitle="Owner-only controls — interest acceleration, bulk resets, oracle, risk parameters and governance.">
+
+            {/* Access panel */}
             <Panel title="Access Control">
-                <StatRow label="Connected Wallet" value={address ? `${address.slice(0, 6)}…${address.slice(-4)}` : 'Not connected'} />
-                <StatRow label="Expected Owner" value={`${config.owner.slice(0, 6)}…${config.owner.slice(-4)}`} />
+                <StatRow label="Connected Wallet" value={address ? `${address.slice(0, 8)}…${address.slice(-6)}` : 'Not connected'} />
+                <StatRow label="Expected Owner" value={`${config.owner.slice(0, 8)}…${config.owner.slice(-6)}`} />
                 <StatRow label="Authorized" value="Yes" tone="green" />
             </Panel>
 
+            {/* Pool state summary */}
+            <SectionTitle>Pool State</SectionTitle>
             <Grid>
-                <Panel title="Sweeps & Multipliers">
-                    <ActionInput label="Receiver Address" value={receiver} onChange={setReceiver} placeholder="0x..." />
-                    <ActionInput label="Target User" value={targetUser} onChange={setTargetUser} placeholder="0x..." />
-                    <ActionInput label="Demo Multiplier" value={multiplier} onChange={setMultiplier} placeholder="e.g. 12000" />
-                    <div className="flex flex-wrap gap-2">
-                        <ActionButton label="Sweep Lending Fees" loading={busy} disabled={busy || !safeReceiver} onClick={() => run(() => actions.sweepLendingFees(safeReceiver!))} />
-                        <ActionButton label="Sweep PAS Fees" loading={busy} disabled={busy || !safeReceiver} onClick={() => run(() => actions.sweepPasFees(safeReceiver!))} />
-                        <ActionButton
-                            label="Set Lending Multiplier"
-                            variant="ghost"
-                            loading={busy}
-                            disabled={busy || !safeTarget}
-                            onClick={() => {
-                                const value = numeric(multiplier);
-                                if (value === null) {
-                                    logAction({ level: 'warning', action: 'Set Lending Multiplier', detail: 'Multiplier must be an integer value', market: 'system' });
-                                    return;
-                                }
-                                run(() => actions.setLendingMultiplier(safeTarget!, value));
-                            }}
-                        />
-                        <ActionButton
-                            label="Set PAS Multiplier"
-                            variant="ghost"
-                            loading={busy}
-                            disabled={busy || !safeTarget}
-                            onClick={() => {
-                                const value = numeric(multiplier);
-                                if (value === null) {
-                                    logAction({ level: 'warning', action: 'Set PAS Multiplier', detail: 'Multiplier must be an integer value', market: 'system' });
-                                    return;
-                                }
-                                run(() => actions.setPasMultiplier(safeTarget!, value));
-                            }}
-                        />
-                    </div>
+                <Panel title="KredioLending (USDC Market)">
+                    <StatRow label="Global Tick" value={lendingTick !== undefined ? `${lendingTick === 0n ? '1' : String(lendingTick)}×` : '—'} tone={lendingTick && lendingTick > 0n ? 'green' : undefined} />
+                    <StatRow label="Total Deposited" value={`${fmt6(lendingTotalDeposited as bigint | undefined)} mUSDC`} />
+                    <StatRow label="Total Borrowed" value={`${fmt6(lendingTotalBorrowed as bigint | undefined)} mUSDC`} />
+                    <StatRow label="Protocol Fees" value={`${fmt6(lendingFees as bigint | undefined)} mUSDC`} />
                 </Panel>
-
-                <Panel title="Oracle Controls">
-                    <ActionInput label="Price (8 decimals)" value={oraclePrice8} onChange={setOraclePrice8} placeholder="100000000" />
-                    <div className="flex flex-wrap gap-2">
-                        <ActionButton
-                            label="Set Oracle Price"
-                            loading={busy}
-                            onClick={() => {
-                                const value = numeric(oraclePrice8);
-                                if (value === null) {
-                                    logAction({ level: 'warning', action: 'Set Oracle Price', detail: 'Price must be an integer (8 decimals)', market: 'system' });
-                                    return;
-                                }
-                                run(() => actions.oracleSetPrice(value));
-                            }}
-                            disabled={busy}
-                        />
-                        <ActionButton
-                            label="Crash Oracle"
-                            variant="danger"
-                            loading={busy}
-                            onClick={() => {
-                                const value = numeric(oraclePrice8);
-                                if (value === null) {
-                                    logAction({ level: 'warning', action: 'Crash Oracle', detail: 'Crash price must be an integer (8 decimals)', market: 'system' });
-                                    return;
-                                }
-                                run(() => actions.oracleCrash(value));
-                            }}
-                            disabled={busy}
-                        />
-                        <ActionButton label="Recover Oracle" variant="ghost" loading={busy} onClick={() => run(() => actions.oracleRecover())} disabled={busy} />
-                    </div>
-                </Panel>
-
-                <Panel title="PAS Risk Parameters">
-                    <ActionInput label="LTV BPS" value={ltvBps} onChange={setLtvBps} placeholder="7000" />
-                    <ActionInput label="Liquidation Bonus BPS" value={liqBonusBps} onChange={setLiqBonusBps} placeholder="500" />
-                    <ActionInput label="Staleness Limit (s)" value={staleness} onChange={setStaleness} placeholder="3600" />
-                    <ActionInput label="Protocol Fee BPS" value={feeBps} onChange={setFeeBps} placeholder="250" />
-                    <div className="flex flex-wrap gap-2">
-                        <ActionButton
-                            label="Set Risk Params"
-                            loading={busy}
-                            onClick={() => {
-                                const ltv = numeric(ltvBps);
-                                const bonus = numeric(liqBonusBps);
-                                const stale = numeric(staleness);
-                                const fee = numeric(feeBps);
-                                if (ltv === null || bonus === null || stale === null || fee === null) {
-                                    logAction({ level: 'warning', action: 'Set Risk Params', detail: 'All risk params must be integer values', market: 'system' });
-                                    return;
-                                }
-                                run(() => actions.setPasRiskParams(ltv, bonus, stale, fee));
-                            }}
-                            disabled={busy}
-                        />
-                        <ActionButton label="Pause PAS" variant="danger" loading={busy} onClick={() => run(() => actions.pausePas())} disabled={busy} />
-                        <ActionButton label="Unpause PAS" variant="ghost" loading={busy} onClick={() => run(() => actions.unpausePas())} disabled={busy} />
-                    </div>
-                </Panel>
-
-                <Panel title="Governance Cache">
-                    <ActionInput label="User" value={targetUser} onChange={setTargetUser} placeholder="0x..." />
-                    <ActionInput label="Votes" value={votes} onChange={setVotes} placeholder="100" />
-                    <ActionInput label="Conviction" value={conviction} onChange={setConviction} placeholder="2" />
-                    <ActionButton
-                        label="Set Governance Data"
-                        loading={busy}
-                        disabled={busy || !safeTarget}
-                        onClick={() => {
-                            const voteCount = numeric(votes);
-                            const convictionInt = Number(conviction);
-                            if (voteCount === null || !Number.isInteger(convictionInt) || convictionInt < 0) {
-                                logAction({ level: 'warning', action: 'Set Governance Data', detail: 'Votes and conviction must be valid integer values', market: 'system' });
-                                return;
-                            }
-                            run(() => actions.setGovernanceData(safeTarget!, voteCount, convictionInt));
-                        }}
-                    />
+                <Panel title="KredioPASMarket (PAS Market)">
+                    <StatRow label="Global Tick" value={pasTick !== undefined ? `${pasTick === 0n ? '1' : String(pasTick)}×` : '—'} tone={pasTick && pasTick > 0n ? 'green' : undefined} />
+                    <StatRow label="Total Deposited" value={`${fmt6(pasTotalDeposited as bigint | undefined)} mUSDC`} />
+                    <StatRow label="Total Borrowed" value={`${fmt6(pasTotalBorrowed as bigint | undefined)} mUSDC`} />
+                    <StatRow label="Protocol Fees" value={`${fmt6(pasFees as bigint | undefined)} mUSDC`} />
                 </Panel>
             </Grid>
 
-            <Panel title="Force Close Position (Testnet Reset)" subtitle="Wipes a user's position and returns their collateral. Absorbs outstanding debt as a protocol loss. For testnet resets only.">
-                <ActionInput label="User Address" value={targetUser} onChange={setTargetUser} placeholder="0x..." />
-                <div className="flex flex-wrap gap-2 mt-2">
-                    <ActionButton
-                        label="Force Close Lending Position"
-                        variant="danger"
-                        loading={busy}
-                        disabled={busy || !safeTarget}
-                        onClick={() => run(() => actions.adminForceCloseLending(safeTarget!))}
-                    />
-                    <ActionButton
-                        label="Force Close PAS Position"
-                        variant="danger"
-                        loading={busy}
-                        disabled={busy || !safeTarget}
-                        onClick={() => run(() => actions.adminForceClosePas(safeTarget!))}
-                    />
+            {/* Interest tick speed */}
+            <SectionTitle>Interest Tick Speed</SectionTitle>
+            <Panel
+                title="Global Interest Multiplier"
+                subtitle="Accelerates interest accrual for ALL borrowers. 60× = 1 real second equals 1 minute of interest. Setting to 0 restores 1× normal behaviour."
+            >
+                <InfoBox>
+                    <strong className="text-white">How it works:</strong> interest formula is{' '}
+                    <code className="text-amber-300">debt × rate × elapsed × multiplier / (10000 × 365 days)</code>.
+                    Setting this to <em>60</em> makes every second count as 60 seconds — ideal for live demos.
+                    The effective multiplier is <code className="text-amber-300">max(globalTick, perUserMultiplier)</code>.
+                </InfoBox>
+                <div className="mt-3 flex flex-wrap gap-2">
+                    {TICK_PRESETS.map(p => (
+                        <button key={p.value} onClick={() => setTickValue(p.value)}
+                            className={`rounded-lg px-3 py-1.5 text-xs font-medium border transition-colors ${tickValue === p.value ? 'bg-amber-500/20 border-amber-500/40 text-amber-300' : 'bg-white/5 border-white/10 text-slate-400 hover:border-white/20'}`}>
+                            {p.label}
+                        </button>
+                    ))}
+                </div>
+                <ActionInput label="Custom Value" value={tickValue} onChange={setTickValue} placeholder="e.g. 60" />
+                <div className="flex flex-wrap gap-2 mt-1">
+                    <ActionButton label="Set Lending Tick" loading={isBusy('setLendingTick')} disabled={isBusy('setLendingTick')}
+                        onClick={() => { const v = numeric(tickValue); if (v === null) return; run('setLendingTick', () => actions.adminSetLendingTick(v)); }} />
+                    <ActionButton label="Set PAS Tick" loading={isBusy('setPasTick')} disabled={isBusy('setPasTick')}
+                        onClick={() => { const v = numeric(tickValue); if (v === null) return; run('setPasTick', () => actions.adminSetPasTick(v)); }} />
+                    <ActionButton label="Set Both Markets" loading={isBusy('setLendingTick') || isBusy('setPasTick')} disabled={isBusy('setLendingTick') || isBusy('setPasTick')}
+                        onClick={() => { const v = numeric(tickValue); if (v === null) return; run('setLendingTick', () => actions.adminSetLendingTick(v)); run('setPasTick', () => actions.adminSetPasTick(v)); }} />
+                    <ActionButton label="Reset to 1× (Off)" variant="ghost" loading={isBusy('resetTick')} disabled={isBusy('resetTick')}
+                        onClick={() => { setTickValue('0'); run('resetTick', async () => { await actions.adminSetLendingTick(0n); return actions.adminSetPasTick(0n); }); }} />
                 </div>
             </Panel>
+
+            {/* Per-user demo rate */}
+            <Panel title="Per-User Demo Rate Multiplier"
+                subtitle="Override the interest rate for a specific borrower only. 0 clears the override. Max 1,000,000. Effective rate = max(globalTick, this value).">
+                <ActionInput label="Borrower Address" value={targetUser} onChange={setTargetUser} placeholder="0x..." />
+                <ActionInput label="Rate Multiplier" value={multiplier} onChange={setMultiplier} placeholder="e.g. 60" />
+                <div className="flex flex-wrap gap-2">
+                    <ActionButton label="Set Lending Multiplier" variant="ghost" loading={isBusy('setLendingMul')} disabled={isBusy('setLendingMul') || !safeTarget}
+                        onClick={() => { const v = numeric(multiplier); if (!safeTarget || v === null) return; run('setLendingMul', () => actions.setLendingMultiplier(safeTarget, v)); }} />
+                    <ActionButton label="Set PAS Multiplier" variant="ghost" loading={isBusy('setPasMul')} disabled={isBusy('setPasMul') || !safeTarget}
+                        onClick={() => { const v = numeric(multiplier); if (!safeTarget || v === null) return; run('setPasMul', () => actions.setPasMultiplier(safeTarget, v)); }} />
+                </div>
+            </Panel>
+
+            {/* Tick pool / force-accrue */}
+            <SectionTitle>Yield Tick — Force-Distribute Interest to Lenders</SectionTitle>
+            <Panel title="Tick Pool"
+                subtitle="Capitalises accrued interest for the listed borrowers into their debt and immediately distributes it as yield to lenders. Resets each borrower's interest clock. Shows lending yield growth in real-time.">
+                <InfoBox>
+                    Enter comma-separated borrower addresses. Their current accrued interest is calculated,
+                    added to their principal and distributed to the lender pool as yield — all in one tx.
+                    Lenders&apos; <strong className="text-white">pendingYield</strong> increases immediately.
+                </InfoBox>
+                <ActionInput label="Borrower Addresses (comma-separated)" value={bulkUsers} onChange={setBulkUsers} placeholder="0xAbc..., 0xDef..." />
+                <div className="text-xs text-slate-500 mt-1">{bulkAddrs.length} address{bulkAddrs.length !== 1 ? 'es' : ''} parsed</div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                    <ActionButton label="Tick Lending Pool" loading={isBusy('tickLending')} disabled={isBusy('tickLending') || bulkAddrs.length === 0}
+                        onClick={() => run('tickLending', () => actions.adminTickPoolLending(bulkAddrs))} />
+                    <ActionButton label="Tick PAS Pool" loading={isBusy('tickPas')} disabled={isBusy('tickPas') || bulkAddrs.length === 0}
+                        onClick={() => run('tickPas', () => actions.adminTickPoolPas(bulkAddrs))} />
+                </div>
+            </Panel>
+
+            {/* Bulk position management */}
+            <SectionTitle>Bulk Position Management</SectionTitle>
+            <Panel title="Force-Close All Positions"
+                subtitle="Wipes positions for all listed addresses and returns their collateral. Outstanding debt is absorbed. Call this before a hard reset.">
+                <ActionInput label="User Addresses (comma-separated)" value={bulkUsers} onChange={setBulkUsers} placeholder="0xAbc..., 0xDef..." />
+                <div className="text-xs text-slate-500 mt-1">{bulkAddrs.length} address{bulkAddrs.length !== 1 ? 'es' : ''} parsed</div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                    <ActionButton label="Force-Close All (Lending)" variant="danger" loading={isBusy('forceAllLending')} disabled={isBusy('forceAllLending') || bulkAddrs.length === 0}
+                        onClick={() => run('forceAllLending', () => actions.adminForceCloseAllLending(bulkAddrs))} />
+                    <ActionButton label="Force-Close All (PAS)" variant="danger" loading={isBusy('forceAllPas')} disabled={isBusy('forceAllPas') || bulkAddrs.length === 0}
+                        onClick={() => run('forceAllPas', () => actions.adminForceCloseAllPas(bulkAddrs))} />
+                </div>
+            </Panel>
+
+            <Panel title="Bulk Return Lender Deposits"
+                subtitle="Force-returns principal deposits (no yield) to a list of lenders. Bypasses liquidity check. Call after force-closing all borrow positions.">
+                <ActionInput label="Depositor Addresses (comma-separated)" value={bulkUsers} onChange={setBulkUsers} placeholder="0xAbc..., 0xDef..." />
+                <div className="text-xs text-slate-500 mt-1">{bulkAddrs.length} address{bulkAddrs.length !== 1 ? 'es' : ''} parsed</div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                    <ActionButton label="Bulk Withdraw Lending" variant="danger" loading={isBusy('bulkWdLending')} disabled={isBusy('bulkWdLending') || bulkAddrs.length === 0}
+                        onClick={() => run('bulkWdLending', () => actions.adminBulkWithdrawLending(bulkAddrs))} />
+                    <ActionButton label="Bulk Withdraw PAS" variant="danger" loading={isBusy('bulkWdPas')} disabled={isBusy('bulkWdPas') || bulkAddrs.length === 0}
+                        onClick={() => run('bulkWdPas', () => actions.adminBulkWithdrawPas(bulkAddrs))} />
+                </div>
+            </Panel>
+
+            {/* Single user */}
+            <Panel title="Force-Close Single Position"
+                subtitle="Wipes one user's position and returns their collateral. For targeted resets.">
+                <ActionInput label="User Address" value={targetUser} onChange={setTargetUser} placeholder="0x..." />
+                <div className="flex flex-wrap gap-2 mt-2">
+                    <ActionButton label="Force-Close Lending" variant="danger" loading={isBusy('forceOneLending')} disabled={isBusy('forceOneLending') || !safeTarget}
+                        onClick={() => run('forceOneLending', () => actions.adminForceCloseLending(safeTarget!))} />
+                    <ActionButton label="Force-Close PAS" variant="danger" loading={isBusy('forceOnePas')} disabled={isBusy('forceOnePas') || !safeTarget}
+                        onClick={() => run('forceOnePas', () => actions.adminForceClosePas(safeTarget!))} />
+                    <ActionButton label="Admin Liquidate (Lending)" variant="danger" loading={isBusy('adminLiqLending')} disabled={isBusy('adminLiqLending') || !safeTarget}
+                        onClick={() => run('adminLiqLending', () => actions.adminLiquidateLending(safeTarget!))} />
+                    <ActionButton label="Admin Liquidate (PAS)" variant="danger" loading={isBusy('adminLiqPas')} disabled={isBusy('adminLiqPas') || !safeTarget}
+                        onClick={() => run('adminLiqPas', () => actions.adminLiquidatePas(safeTarget!))} />
+                </div>
+            </Panel>
+
+            {/* Score reset */}
+            <SectionTitle>Credit Score History</SectionTitle>
+            <Panel title="Reset User Credit Scores"
+                subtitle="Clears repayment count, liquidation count, first-seen block, lifetime deposits, and per-user rate multiplier. Wallets return to new-user baseline tier.">
+                <InfoBox>After reset, each wallet computes its score as a brand-new user — perfect for re-running demos from a fair starting point.</InfoBox>
+                <ActionInput label="User Addresses (comma-separated)" value={bulkUsers} onChange={setBulkUsers} placeholder="0xAbc..., 0xDef..." />
+                <div className="text-xs text-slate-500 mt-1">{bulkAddrs.length} address{bulkAddrs.length !== 1 ? 'es' : ''} parsed</div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                    <ActionButton label="Reset Lending Scores" variant="ghost" loading={isBusy('resetScoreLending')} disabled={isBusy('resetScoreLending') || bulkAddrs.length === 0}
+                        onClick={() => run('resetScoreLending', () => actions.adminResetUserScoreLending(bulkAddrs))} />
+                    <ActionButton label="Reset PAS Scores" variant="ghost" loading={isBusy('resetScorePas')} disabled={isBusy('resetScorePas') || bulkAddrs.length === 0}
+                        onClick={() => run('resetScorePas', () => actions.adminResetUserScorePas(bulkAddrs))} />
+                </div>
+            </Panel>
+
+            {/* Nuclear reset */}
+            <SectionTitle>Nuclear Reset</SectionTitle>
+            <Panel title="Hard Reset — Sweep All USDC & Zero Pool Accounting"
+                subtitle="Zeros totalBorrowed, totalDeposited, accYieldPerShare, protocolFees and globalTick, then transfers all USDC inside the contract to the receiver address. Recommended sequence below.">
+                <InfoBox>
+                    <strong className="text-red-400">Recommended clean-start sequence:</strong>
+                    <ol className="mt-1.5 space-y-0.5 list-decimal list-inside">
+                        <li>Set global tick to 0 (disable acceleration).</li>
+                        <li>Force-Close All Positions for all active borrowers.</li>
+                        <li>Bulk Withdraw for all depositors.</li>
+                        <li>Reset User Scores for all participants.</li>
+                        <li>Hard Reset — sweeps remaining USDC dust and zeros accounting.</li>
+                        <li>Re-seed pool: deposit mUSDC as admin via the Lend page.</li>
+                    </ol>
+                </InfoBox>
+                <ActionInput label="Receiver Address (gets swept USDC)" value={receiver} onChange={setReceiver} placeholder="0x..." />
+                <div className="flex flex-wrap gap-2 mt-2">
+                    <ActionButton label="HARD RESET Lending Pool" variant="danger" loading={isBusy('hardResetLending')} disabled={isBusy('hardResetLending') || !safeReceiver}
+                        onClick={() => run('hardResetLending', () => actions.adminHardResetLending(safeReceiver!))} />
+                    <ActionButton label="HARD RESET PAS Pool" variant="danger" loading={isBusy('hardResetPas')} disabled={isBusy('hardResetPas') || !safeReceiver}
+                        onClick={() => run('hardResetPas', () => actions.adminHardResetPas(safeReceiver!))} />
+                </div>
+            </Panel>
+
+            {/* Fee sweeps */}
+            <SectionTitle>Fee Management</SectionTitle>
+            <Panel title="Sweep Protocol Fees">
+                <ActionInput label="Receiver Address" value={receiver} onChange={setReceiver} placeholder="0x..." />
+                <div className="flex flex-wrap gap-2 mt-2">
+                    <ActionButton label="Sweep Lending Fees" loading={isBusy('sweepLending')} disabled={isBusy('sweepLending') || !safeReceiver}
+                        onClick={() => run('sweepLending', () => actions.sweepLendingFees(safeReceiver!))} />
+                    <ActionButton label="Sweep PAS Fees" loading={isBusy('sweepPas')} disabled={isBusy('sweepPas') || !safeReceiver}
+                        onClick={() => run('sweepPas', () => actions.sweepPasFees(safeReceiver!))} />
+                </div>
+            </Panel>
+
+            {/* Oracle */}
+            <SectionTitle>Oracle Controls</SectionTitle>
+            <Panel title="MockPASOracle — Price Manipulation"
+                subtitle="Set or crash the PAS/USD oracle. Crash drops price so open positions become liquidatable — useful for demonstrating liquidation flows. Recover restores the normal price.">
+                <ActionInput label="Price (8 decimal places — e.g. 100000000 = $1.00)" value={oraclePrice8} onChange={setOraclePrice8} placeholder="100000000" />
+                <div className="flex flex-wrap gap-2 mt-2">
+                    <ActionButton label="Set Price" loading={isBusy('oracleSet')} disabled={isBusy('oracleSet')}
+                        onClick={() => { const v = numeric(oraclePrice8); if (!v) return; run('oracleSet', () => actions.oracleSetPrice(v)); }} />
+                    <ActionButton label="Crash Price" variant="danger" loading={isBusy('oracleCrash')} disabled={isBusy('oracleCrash')}
+                        onClick={() => { const v = numeric(oraclePrice8); if (!v) return; run('oracleCrash', () => actions.oracleCrash(v)); }} />
+                    <ActionButton label="Recover Oracle" variant="ghost" loading={isBusy('oracleRecover')} disabled={isBusy('oracleRecover')}
+                        onClick={() => run('oracleRecover', () => actions.oracleRecover())} />
+                </div>
+            </Panel>
+
+            {/* Risk params */}
+            <SectionTitle>PAS Market Risk Parameters</SectionTitle>
+            <Panel title="Risk Parameters" subtitle="Tune LTV, liquidation bonus, oracle staleness and protocol fee for the PAS collateral market.">
+                <Grid>
+                    <ActionInput label="LTV BPS (max 8000)" value={ltvBps} onChange={setLtvBps} placeholder="6500" />
+                    <ActionInput label="Liquidation Bonus BPS (max 2000)" value={liqBonusBps} onChange={setLiqBonusBps} placeholder="800" />
+                    <ActionInput label="Oracle Staleness Limit (seconds)" value={staleness} onChange={setStaleness} placeholder="3600" />
+                    <ActionInput label="Protocol Fee BPS (max 2000)" value={feeBps} onChange={setFeeBps} placeholder="1000" />
+                </Grid>
+                <div className="flex flex-wrap gap-2 mt-2">
+                    <ActionButton label="Update Risk Params" loading={isBusy('riskParams')} disabled={isBusy('riskParams')}
+                        onClick={() => { const ltv=numeric(ltvBps),bonus=numeric(liqBonusBps),stale=numeric(staleness),fee=numeric(feeBps); if(!ltv||!bonus||!stale||!fee)return; run('riskParams',()=>actions.setPasRiskParams(ltv,bonus,stale,fee)); }} />
+                    <ActionButton label="Pause PAS Market" variant="danger" loading={isBusy('pausePas')} disabled={isBusy('pausePas')}
+                        onClick={() => run('pausePas', () => actions.pausePas())} />
+                    <ActionButton label="Unpause PAS Market" variant="ghost" loading={isBusy('unpausePas')} disabled={isBusy('unpausePas')}
+                        onClick={() => run('unpausePas', () => actions.unpausePas())} />
+                </div>
+            </Panel>
+
+            {/* Governance */}
+            <SectionTitle>Governance Cache</SectionTitle>
+            <Panel title="Governance Data Override"
+                subtitle="Manually set on-chain voting data for a user. Votes and conviction level feed into the KreditAgent credit score calculation.">
+                <ActionInput label="User Address" value={targetUser} onChange={setTargetUser} placeholder="0x..." />
+                <ActionInput label="Vote Count" value={votes} onChange={setVotes} placeholder="100" />
+                <ActionInput label="Max Conviction (0–6)" value={conviction} onChange={setConviction} placeholder="2" />
+                <ActionButton label="Set Governance Data" loading={isBusy('govData')} disabled={isBusy('govData') || !safeTarget}
+                    onClick={() => { const vc=numeric(votes),conv=Number(conviction); if(!vc||!Number.isInteger(conv)||conv<0||conv>6||!safeTarget)return; run('govData',()=>actions.setGovernanceData(safeTarget,vc,conv)); }} />
+            </Panel>
+
         </PageShell>
     );
 }

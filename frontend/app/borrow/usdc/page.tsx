@@ -165,27 +165,7 @@ function CollateralStep({ onSuccess }: {
                     <button onClick={() => setDismissed(true)} className="text-slate-500 hover:text-white text-xs shrink-0">✕</button>
                 </div>
             )}
-            {/* Progress indicator */}
-            <AnimatePresence>
-                {isProcessing && (
-                    <motion.div key="prog" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                        className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 space-y-2">
-                        <div className="flex items-center gap-3">
-                            <div className={cn('flex items-center gap-2 text-xs flex-1', phase === 'approved' || phase === 'depositing' ? 'text-emerald-400' : 'text-indigo-300')}>
-                                {phase === 'approved' || phase === 'depositing' ? <Check /> : <Spinner small />} Step 1/2 — Approve mUSDC
-                            </div>
-                            <div className={cn('flex items-center gap-2 text-xs flex-1', phase === 'depositing' ? 'text-indigo-300' : 'text-slate-600')}>
-                                {phase === 'depositing' ? <Spinner small /> : <span className="w-4 h-4" />} Step 2/2 — Deposit Collateral
-                            </div>
-                        </div>
-                        <div className="w-full h-1 rounded-full bg-white/10 overflow-hidden">
-                            <motion.div className="h-full bg-indigo-500 rounded-full" initial={{ width: '0%' }}
-                                animate={{ width: phase === 'approved' ? '50%' : phase === 'depositing' ? '75%' : '25%' }}
-                                transition={{ duration: 0.4 }} />
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {/* Progress indicator removed here to avoid redundancy with the button state */}
             <button onClick={handleDeposit} disabled={!amountAtoms || overBalance || isProcessing || phase === 'success'}
                 className={cn('w-full rounded-xl px-4 py-3 text-sm font-semibold transition-all flex items-center justify-center gap-2',
                     isProcessing ? 'bg-white/5 border border-white/10 text-slate-400 cursor-not-allowed'

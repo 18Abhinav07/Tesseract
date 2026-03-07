@@ -207,6 +207,81 @@ export function useProtocolActions() {
             functionName: 'adminForceClose',
             args: [user],
         })),
+
+        // ── New bulk / demo admin actions ────────────────────────────────
+        adminSetLendingTick: (tick: bigint) => tx('Set Lending global tick', 'lending', () => walletClient!.writeContract({
+            address: config.lending,
+            abi: ABIS.KREDIO_LENDING,
+            functionName: 'adminSetGlobalTick',
+            args: [tick],
+        })),
+        adminSetPasTick: (tick: bigint) => tx('Set PAS global tick', 'pas', () => walletClient!.writeContract({
+            address: config.pasMarket,
+            abi: ABIS.KREDIO_PAS_MARKET,
+            functionName: 'adminSetGlobalTick',
+            args: [tick],
+        })),
+        adminForceCloseAllLending: (users: `0x${string}`[]) => tx('Force-close ALL Lending positions', 'lending', () => walletClient!.writeContract({
+            address: config.lending,
+            abi: ABIS.KREDIO_LENDING,
+            functionName: 'adminForceCloseAll',
+            args: [users],
+        })),
+        adminForceCloseAllPas: (users: `0x${string}`[]) => tx('Force-close ALL PAS positions', 'pas', () => walletClient!.writeContract({
+            address: config.pasMarket,
+            abi: ABIS.KREDIO_PAS_MARKET,
+            functionName: 'adminForceCloseAll',
+            args: [users],
+        })),
+        adminBulkWithdrawLending: (depositors: `0x${string}`[]) => tx('Bulk-withdraw ALL Lending deposits', 'lending', () => walletClient!.writeContract({
+            address: config.lending,
+            abi: ABIS.KREDIO_LENDING,
+            functionName: 'adminBulkWithdrawDeposits',
+            args: [depositors],
+        })),
+        adminBulkWithdrawPas: (depositors: `0x${string}`[]) => tx('Bulk-withdraw ALL PAS deposits', 'pas', () => walletClient!.writeContract({
+            address: config.pasMarket,
+            abi: ABIS.KREDIO_PAS_MARKET,
+            functionName: 'adminBulkWithdrawDeposits',
+            args: [depositors],
+        })),
+        adminTickPoolLending: (borrowers: `0x${string}`[]) => tx('Tick Lending pool interest', 'lending', () => walletClient!.writeContract({
+            address: config.lending,
+            abi: ABIS.KREDIO_LENDING,
+            functionName: 'adminTickPool',
+            args: [borrowers],
+        })),
+        adminTickPoolPas: (borrowers: `0x${string}`[]) => tx('Tick PAS pool interest', 'pas', () => walletClient!.writeContract({
+            address: config.pasMarket,
+            abi: ABIS.KREDIO_PAS_MARKET,
+            functionName: 'adminTickPool',
+            args: [borrowers],
+        })),
+        adminResetUserScoreLending: (users: `0x${string}`[]) => tx('Reset Lending user scores', 'lending', () => walletClient!.writeContract({
+            address: config.lending,
+            abi: ABIS.KREDIO_LENDING,
+            functionName: 'adminResetUserScores',
+            args: [users],
+        })),
+        adminResetUserScorePas: (users: `0x${string}`[]) => tx('Reset PAS user scores', 'pas', () => walletClient!.writeContract({
+            address: config.pasMarket,
+            abi: ABIS.KREDIO_PAS_MARKET,
+            functionName: 'adminResetUserScores',
+            args: [users],
+        })),
+        adminHardResetLending: (to: `0x${string}`) => tx('HARD RESET Lending pool', 'lending', () => walletClient!.writeContract({
+            address: config.lending,
+            abi: ABIS.KREDIO_LENDING,
+            functionName: 'adminHardReset',
+            args: [to],
+        })),
+        adminHardResetPas: (to: `0x${string}`) => tx('HARD RESET PAS pool', 'pas', () => walletClient!.writeContract({
+            address: config.pasMarket,
+            abi: ABIS.KREDIO_PAS_MARKET,
+            functionName: 'adminHardReset',
+            args: [to],
+        })),
+
         sweepPasFees: (to: `0x${string}`) => tx('Sweep PAS market fees', 'pas', () => walletClient!.writeContract({
             address: config.pasMarket,
             abi: ABIS.KREDIO_PAS_MARKET,

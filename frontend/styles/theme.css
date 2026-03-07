@@ -12,7 +12,7 @@
   --text-main: #0f172a;
   --text-secondary: #64748b;
   
-  --font-primary: var(--font-jakarta), 'Inter', sans-serif;
+  --font-primary: var(--font-outfit), 'Inter', sans-serif;
   
   /* Borders */
   --glass-bg: transparent;
@@ -31,7 +31,7 @@
   --text-main: #f8fafc;
   --text-secondary: #64748b;
   
-  --font-primary: var(--font-jakarta), 'Inter', sans-serif;
+  --font-primary: var(--font-outfit), 'Inter', sans-serif;
 
   /* Borders */
   --glass-bg: transparent;

@@ -52,6 +52,7 @@ contract Deploy is Script {
 
     function run() external {
         uint256 pk = vm.envUint("PRIVATE_KEY");
+        address deployer = vm.addr(pk);
         vm.startBroadcast(pk);
 
         // ── 1. Deploy KredioLending ────────────────────────────────────────
@@ -60,9 +61,9 @@ contract Deploy is Script {
         // ── 2. Deploy KredioPASMarket ──────────────────────────────────────
         KredioPASMarket pasMarket = new KredioPASMarket(MUSDC, KREDIT_AGENT, ORACLE);
 
-        // ── 3. Seed lending pool (lender deposit so totalDeposited > 0) ────
+        // ── 3. Seed pools — mint explicitly to deployer wallet ────────────
         IMintable musdc = IMintable(MUSDC);
-        musdc.mint(msg.sender, POOL_SEED * 2);
+        musdc.mint(deployer, POOL_SEED * 2);
 
         musdc.approve(address(lending), POOL_SEED);
         lending.deposit(POOL_SEED);

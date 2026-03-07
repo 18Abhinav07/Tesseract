@@ -202,9 +202,12 @@ export function useUserPortfolio() {
         pasFirstSeenBlock: 0n,
     });
 
+    const hasLoadedOnce = React.useRef(false);
+
     const refresh = React.useCallback(async () => {
         if (!publicClient || !address) return;
-        setLoading(true);
+        // Only show the loading spinner for the initial fetch; background ticks are silent.
+        if (!hasLoadedOnce.current) setLoading(true);
         setError(null);
         try {
             const [
@@ -287,6 +290,7 @@ export function useUserPortfolio() {
                 pasTotalDepositedEver,
                 pasFirstSeenBlock,
             });
+            hasLoadedOnce.current = true;
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Unable to fetch portfolio data');
         } finally {

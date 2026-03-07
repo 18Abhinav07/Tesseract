@@ -45,7 +45,11 @@ contract KredioPASMarket is Ownable, ReentrancyGuard, Pausable {
     mapping(address => Position) public positions;
     mapping(address => uint64) public repaymentCount;
     mapping(address => uint64) public liquidationCount;
-    mapping(address => uint256) public demoRateMultiplier; // 0 or 1-1000
+    mapping(address => uint256) public demoRateMultiplier; // 0 or 1-1,000,000
+
+    /// @notice Global interest tick multiplier applied to ALL positions (0 = disabled = 1x).
+    /// @dev 525600 ≈ one year per second; 60 ≈ one minute of interest per second.
+    uint256 public globalTick;
 
     // Credit score inputs
     mapping(address => uint256) public totalDepositedEver; // cumulative lifetime USDC deposits (never decrements)
@@ -72,6 +76,10 @@ contract KredioPASMarket is Ownable, ReentrancyGuard, Pausable {
     event OracleUpdated(address indexed newOracle);
     event RiskParamsUpdated(uint256 ltvBps, uint256 liqBonusBps, uint256 stalenessLimit, uint256 protocolFeeBps);
     event DemoMultiplierSet(address indexed user, uint256 multiplier);
+    event GlobalTickSet(uint256 tick);
+    event UserScoreReset(address indexed user);
+    event PoolTicked(uint256 totalInterestDistributed);
+    event HardReset(address indexed to, uint256 usdcSwept);
 
     constructor(
         address _usdc,
@@ -336,9 +344,110 @@ contract KredioPASMarket is Ownable, ReentrancyGuard, Pausable {
         address user,
         uint256 multiplier
     ) external onlyOwner {
-        require(multiplier <= 1000, "max 1000x");
+        require(multiplier <= 1_000_000, "max 1M");
         demoRateMultiplier[user] = multiplier;
         emit DemoMultiplierSet(user, multiplier);
+    }
+
+    /// @notice Set global interest tick multiplier for ALL positions simultaneously.
+    /// @param tick 0 = disabled (1x normal), N = Nx accelerated. 60 = 1 sec equals 1 min of interest.
+    function adminSetGlobalTick(uint256 tick) external onlyOwner {
+        require(tick <= 1_000_000, "max 1M");
+        globalTick = tick;
+        emit GlobalTickSet(tick);
+    }
+
+    /// @notice Reset a single user's credit score history.
+    function adminResetUserScore(address user) external onlyOwner {
+        repaymentCount[user] = 0;
+        liquidationCount[user] = 0;
+        firstSeenBlock[user] = 0;
+        totalDepositedEver[user] = 0;
+        demoRateMultiplier[user] = 0;
+        emit UserScoreReset(user);
+    }
+
+    /// @notice Batch-reset credit score history for multiple users.
+    function adminResetUserScores(address[] calldata users) external onlyOwner {
+        for (uint256 i = 0; i < users.length; i++) {
+            repaymentCount[users[i]] = 0;
+            liquidationCount[users[i]] = 0;
+            firstSeenBlock[users[i]] = 0;
+            totalDepositedEver[users[i]] = 0;
+            demoRateMultiplier[users[i]] = 0;
+            emit UserScoreReset(users[i]);
+        }
+    }
+
+    /// @notice Batch force-close PAS positions and return PAS collateral. Absorbs unpaid USDC debt.
+    function adminForceCloseAll(address[] calldata users) external onlyOwner nonReentrant {
+        for (uint256 i = 0; i < users.length; i++) {
+            address user = users[i];
+            Position storage p = positions[user];
+            uint256 pasToReturn = collateralBalance[user];
+
+            if (p.active) {
+                if (p.debtUSDC <= totalBorrowed) totalBorrowed -= p.debtUSDC;
+                else totalBorrowed = 0;
+                pasToReturn += p.collateralPAS;
+                delete positions[user];
+            }
+
+            if (collateralBalance[user] > 0) collateralBalance[user] = 0;
+
+            if (pasToReturn > 0) {
+                (bool ok,) = payable(user).call{value: pasToReturn}("");
+                require(ok, "bulk force-close pas fail");
+            }
+            emit CollateralWithdrawn(user, pasToReturn);
+        }
+    }
+
+    /// @notice Force-withdraw USDC deposits for a batch of lenders without the normal liquidity check.
+    function adminBulkWithdrawDeposits(address[] calldata depositors) external onlyOwner nonReentrant {
+        for (uint256 i = 0; i < depositors.length; i++) {
+            address depositor = depositors[i];
+            uint256 amount = depositBalance[depositor];
+            if (amount == 0) continue;
+            depositBalance[depositor] = 0;
+            yieldDebt[depositor] = 0;
+            if (totalDeposited >= amount) totalDeposited -= amount;
+            else totalDeposited = 0;
+            require(usdc.transfer(depositor, amount), "bulk withdraw fail");
+            emit Withdrawn(depositor, amount);
+        }
+    }
+
+    /// @notice Force-accrue interest for PAS borrowers and distribute USDC to lenders as yield.
+    /// @dev Capitalises accrued interest into the borrower's principal and resets their clock.
+    function adminTickPool(address[] calldata borrowers) external onlyOwner nonReentrant {
+        uint256 totalInterest = 0;
+        for (uint256 i = 0; i < borrowers.length; i++) {
+            Position storage p = positions[borrowers[i]];
+            if (!p.active) continue;
+            uint256 interest = _accruedInterest(borrowers[i], p);
+            if (interest == 0) continue;
+            p.debtUSDC += interest;
+            p.openedAt = block.timestamp;
+            totalBorrowed += interest;
+            _distributeInterest(interest);
+            totalInterest += interest;
+        }
+        emit PoolTicked(totalInterest);
+    }
+
+    /// @notice Nuclear reset: zero all pool accounting and sweep all USDC to admin.
+    /// @dev PAS collateral is NOT swept (it belongs to borrowers). Call adminForceCloseAll first.
+    function adminHardReset(address to) external onlyOwner nonReentrant {
+        require(to != address(0), "zero addr");
+        totalBorrowed = 0;
+        totalDeposited = 0;
+        accYieldPerShare = 0;
+        protocolFees = 0;
+        globalTick = 0;
+        uint256 bal = usdc.balanceOf(address(this));
+        if (bal > 0) require(usdc.transfer(to, bal), "sweep fail");
+        emit HardReset(to, bal);
     }
 
     function pause() external onlyOwner {
@@ -467,14 +576,19 @@ contract KredioPASMarket is Ownable, ReentrancyGuard, Pausable {
         return 0;
     }
 
+    function _effectiveMultiplier(address borrower) internal view returns (uint256) {
+        uint256 userM = demoRateMultiplier[borrower];
+        uint256 effM = globalTick > userM ? globalTick : userM;
+        return effM == 0 ? 1 : effM;
+    }
+
     function _accruedInterest(
         address borrower,
         Position storage p
     ) internal view returns (uint256) {
         if (!p.active) return 0;
         uint256 elapsed = block.timestamp - p.openedAt;
-        uint256 multiplier = demoRateMultiplier[borrower];
-        uint256 rate = multiplier > 0 ? uint256(p.interestBps) * multiplier : p.interestBps;
+        uint256 rate = uint256(p.interestBps) * _effectiveMultiplier(borrower);
         return (p.debtUSDC * rate * elapsed) / (BPS_DIVISOR * 365 days);
     }
 
@@ -484,8 +598,7 @@ contract KredioPASMarket is Ownable, ReentrancyGuard, Pausable {
     ) internal view returns (uint256) {
         if (!p.active) return 0;
         uint256 elapsed = block.timestamp - p.openedAt;
-        uint256 multiplier = demoRateMultiplier[borrower];
-        uint256 rate = multiplier > 0 ? uint256(p.interestBps) * multiplier : p.interestBps;
+        uint256 rate = uint256(p.interestBps) * _effectiveMultiplier(borrower);
         return (p.debtUSDC * rate * elapsed) / (BPS_DIVISOR * 365 days);
     }
 
