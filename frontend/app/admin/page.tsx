@@ -316,7 +316,7 @@ export default function AdminPage() {
                 </Grid>
                 <div className="flex flex-wrap gap-2 mt-2">
                     <ActionButton label="Update Risk Params" loading={isBusy('riskParams')} disabled={isBusy('riskParams')}
-                        onClick={() => { const ltv=numeric(ltvBps),bonus=numeric(liqBonusBps),stale=numeric(staleness),fee=numeric(feeBps); if(!ltv||!bonus||!stale||!fee)return; run('riskParams',()=>actions.setPasRiskParams(ltv,bonus,stale,fee)); }} />
+                        onClick={() => { const ltv = numeric(ltvBps), bonus = numeric(liqBonusBps), stale = numeric(staleness), fee = numeric(feeBps); if (!ltv || !bonus || !stale || !fee) return; run('riskParams', () => actions.setPasRiskParams(ltv, bonus, stale, fee)); }} />
                     <ActionButton label="Pause PAS Market" variant="danger" loading={isBusy('pausePas')} disabled={isBusy('pausePas')}
                         onClick={() => run('pausePas', () => actions.pausePas())} />
                     <ActionButton label="Unpause PAS Market" variant="ghost" loading={isBusy('unpausePas')} disabled={isBusy('unpausePas')}
@@ -332,7 +332,7 @@ export default function AdminPage() {
                 <ActionInput label="Vote Count" value={votes} onChange={setVotes} placeholder="100" />
                 <ActionInput label="Max Conviction (0–6)" value={conviction} onChange={setConviction} placeholder="2" />
                 <ActionButton label="Set Governance Data" loading={isBusy('govData')} disabled={isBusy('govData') || !safeTarget}
-                    onClick={() => { const vc=numeric(votes),conv=Number(conviction); if(!vc||!Number.isInteger(conv)||conv<0||conv>6||!safeTarget)return; run('govData',()=>actions.setGovernanceData(safeTarget,vc,conv)); }} />
+                    onClick={() => { const vc = numeric(votes), conv = Number(conviction); if (!vc || !Number.isInteger(conv) || conv < 0 || conv > 6 || !safeTarget) return; run('govData', () => actions.setGovernanceData(safeTarget, vc, conv)); }} />
             </Panel>
 
         </PageShell>

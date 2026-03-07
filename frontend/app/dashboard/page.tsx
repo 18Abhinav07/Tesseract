@@ -38,33 +38,33 @@ function InfoRow({ label, value, tone }: { label: string; value: React.ReactNode
         <div className="flex items-center justify-between text-[13px] py-2.5 border-b border-white/5 last:border-0 group/row hover:bg-white/[0.02] px-3 -mx-3 rounded-lg transition-colors">
             <span className="text-slate-400">{label}</span>
             <span className={cn('font-semibold font-mono tracking-tight',
-                tone === 'green' ? 'text-emerald-400' : 
-                tone === 'yellow' ? 'text-amber-400' : 
-                tone === 'red' ? 'text-rose-400' : 
-                tone === 'blue' ? 'text-cyan-400' : 
-                tone === 'purple' ? 'text-purple-400' : 
-                'text-slate-100'
+                tone === 'green' ? 'text-emerald-400' :
+                    tone === 'yellow' ? 'text-amber-400' :
+                        tone === 'red' ? 'text-rose-400' :
+                            tone === 'blue' ? 'text-cyan-400' :
+                                tone === 'purple' ? 'text-purple-400' :
+                                    'text-slate-100'
             )}>{value}</span>
         </div>
     );
 }
 
-function MetricCard({ label, value, sub, tone }: { 
+function MetricCard({ label, value, sub, tone }: {
     label: string; value: string; sub?: string;
-    tone?: 'green' | 'red' | 'blue' | 'purple' 
+    tone?: 'green' | 'red' | 'blue' | 'purple'
 }) {
     const accent = {
-        green:  { bar: 'bg-emerald-500', text: 'text-emerald-400', ring: 'rgba(52,211,153,0.15)' },
-        blue:   { bar: 'bg-cyan-500',    text: 'text-cyan-400',    ring: 'rgba(34,211,238,0.15)' },
-        red:    { bar: 'bg-rose-500',    text: 'text-rose-400',    ring: 'rgba(244,63,94,0.15)'  },
-        purple: { bar: 'bg-purple-500',  text: 'text-purple-400',  ring: 'rgba(168,85,247,0.15)' },
+        green: { bar: 'bg-emerald-500', text: 'text-emerald-400', ring: 'rgba(52,211,153,0.15)' },
+        blue: { bar: 'bg-cyan-500', text: 'text-cyan-400', ring: 'rgba(34,211,238,0.15)' },
+        red: { bar: 'bg-rose-500', text: 'text-rose-400', ring: 'rgba(244,63,94,0.15)' },
+        purple: { bar: 'bg-purple-500', text: 'text-purple-400', ring: 'rgba(168,85,247,0.15)' },
     }[tone ?? 'blue'] ?? { bar: 'bg-white/20', text: 'text-white', ring: 'transparent' };
 
     return (
         <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/30 backdrop-blur-xl p-5 flex items-stretch gap-4 group hover:border-white/20 hover:bg-black/40 transition-all shadow-[0_0_0_1px_rgba(255,255,255,0.03)]">
             {/* Left accent bar */}
             <div className={`w-[3px] rounded-full shrink-0 ${accent.bar} opacity-70`} />
-            
+
             <div className="flex-1 min-w-0">
                 <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1.5">{label}</p>
                 <p className={`text-[22px] font-black tracking-tight truncate ${accent.text}`}>{value}</p>
@@ -103,7 +103,7 @@ function CreditScorePanel({ scoreValue, tier, collateralRatioBps, interestRateBp
     const score = Number(scoreValue);
     const scorePct = Math.min(score / 100, 1);
     const scoreTone = score >= 65 ? '#60A5FA' : score >= 50 ? '#34D399' : score >= 30 ? '#FBBF24' : '#F87171';
-    
+
     const repayments = Number(repaymentCount);
     const liquidations = Number(liquidationCount);
     const blocksSince = firstSeenBlock > 0n ? Number(currentBlock - firstSeenBlock) : 0;
@@ -111,8 +111,8 @@ function CreditScorePanel({ scoreValue, tier, collateralRatioBps, interestRateBp
     const dPts = depositPts(totalDepositedEver);
     const aPts = agePts(blocksSince);
 
-    const tierColors = ['#475569','#78350F','#9CA3AF','#B45309','#818CF8','#38BDF8'];
-    const tierNames  = ['ANON','BRONZE','SILVER','GOLD','PLATINUM','DIAMOND'];
+    const tierColors = ['#475569', '#78350F', '#9CA3AF', '#B45309', '#818CF8', '#38BDF8'];
+    const tierNames = ['ANON', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND'];
 
     return (
         <div className="rounded-2xl border border-white/10 bg-black/30 backdrop-blur-xl p-5 flex flex-col gap-5 justify-between h-full hover:border-white/20 hover:bg-black/35 transition-colors">
@@ -165,8 +165,8 @@ function CreditScorePanel({ scoreValue, tier, collateralRatioBps, interestRateBp
             {/* Score components */}
             <div className="space-y-2.5">
                 <ScoreBar label="Repayment History" value={rPts} max={55} color="#64748B" />
-                <ScoreBar label="Lending Volume"    value={dPts} max={35} color="#94A3B8" />
-                <ScoreBar label="Account Age"       value={aPts} max={10} color="#CBD5E1" />
+                <ScoreBar label="Lending Volume" value={dPts} max={35} color="#94A3B8" />
+                <ScoreBar label="Account Age" value={aPts} max={10} color="#CBD5E1" />
             </div>
 
             {/* Tier progression strip */}
@@ -193,12 +193,12 @@ function ScoreBar({ label, value, max, color }: { label: string; value: number; 
 
 function TierProgressStrip({ currentTier }: { currentTier: number }) {
     const tiers = [
-        { label: 'ANON',     color: '#64748B' },
-        { label: 'BRONZE',   color: '#92400E' },
-        { label: 'SILVER',   color: '#9CA3AF' },
-        { label: 'GOLD',     color: '#F59E0B' },
+        { label: 'ANON', color: '#64748B' },
+        { label: 'BRONZE', color: '#92400E' },
+        { label: 'SILVER', color: '#9CA3AF' },
+        { label: 'GOLD', color: '#F59E0B' },
         { label: 'PLATINUM', color: '#A78BFA' },
-        { label: 'DIAMOND',  color: '#22D3EE' },
+        { label: 'DIAMOND', color: '#22D3EE' },
     ];
     return (
         <div className="flex items-center gap-1 pt-1">
@@ -223,15 +223,15 @@ function PoolDonutChart({ label, totalDeposited, userDeposited, totalBorrowed, u
     const userAmt = Number(userDeposited) / 1e6;
     const borrowed = Number(totalBorrowed) / 1e6;
     const available = Math.max(0, total - borrowed);
-    
-    const R = 42; 
+
+    const R = 42;
     const circ = 2 * Math.PI * R;
     const utilPct = total > 0 ? borrowed / total : 0;
     const userPct = total > 0 ? userAmt / total : 0;
-    
+
     const borrowedDash = circ * utilPct;
     const availableDash = circ * (1 - utilPct);
-    
+
 
 
     return (
@@ -247,13 +247,13 @@ function PoolDonutChart({ label, totalDeposited, userDeposited, totalBorrowed, u
                 <div className="flex items-center gap-6 flex-1">
                     <div className="relative w-28 h-28 shrink-0">
                         <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90 overflow-visible">
-                            <circle cx="50" cy="50" r={R} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8"/>
+                            <circle cx="50" cy="50" r={R} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
                             {utilPct > 0 && (
                                 <circle cx="50" cy="50" r={R} fill="none" stroke="#475569" strokeWidth="8" strokeDasharray={`${borrowedDash} ${circ}`} strokeDashoffset="0" strokeLinecap="round" />
                             )}
-                            <circle cx="50" cy="50" r={R} fill="none" stroke={accent} strokeWidth="8" strokeDasharray={`${availableDash} ${circ}`} strokeDashoffset={`${-borrowedDash}`} strokeLinecap="round"/>
+                            <circle cx="50" cy="50" r={R} fill="none" stroke={accent} strokeWidth="8" strokeDasharray={`${availableDash} ${circ}`} strokeDashoffset={`${-borrowedDash}`} strokeLinecap="round" />
                             {userPct > 0 && (
-                                <circle cx="50" cy="50" r={R+6} fill="none" stroke={accent} strokeWidth="2" strokeDasharray={`${circ * userPct} ${circ}`} strokeDashoffset="0" strokeLinecap="round" opacity="0.6"/>
+                                <circle cx="50" cy="50" r={R + 6} fill="none" stroke={accent} strokeWidth="2" strokeDasharray={`${circ * userPct} ${circ}`} strokeDashoffset="0" strokeLinecap="round" opacity="0.6" />
                             )}
                         </svg>
                         <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -300,18 +300,18 @@ function HealthBar({ ratio }: { ratio: bigint }) {
         <div className="space-y-2 mt-5">
             <div className="flex justify-between items-center text-xs">
                 <span className="text-xs text-slate-400 uppercase tracking-wider">Position Health</span>
-                <span className={cn('px-2 py-0.5 rounded-md font-medium text-xs uppercase tracking-wider border', 
-                    tone === 'green' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 
-                    tone === 'yellow' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 
-                    'bg-rose-500/10 border-rose-500/20 text-rose-400 animate-pulse')}>
+                <span className={cn('px-2 py-0.5 rounded-md font-medium text-xs uppercase tracking-wider border',
+                    tone === 'green' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
+                        tone === 'yellow' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' :
+                            'bg-rose-500/10 border-rose-500/20 text-rose-400 animate-pulse')}>
                     {isFinite(num) ? num.toFixed(2) : '—'} • {lbl}
                 </span>
             </div>
             <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden ring-1 ring-inset ring-white/5">
-                <div className={cn('h-full rounded-full transition-all duration-500 relative', 
-                    tone === 'green' ? 'bg-gradient-to-r from-emerald-600 to-emerald-400' : 
-                    tone === 'yellow' ? 'bg-gradient-to-r from-amber-600 to-amber-400' : 
-                    'bg-gradient-to-r from-rose-600 to-rose-400'
+                <div className={cn('h-full rounded-full transition-all duration-500 relative',
+                    tone === 'green' ? 'bg-gradient-to-r from-emerald-600 to-emerald-400' :
+                        tone === 'yellow' ? 'bg-gradient-to-r from-amber-600 to-amber-400' :
+                            'bg-gradient-to-r from-rose-600 to-rose-400'
                 )} style={{ width: `${pct}%` }}>
                     <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent" />
                 </div>
@@ -357,58 +357,58 @@ function PASBorrowRow({ collateralWei, debtAtoms, accruedAtoms, totalOwedAtoms, 
     return (
         <div className="rounded-2xl border border-white/10 bg-black/30 backdrop-blur-xl hover:border-white/20 hover:bg-black/35 transition-colors">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 gap-5">
-               <div className="flex-[1.2]">
-                   <p className="text-xs text-slate-400 uppercase tracking-wider">PAS Market</p>
-                   <p className="text-sm font-semibold text-white mt-1">Borrow Position</p>
-               </div>
-               
-               <div className="flex-1">
-                   <p className="text-xs text-slate-400 uppercase tracking-wider">Collateral</p>
-                   <p className="text-sm font-medium text-white mt-1">{fmt18(collateralWei, 4)} <span className="text-slate-500">PAS</span></p>
-               </div>
+                <div className="flex-[1.2]">
+                    <p className="text-xs text-slate-400 uppercase tracking-wider">PAS Market</p>
+                    <p className="text-sm font-semibold text-white mt-1">Borrow Position</p>
+                </div>
 
-               <div className="flex-1">
-                   <p className="text-xs text-slate-400 uppercase tracking-wider">Principal</p>
-                   <p className="text-sm font-medium text-white mt-1">{fmt6(debtAtoms)} <span className="text-slate-500">mUSDC</span></p>
-               </div>
+                <div className="flex-1">
+                    <p className="text-xs text-slate-400 uppercase tracking-wider">Collateral</p>
+                    <p className="text-sm font-medium text-white mt-1">{fmt18(collateralWei, 4)} <span className="text-slate-500">PAS</span></p>
+                </div>
 
-               <div className="flex-1">
-                   <p className="text-xs text-slate-400 uppercase tracking-wider">Accrued Interest</p>
-                   <p className="text-sm font-medium text-amber-400 mt-1">{fmt6(accruedAtoms, 6)} <span className="text-slate-500">mUSDC</span></p>
-               </div>
-               
-               <div className="flex-[0.8]">
-                   <p className="text-xs text-slate-400 uppercase tracking-wider">Health</p>
-                   <p className={cn("text-sm font-medium mt-1", tone === 'green' ? 'text-emerald-400' : tone === 'yellow' ? 'text-amber-400' : 'text-rose-400')}>{isFinite(healthNum(healthRatio)) ? healthNum(healthRatio).toFixed(2) : '—'}</p>
-               </div>
+                <div className="flex-1">
+                    <p className="text-xs text-slate-400 uppercase tracking-wider">Principal</p>
+                    <p className="text-sm font-medium text-white mt-1">{fmt6(debtAtoms)} <span className="text-slate-500">mUSDC</span></p>
+                </div>
 
-               <div className="shrink-0 flex items-center justify-end gap-2 w-full sm:w-auto">
-                   {repayPhase === 'idle' && withdrawPhase === 'idle' ? (
-                       <>
-                           {debtAtoms > 0n && <button onClick={() => { onBusy(true); setRepayPhase('confirming'); }} className="px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 hover:text-white transition-colors">Repay</button>}
-                           <button onClick={() => { onBusy(true); setWithdrawPhase('confirming'); }} disabled={!canWithdraw} className="px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors">Withdraw</button>
-                       </>
-                   ) : repayPhase !== 'idle' ? (
-                       <div className="flex gap-2">
-                           {repayPhase === 'confirming' && (<>
-                               <button onClick={handleConfirmRepay} className="px-3 py-2 rounded-xl text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-colors">Confirm</button>
-                               <button onClick={() => { setRepayPhase('idle'); onBusy(false); }} className="px-3 py-2 rounded-xl text-xs font-medium border border-white/10 text-slate-400 hover:text-white transition-colors">Cancel</button>
-                           </>)}
-                           {repayPhase === 'approving' && (<div className="flex items-center gap-2 text-xs text-indigo-300 px-3 py-2"><Spinner small />Approving…</div>)}
-                           {repayPhase === 'repaying'  && (<div className="flex items-center gap-2 text-xs text-indigo-300 px-3 py-2"><Spinner small />Repaying…</div>)}
-                           {repayPhase === 'success'   && (<div className="flex items-center gap-1.5 text-xs text-emerald-400 px-3 py-2"><Check />Done</div>)}
-                       </div>
-                   ) : withdrawPhase !== 'idle' ? (
-                       <div className="flex gap-2">
-                           {withdrawPhase === 'confirming' && (<>
-                               <button onClick={handleConfirmWithdraw} className="px-3 py-2 rounded-xl text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-colors">Confirm</button>
-                               <button onClick={() => { setWithdrawPhase('idle'); onBusy(false); }} className="px-3 py-2 rounded-xl text-xs font-medium border border-white/10 text-slate-400 hover:text-white transition-colors">Cancel</button>
-                           </>)}
-                           {withdrawPhase === 'withdrawing' && (<div className="flex items-center gap-2 text-xs text-slate-400 px-3 py-2"><Spinner small />Withdrawing…</div>)}
-                           {withdrawPhase === 'success'    && (<div className="flex items-center gap-1.5 text-xs text-emerald-400 px-3 py-2"><Check />Done</div>)}
-                       </div>
-                   ) : null}
-               </div>
+                <div className="flex-1">
+                    <p className="text-xs text-slate-400 uppercase tracking-wider">Accrued Interest</p>
+                    <p className="text-sm font-medium text-amber-400 mt-1">{fmt6(accruedAtoms, 6)} <span className="text-slate-500">mUSDC</span></p>
+                </div>
+
+                <div className="flex-[0.8]">
+                    <p className="text-xs text-slate-400 uppercase tracking-wider">Health</p>
+                    <p className={cn("text-sm font-medium mt-1", tone === 'green' ? 'text-emerald-400' : tone === 'yellow' ? 'text-amber-400' : 'text-rose-400')}>{isFinite(healthNum(healthRatio)) ? healthNum(healthRatio).toFixed(2) : '—'}</p>
+                </div>
+
+                <div className="shrink-0 flex items-center justify-end gap-2 w-full sm:w-auto">
+                    {repayPhase === 'idle' && withdrawPhase === 'idle' ? (
+                        <>
+                            {debtAtoms > 0n && <button onClick={() => { onBusy(true); setRepayPhase('confirming'); }} className="px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 hover:text-white transition-colors">Repay</button>}
+                            <button onClick={() => { onBusy(true); setWithdrawPhase('confirming'); }} disabled={!canWithdraw} className="px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors">Withdraw</button>
+                        </>
+                    ) : repayPhase !== 'idle' ? (
+                        <div className="flex gap-2">
+                            {repayPhase === 'confirming' && (<>
+                                <button onClick={handleConfirmRepay} className="px-3 py-2 rounded-xl text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-colors">Confirm</button>
+                                <button onClick={() => { setRepayPhase('idle'); onBusy(false); }} className="px-3 py-2 rounded-xl text-xs font-medium border border-white/10 text-slate-400 hover:text-white transition-colors">Cancel</button>
+                            </>)}
+                            {repayPhase === 'approving' && (<div className="flex items-center gap-2 text-xs text-indigo-300 px-3 py-2"><Spinner small />Approving…</div>)}
+                            {repayPhase === 'repaying' && (<div className="flex items-center gap-2 text-xs text-indigo-300 px-3 py-2"><Spinner small />Repaying…</div>)}
+                            {repayPhase === 'success' && (<div className="flex items-center gap-1.5 text-xs text-emerald-400 px-3 py-2"><Check />Done</div>)}
+                        </div>
+                    ) : withdrawPhase !== 'idle' ? (
+                        <div className="flex gap-2">
+                            {withdrawPhase === 'confirming' && (<>
+                                <button onClick={handleConfirmWithdraw} className="px-3 py-2 rounded-xl text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-colors">Confirm</button>
+                                <button onClick={() => { setWithdrawPhase('idle'); onBusy(false); }} className="px-3 py-2 rounded-xl text-xs font-medium border border-white/10 text-slate-400 hover:text-white transition-colors">Cancel</button>
+                            </>)}
+                            {withdrawPhase === 'withdrawing' && (<div className="flex items-center gap-2 text-xs text-slate-400 px-3 py-2"><Spinner small />Withdrawing…</div>)}
+                            {withdrawPhase === 'success' && (<div className="flex items-center gap-1.5 text-xs text-emerald-400 px-3 py-2"><Check />Done</div>)}
+                        </div>
+                    ) : null}
+                </div>
             </div>
         </div>
     );
@@ -445,59 +445,59 @@ function USDCBorrowRow({ collateralAtoms, debtAtoms, accruedAtoms, totalOwedAtom
     return (
         <div className="rounded-2xl border border-white/10 bg-black/30 backdrop-blur-xl hover:border-white/20 hover:bg-black/35 transition-colors">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 gap-5">
-               <div className="flex-[1.2]">
-                   <p className="text-xs text-slate-400 uppercase tracking-wider">USDC Market</p>
-                   <p className="text-sm font-semibold text-white mt-1">Borrow Position</p>
-               </div>
-               
-               <div className="flex-1">
-                   <p className="text-xs text-slate-400 uppercase tracking-wider">Collateral</p>
-                   <p className="text-sm font-medium text-white mt-1">{fmt6(collateralAtoms > 0n ? collateralAtoms : walletCollateralAtoms)} <span className="text-slate-500">mUSDC</span></p>
-                   {walletCollateralAtoms > 0n && collateralAtoms === 0n && <p className="text-xs text-slate-600 mt-0.5">Unlocked — no active position</p>}
-               </div>
+                <div className="flex-[1.2]">
+                    <p className="text-xs text-slate-400 uppercase tracking-wider">USDC Market</p>
+                    <p className="text-sm font-semibold text-white mt-1">Borrow Position</p>
+                </div>
 
-               <div className="flex-1">
-                   <p className="text-xs text-slate-400 uppercase tracking-wider">Principal</p>
-                   <p className="text-sm font-medium text-white mt-1">{fmt6(debtAtoms)} <span className="text-slate-500">mUSDC</span></p>
-               </div>
+                <div className="flex-1">
+                    <p className="text-xs text-slate-400 uppercase tracking-wider">Collateral</p>
+                    <p className="text-sm font-medium text-white mt-1">{fmt6(collateralAtoms > 0n ? collateralAtoms : walletCollateralAtoms)} <span className="text-slate-500">mUSDC</span></p>
+                    {walletCollateralAtoms > 0n && collateralAtoms === 0n && <p className="text-xs text-slate-600 mt-0.5">Unlocked — no active position</p>}
+                </div>
 
-               <div className="flex-1">
-                   <p className="text-xs text-slate-400 uppercase tracking-wider">Accrued Interest</p>
-                   <p className="text-sm font-medium text-amber-400 mt-1">{fmt6(accruedAtoms, 6)} <span className="text-slate-500">mUSDC</span></p>
-               </div>
-               
-               <div className="flex-[0.8]">
-                   <p className="text-xs text-slate-400 uppercase tracking-wider">Health</p>
-                   <p className={cn("text-sm font-medium mt-1", tone === 'green' ? 'text-emerald-400' : tone === 'yellow' ? 'text-amber-400' : 'text-rose-400')}>{isFinite(healthNum(healthRatio)) ? healthNum(healthRatio).toFixed(2) : '—'}</p>
-               </div>
+                <div className="flex-1">
+                    <p className="text-xs text-slate-400 uppercase tracking-wider">Principal</p>
+                    <p className="text-sm font-medium text-white mt-1">{fmt6(debtAtoms)} <span className="text-slate-500">mUSDC</span></p>
+                </div>
 
-               <div className="shrink-0 flex items-center justify-end gap-2 w-full sm:w-auto">
-                   {repayPhase === 'idle' && withdrawPhase === 'idle' ? (
-                       <>
-                           {debtAtoms > 0n && <button onClick={() => { onBusy(true); setRepayPhase('confirming'); }} className="px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 hover:text-white transition-colors">Repay</button>}
-                           <button onClick={() => { onBusy(true); setWithdrawPhase('confirming'); }} disabled={!canWithdraw} className="px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors">Withdraw</button>
-                       </>
-                   ) : repayPhase !== 'idle' ? (
-                       <div className="flex gap-2">
-                           {repayPhase === 'confirming' && (<>
-                               <button onClick={handleConfirmRepay} className="px-3 py-2 rounded-xl text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-colors">Confirm</button>
-                               <button onClick={() => { setRepayPhase('idle'); onBusy(false); }} className="px-3 py-2 rounded-xl text-xs font-medium border border-white/10 text-slate-400 hover:text-white transition-colors">Cancel</button>
-                           </>)}
-                           {repayPhase === 'approving' && (<div className="flex items-center gap-2 text-xs text-indigo-300 px-3 py-2"><Spinner small />Approving…</div>)}
-                           {repayPhase === 'repaying'  && (<div className="flex items-center gap-2 text-xs text-indigo-300 px-3 py-2"><Spinner small />Repaying…</div>)}
-                           {repayPhase === 'success'   && (<div className="flex items-center gap-1.5 text-xs text-emerald-400 px-3 py-2"><Check />Done</div>)}
-                       </div>
-                   ) : withdrawPhase !== 'idle' ? (
-                       <div className="flex gap-2">
-                           {withdrawPhase === 'confirming' && (<>
-                               <button onClick={handleConfirmWithdraw} className="px-3 py-2 rounded-xl text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-colors">Confirm</button>
-                               <button onClick={() => { setWithdrawPhase('idle'); onBusy(false); }} className="px-3 py-2 rounded-xl text-xs font-medium border border-white/10 text-slate-400 hover:text-white transition-colors">Cancel</button>
-                           </>)}
-                           {withdrawPhase === 'withdrawing' && (<div className="flex items-center gap-2 text-xs text-slate-400 px-3 py-2"><Spinner small />Withdrawing…</div>)}
-                           {withdrawPhase === 'success'    && (<div className="flex items-center gap-1.5 text-xs text-emerald-400 px-3 py-2"><Check />Done</div>)}
-                       </div>
-                   ) : null}
-               </div>
+                <div className="flex-1">
+                    <p className="text-xs text-slate-400 uppercase tracking-wider">Accrued Interest</p>
+                    <p className="text-sm font-medium text-amber-400 mt-1">{fmt6(accruedAtoms, 6)} <span className="text-slate-500">mUSDC</span></p>
+                </div>
+
+                <div className="flex-[0.8]">
+                    <p className="text-xs text-slate-400 uppercase tracking-wider">Health</p>
+                    <p className={cn("text-sm font-medium mt-1", tone === 'green' ? 'text-emerald-400' : tone === 'yellow' ? 'text-amber-400' : 'text-rose-400')}>{isFinite(healthNum(healthRatio)) ? healthNum(healthRatio).toFixed(2) : '—'}</p>
+                </div>
+
+                <div className="shrink-0 flex items-center justify-end gap-2 w-full sm:w-auto">
+                    {repayPhase === 'idle' && withdrawPhase === 'idle' ? (
+                        <>
+                            {debtAtoms > 0n && <button onClick={() => { onBusy(true); setRepayPhase('confirming'); }} className="px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 hover:text-white transition-colors">Repay</button>}
+                            <button onClick={() => { onBusy(true); setWithdrawPhase('confirming'); }} disabled={!canWithdraw} className="px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors">Withdraw</button>
+                        </>
+                    ) : repayPhase !== 'idle' ? (
+                        <div className="flex gap-2">
+                            {repayPhase === 'confirming' && (<>
+                                <button onClick={handleConfirmRepay} className="px-3 py-2 rounded-xl text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-colors">Confirm</button>
+                                <button onClick={() => { setRepayPhase('idle'); onBusy(false); }} className="px-3 py-2 rounded-xl text-xs font-medium border border-white/10 text-slate-400 hover:text-white transition-colors">Cancel</button>
+                            </>)}
+                            {repayPhase === 'approving' && (<div className="flex items-center gap-2 text-xs text-indigo-300 px-3 py-2"><Spinner small />Approving…</div>)}
+                            {repayPhase === 'repaying' && (<div className="flex items-center gap-2 text-xs text-indigo-300 px-3 py-2"><Spinner small />Repaying…</div>)}
+                            {repayPhase === 'success' && (<div className="flex items-center gap-1.5 text-xs text-emerald-400 px-3 py-2"><Check />Done</div>)}
+                        </div>
+                    ) : withdrawPhase !== 'idle' ? (
+                        <div className="flex gap-2">
+                            {withdrawPhase === 'confirming' && (<>
+                                <button onClick={handleConfirmWithdraw} className="px-3 py-2 rounded-xl text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-colors">Confirm</button>
+                                <button onClick={() => { setWithdrawPhase('idle'); onBusy(false); }} className="px-3 py-2 rounded-xl text-xs font-medium border border-white/10 text-slate-400 hover:text-white transition-colors">Cancel</button>
+                            </>)}
+                            {withdrawPhase === 'withdrawing' && (<div className="flex items-center gap-2 text-xs text-slate-400 px-3 py-2"><Spinner small />Withdrawing…</div>)}
+                            {withdrawPhase === 'success' && (<div className="flex items-center gap-1.5 text-xs text-emerald-400 px-3 py-2"><Check />Done</div>)}
+                        </div>
+                    ) : null}
+                </div>
             </div>
         </div>
     );
@@ -510,9 +510,9 @@ type WdPhase = 'idle' | 'confirming' | 'withdrawing' | 'success';
 type HvPhase = 'idle' | 'harvesting' | 'success';
 
 const EVENT_META: Record<LendHistoryEntry['type'], { label: string; color: string }> = {
-    deposit:  { label: 'Deposit',      color: 'text-indigo-300' },
-    withdraw: { label: 'Withdrawn',    color: 'text-slate-400'  },
-    yield:    { label: 'Yield Claimed', color: 'text-amber-300' },
+    deposit: { label: 'Deposit', color: 'text-indigo-300' },
+    withdraw: { label: 'Withdrawn', color: 'text-slate-400' },
+    yield: { label: 'Yield Claimed', color: 'text-amber-300' },
 };
 
 function UnifiedLendingActivity({
@@ -531,10 +531,10 @@ function UnifiedLendingActivity({
     const ITEMS = 8;
 
     const [wdTarget, setWdTarget] = useState<WdTarget>(null);
-    const [wdInput,  setWdInput]  = useState('');
-    const [wdPhase,  setWdPhase]  = useState<WdPhase>('idle');
+    const [wdInput, setWdInput] = useState('');
+    const [wdPhase, setWdPhase] = useState<WdPhase>('idle');
     const [hvTarget, setHvTarget] = useState<WdTarget>(null);
-    const [hvPhase,  setHvPhase]  = useState<HvPhase>('idle');
+    const [hvPhase, setHvPhase] = useState<HvPhase>('idle');
 
     const { writeContract: writWd, data: wdHash, isError: wdErr } = useWriteContract();
     const { isSuccess: wdOk } = useWaitForTransactionReceipt({ hash: wdHash });
@@ -574,7 +574,7 @@ function UnifiedLendingActivity({
         if (atoms > maxAmt) return;
         setWdPhase('withdrawing');
         const addr = wdTarget === 'lending' ? config.lending : config.pasMarket;
-        const abi  = wdTarget === 'lending' ? ABIS.KREDIO_LENDING : ABIS.KREDIO_PAS_MARKET;
+        const abi = wdTarget === 'lending' ? ABIS.KREDIO_LENDING : ABIS.KREDIO_PAS_MARKET;
         writWd({ address: addr, abi, functionName: 'withdraw', args: [atoms] });
     };
     const doHarvest = (target: 'lending' | 'pas') => {
@@ -582,22 +582,22 @@ function UnifiedLendingActivity({
         onBusy(true);
         setHvTarget(target); setHvPhase('harvesting');
         const addr = target === 'lending' ? config.lending : config.pasMarket;
-        const abi  = target === 'lending' ? ABIS.KREDIO_LENDING : ABIS.KREDIO_PAS_MARKET;
+        const abi = target === 'lending' ? ABIS.KREDIO_LENDING : ABIS.KREDIO_PAS_MARKET;
         writHv({ address: addr, abi, functionName: 'pendingYieldAndHarvest', args: [address] });
     };
 
-    const totalDeposited    = history.filter(e => e.type === 'deposit' ).reduce((s, e) => s + e.amount, 0n);
-    const totalYieldClaimed = history.filter(e => e.type === 'yield'   ).reduce((s, e) => s + e.amount, 0n);
-    const activeTotal  = lendingDeposit + pasDeposit;   // both in mUSDC 6-dec
-    const pendingTotal = lendingYield   + pasYield;
-    const hasLending   = lendingDeposit > 0n;
-    const hasPas       = pasDeposit     > 0n;
-    const totalPages   = Math.max(1, Math.ceil(history.length / ITEMS));
-    const paged        = history.slice((page - 1) * ITEMS, page * ITEMS);
+    const totalDeposited = history.filter(e => e.type === 'deposit').reduce((s, e) => s + e.amount, 0n);
+    const totalYieldClaimed = history.filter(e => e.type === 'yield').reduce((s, e) => s + e.amount, 0n);
+    const activeTotal = lendingDeposit + pasDeposit;   // both in mUSDC 6-dec
+    const pendingTotal = lendingYield + pasYield;
+    const hasLending = lendingDeposit > 0n;
+    const hasPas = pasDeposit > 0n;
+    const totalPages = Math.max(1, Math.ceil(history.length / ITEMS));
+    const paged = history.slice((page - 1) * ITEMS, page * ITEMS);
 
     const renderExpand = (target: 'lending' | 'pas') => {
         const deposit = target === 'lending' ? lendingDeposit : pasDeposit;
-        const maxVal  = (Number(deposit) / 1e6).toFixed(2);
+        const maxVal = (Number(deposit) / 1e6).toFixed(2);
         return (
             <tr className="bg-[#05080F]">
                 <td colSpan={7} className="px-5 py-4 border-b border-white/5">
@@ -637,7 +637,7 @@ function UnifiedLendingActivity({
                         <div className="flex items-center gap-2 text-slate-400 text-xs py-1">
                             <Spinner small /> Submitting to network…
                         </div>
-                        )}
+                    )}
                     {wdPhase === 'success' && (
                         <div className="flex items-center gap-2 text-emerald-400 text-xs py-1">
                             <Check /> Withdrawal confirmed
@@ -756,7 +756,7 @@ function UnifiedLendingActivity({
                     </thead>
                     <tbody>
                         {hasLending && renderActiveRow('lending', 'USDC Market', lendingDeposit, lendingYield)}
-                        {hasPas     && renderActiveRow('pas',     'PAS Market',  pasDeposit,     pasYield)}
+                        {hasPas && renderActiveRow('pas', 'PAS Market', pasDeposit, pasYield)}
 
                         {/* Separator between live positions and history */}
                         {(hasLending || hasPas) && history.length > 0 && (
@@ -830,9 +830,9 @@ function UnifiedLendingActivity({
 
 // ── Rich Analytics Row ────────────────────────────────────────────────────
 
-function AnalyticsRow({ 
+function AnalyticsRow({
     scoreValue, collateralRatioBps, interestRateBps,
-    lending, pasMarket, 
+    lending, pasMarket,
     portfolio
 }: {
     scoreValue: bigint; collateralRatioBps: number; interestRateBps: number;
@@ -841,7 +841,7 @@ function AnalyticsRow({
 }) {
     const score = Number(scoreValue);
     const scorePct = Math.min(score / 100, 1) * 100;
-    
+
     // Identity Donut
     const scoreSegments = [
         { label: 'Score', value: score, colorClass: score >= 65 ? 'stroke-cyan-400' : score >= 50 ? 'stroke-emerald-400' : score >= 30 ? 'stroke-amber-400' : score > 0 ? 'stroke-rose-400' : 'stroke-slate-500' },
@@ -869,14 +869,14 @@ function AnalyticsRow({
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
+
             {/* 1. Credit Identity */}
             <div className="rounded-2xl border border-white/10 bg-black/30 backdrop-blur-xl p-6 flex flex-col items-center hover:border-white/20 transition-colors">
                 <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-6 w-full text-center">
                     Identity Score
                 </h3>
-                <DonutChart 
-                    segments={scoreSegments} 
+                <DonutChart
+                    segments={scoreSegments}
                     size={160}
                     strokeWidth={12}
                     centerLabel="Reputation"
@@ -891,8 +891,8 @@ function AnalyticsRow({
                 <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-6 w-full text-center">
                     Global Depository
                 </h3>
-                <DonutChart 
-                    segments={tvlSegments} 
+                <DonutChart
+                    segments={tvlSegments}
                     size={160}
                     strokeWidth={12}
                     centerLabel="Total Liquidity"
@@ -907,8 +907,8 @@ function AnalyticsRow({
                 <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-6 w-full text-center">
                     Your Capital
                 </h3>
-                <DonutChart 
-                    segments={userDepositSegments} 
+                <DonutChart
+                    segments={userDepositSegments}
                     size={160}
                     strokeWidth={12}
                     centerLabel="Total Supplied"
@@ -953,9 +953,9 @@ export default function DashboardPage() {
 
     // Background tick: only refresh score + history (global + portfolio self-refresh).
     // Using a stable ref so the interval is created once and never recreated on re-renders.
-    const refreshScoreRef    = useRef(refreshScore);
-    const refreshHistoryRef  = useRef(refreshHistory);
-    useEffect(() => { refreshScoreRef.current   = refreshScore;   }, [refreshScore]);
+    const refreshScoreRef = useRef(refreshScore);
+    const refreshHistoryRef = useRef(refreshHistory);
+    useEffect(() => { refreshScoreRef.current = refreshScore; }, [refreshScore]);
     useEffect(() => { refreshHistoryRef.current = refreshHistory; }, [refreshHistory]);
     useEffect(() => {
         if (!portfolio.loading && !globalLoading) setHasLoadedOnce(true);
@@ -1025,7 +1025,7 @@ export default function DashboardPage() {
                     {/* Main content — stays mounted after first load so transaction state is never lost */}
                     {(hasLoadedOnce || (!portfolio.loading && !globalLoading)) && (
                         <div className="flex flex-col gap-10">
-                            
+
                             {/* Row 2: Analytics 3-column grid */}
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
                                 <CreditScorePanel
@@ -1036,12 +1036,12 @@ export default function DashboardPage() {
                                     repaymentCount={Number(portfolio.pasRepaymentCount + portfolio.lendingRepaymentCount)}
                                     liquidationCount={Number(portfolio.pasLiquidationCount + portfolio.lendingLiquidationCount)}
                                     totalDepositedEver={portfolio.pasTotalDepositedEver + portfolio.lendingTotalDepositedEver}
-                                    firstSeenBlock={portfolio.pasFirstSeenBlock > 0n && portfolio.lendingFirstSeenBlock > 0n ? 
-                                        (portfolio.pasFirstSeenBlock < portfolio.lendingFirstSeenBlock ? portfolio.pasFirstSeenBlock : portfolio.lendingFirstSeenBlock) 
+                                    firstSeenBlock={portfolio.pasFirstSeenBlock > 0n && portfolio.lendingFirstSeenBlock > 0n ?
+                                        (portfolio.pasFirstSeenBlock < portfolio.lendingFirstSeenBlock ? portfolio.pasFirstSeenBlock : portfolio.lendingFirstSeenBlock)
                                         : (portfolio.pasFirstSeenBlock > 0n ? portfolio.pasFirstSeenBlock : portfolio.lendingFirstSeenBlock)}
                                     currentBlock={score.blockNumber}
                                 />
-                                
+
                                 <PoolDonutChart
                                     label="PAS Market"
                                     totalDeposited={pasMarket.totalDeposited}

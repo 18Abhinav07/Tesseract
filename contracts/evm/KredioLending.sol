@@ -333,14 +333,18 @@ contract KredioLending is ReentrancyGuard {
 
     /// @notice Set global interest tick multiplier for ALL positions simultaneously.
     /// @param tick 0 = disabled (1x normal), N = Nx accelerated. 60 = 1 sec equals 1 min of interest.
-    function adminSetGlobalTick(uint256 tick) external onlyAdmin {
+    function adminSetGlobalTick(
+        uint256 tick
+    ) external onlyAdmin {
         require(tick <= 1_000_000, "max 1M");
         globalTick = tick;
         emit GlobalTickSet(tick);
     }
 
     /// @notice Reset a single user's credit score history.
-    function adminResetUserScore(address user) external onlyAdmin {
+    function adminResetUserScore(
+        address user
+    ) external onlyAdmin {
         repaymentCount[user] = 0;
         liquidationCount[user] = 0;
         firstSeenBlock[user] = 0;
@@ -350,7 +354,9 @@ contract KredioLending is ReentrancyGuard {
     }
 
     /// @notice Batch-reset credit score history for multiple users.
-    function adminResetUserScores(address[] calldata users) external onlyAdmin {
+    function adminResetUserScores(
+        address[] calldata users
+    ) external onlyAdmin {
         for (uint256 i = 0; i < users.length; i++) {
             repaymentCount[users[i]] = 0;
             liquidationCount[users[i]] = 0;
@@ -362,7 +368,9 @@ contract KredioLending is ReentrancyGuard {
     }
 
     /// @notice Batch force-close positions and return USDC collateral. Absorbs unpaid debt.
-    function adminForceCloseAll(address[] calldata users) external onlyAdmin nonReentrant {
+    function adminForceCloseAll(
+        address[] calldata users
+    ) external onlyAdmin nonReentrant {
         for (uint256 i = 0; i < users.length; i++) {
             address user = users[i];
             Position storage p = positions[user];
@@ -390,7 +398,9 @@ contract KredioLending is ReentrancyGuard {
 
     /// @notice Force-withdraw deposits for a batch of lenders without the normal liquidity check.
     /// @dev Call after adminForceCloseAll so totalBorrowed = 0. Absorbs any yield shortfall.
-    function adminBulkWithdrawDeposits(address[] calldata depositors) external onlyAdmin nonReentrant {
+    function adminBulkWithdrawDeposits(
+        address[] calldata depositors
+    ) external onlyAdmin nonReentrant {
         for (uint256 i = 0; i < depositors.length; i++) {
             address depositor = depositors[i];
             uint256 amount = depositBalance[depositor];
@@ -407,7 +417,9 @@ contract KredioLending is ReentrancyGuard {
     /// @notice Force-accrue interest for borrowers and immediately distribute it as yield to lenders.
     /// @dev Capitalises accrued interest into the borrower's principal and resets their clock.
     ///      This lets lenders see real-time yield growth without waiting for borrower repayments.
-    function adminTickPool(address[] calldata borrowers) external onlyAdmin nonReentrant {
+    function adminTickPool(
+        address[] calldata borrowers
+    ) external onlyAdmin nonReentrant {
         uint256 totalInterest = 0;
         for (uint256 i = 0; i < borrowers.length; i++) {
             Position storage p = positions[borrowers[i]];
@@ -425,7 +437,9 @@ contract KredioLending is ReentrancyGuard {
 
     /// @notice Nuclear reset: zero all pool accounting and sweep all USDC to admin.
     /// @dev ALL user deposits are sent to `to`. For testnet fresh-start resets only.
-    function adminHardReset(address to) external onlyAdmin nonReentrant {
+    function adminHardReset(
+        address to
+    ) external onlyAdmin nonReentrant {
         require(to != address(0), "zero addr");
         totalBorrowed = 0;
         totalDeposited = 0;
@@ -614,7 +628,9 @@ contract KredioLending is ReentrancyGuard {
         }
     }
 
-    function _effectiveMultiplier(address borrower) internal view returns (uint256) {
+    function _effectiveMultiplier(
+        address borrower
+    ) internal view returns (uint256) {
         uint256 userM = demoRateMultiplier[borrower];
         uint256 effM = globalTick > userM ? globalTick : userM;
         return effM == 0 ? 1 : effM;

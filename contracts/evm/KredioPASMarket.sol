@@ -351,14 +351,18 @@ contract KredioPASMarket is Ownable, ReentrancyGuard, Pausable {
 
     /// @notice Set global interest tick multiplier for ALL positions simultaneously.
     /// @param tick 0 = disabled (1x normal), N = Nx accelerated. 60 = 1 sec equals 1 min of interest.
-    function adminSetGlobalTick(uint256 tick) external onlyOwner {
+    function adminSetGlobalTick(
+        uint256 tick
+    ) external onlyOwner {
         require(tick <= 1_000_000, "max 1M");
         globalTick = tick;
         emit GlobalTickSet(tick);
     }
 
     /// @notice Reset a single user's credit score history.
-    function adminResetUserScore(address user) external onlyOwner {
+    function adminResetUserScore(
+        address user
+    ) external onlyOwner {
         repaymentCount[user] = 0;
         liquidationCount[user] = 0;
         firstSeenBlock[user] = 0;
@@ -368,7 +372,9 @@ contract KredioPASMarket is Ownable, ReentrancyGuard, Pausable {
     }
 
     /// @notice Batch-reset credit score history for multiple users.
-    function adminResetUserScores(address[] calldata users) external onlyOwner {
+    function adminResetUserScores(
+        address[] calldata users
+    ) external onlyOwner {
         for (uint256 i = 0; i < users.length; i++) {
             repaymentCount[users[i]] = 0;
             liquidationCount[users[i]] = 0;
@@ -380,7 +386,9 @@ contract KredioPASMarket is Ownable, ReentrancyGuard, Pausable {
     }
 
     /// @notice Batch force-close PAS positions and return PAS collateral. Absorbs unpaid USDC debt.
-    function adminForceCloseAll(address[] calldata users) external onlyOwner nonReentrant {
+    function adminForceCloseAll(
+        address[] calldata users
+    ) external onlyOwner nonReentrant {
         for (uint256 i = 0; i < users.length; i++) {
             address user = users[i];
             Position storage p = positions[user];
@@ -404,7 +412,9 @@ contract KredioPASMarket is Ownable, ReentrancyGuard, Pausable {
     }
 
     /// @notice Force-withdraw USDC deposits for a batch of lenders without the normal liquidity check.
-    function adminBulkWithdrawDeposits(address[] calldata depositors) external onlyOwner nonReentrant {
+    function adminBulkWithdrawDeposits(
+        address[] calldata depositors
+    ) external onlyOwner nonReentrant {
         for (uint256 i = 0; i < depositors.length; i++) {
             address depositor = depositors[i];
             uint256 amount = depositBalance[depositor];
@@ -420,7 +430,9 @@ contract KredioPASMarket is Ownable, ReentrancyGuard, Pausable {
 
     /// @notice Force-accrue interest for PAS borrowers and distribute USDC to lenders as yield.
     /// @dev Capitalises accrued interest into the borrower's principal and resets their clock.
-    function adminTickPool(address[] calldata borrowers) external onlyOwner nonReentrant {
+    function adminTickPool(
+        address[] calldata borrowers
+    ) external onlyOwner nonReentrant {
         uint256 totalInterest = 0;
         for (uint256 i = 0; i < borrowers.length; i++) {
             Position storage p = positions[borrowers[i]];
@@ -438,7 +450,9 @@ contract KredioPASMarket is Ownable, ReentrancyGuard, Pausable {
 
     /// @notice Nuclear reset: zero all pool accounting and sweep all USDC to admin.
     /// @dev PAS collateral is NOT swept (it belongs to borrowers). Call adminForceCloseAll first.
-    function adminHardReset(address to) external onlyOwner nonReentrant {
+    function adminHardReset(
+        address to
+    ) external onlyOwner nonReentrant {
         require(to != address(0), "zero addr");
         totalBorrowed = 0;
         totalDeposited = 0;
@@ -576,7 +590,9 @@ contract KredioPASMarket is Ownable, ReentrancyGuard, Pausable {
         return 0;
     }
 
-    function _effectiveMultiplier(address borrower) internal view returns (uint256) {
+    function _effectiveMultiplier(
+        address borrower
+    ) internal view returns (uint256) {
         uint256 userM = demoRateMultiplier[borrower];
         uint256 effM = globalTick > userM ? globalTick : userM;
         return effM == 0 ? 1 : effM;
