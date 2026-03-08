@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { maxUint256 } from 'viem';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageShell, StateNotice } from '../../components/modules/ProtocolUI';
 import config from '../../lib/addresses';
@@ -12,8 +13,8 @@ import { parseUsdcInput } from '../../lib/input';
 import {
     bpsToPercent, fmtOraclePrice8, fmtCount, fmtTimestamp, fmtToken,
     useGlobalProtocolData, useUserPortfolio, useUserScore, tierLabel,
-    formatHealthFactor, healthState, useLendingHistory,
-    type LendHistoryEntry,
+    formatHealthFactor, healthState, useLendingHistory, useStrategyData,
+    type LendHistoryEntry, type StrategySnapshot,
 } from '../../hooks/useProtocolData';
 import { DonutChart } from '../../components/modules/DonutChart';
 
@@ -344,7 +345,9 @@ function PASBorrowRow({ collateralWei, debtAtoms, accruedAtoms, totalOwedAtoms, 
     useEffect(() => { if (repayIsError && repayPhase === 'repaying') { setRepayPhase('idle'); resetRepay(); onBusy(false); } }, [repayIsError]);
     useEffect(() => { if (withdrawIsError && withdrawPhase === 'withdrawing') { setWithdrawPhase('idle'); onBusy(false); } }, [withdrawIsError]);
 
-    const handleConfirmRepay = () => { onBusy(true); resetApprove(); resetRepay(); setRepayPhase('approving'); writeApprove({ address: config.mUSDC, abi: ABIS.ERC20, functionName: 'approve', args: [config.pasMarket, totalOwedAtoms] }); };
+    // Approve maxUint256 so that additional interest accruing between the approve
+    // block and the repay block can never cause the transferFrom to fail.
+    const handleConfirmRepay = () => { onBusy(true); resetApprove(); resetRepay(); setRepayPhase('approving'); writeApprove({ address: config.mUSDC, abi: ABIS.ERC20, functionName: 'approve', args: [config.pasMarket, maxUint256] }); };
     const handleConfirmWithdraw = () => { setWithdrawPhase('withdrawing'); writeWithdraw({ address: config.pasMarket, abi: ABIS.KREDIO_PAS_MARKET, functionName: 'withdrawCollateral' }); };
 
     const oracleUsd = Number(oraclePrice8) / 1e8;
@@ -355,62 +358,52 @@ function PASBorrowRow({ collateralWei, debtAtoms, accruedAtoms, totalOwedAtoms, 
     if (collateralWei === 0n && debtAtoms === 0n && repayPhase === 'idle' && withdrawPhase === 'idle') return null;
 
     return (
-        <div className="rounded-2xl border border-white/10 bg-black/30 backdrop-blur-xl hover:border-white/20 hover:bg-black/35 transition-colors">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 gap-5">
-                <div className="flex-[1.2]">
-                    <p className="text-xs text-slate-400 uppercase tracking-wider">PAS Market</p>
-                    <p className="text-sm font-semibold text-white mt-1">Borrow Position</p>
-                </div>
-
-                <div className="flex-1">
-                    <p className="text-xs text-slate-400 uppercase tracking-wider">Collateral</p>
-                    <p className="text-sm font-medium text-white mt-1">{fmt18(collateralWei, 4)} <span className="text-slate-500">PAS</span></p>
-                </div>
-
-                <div className="flex-1">
-                    <p className="text-xs text-slate-400 uppercase tracking-wider">Principal</p>
-                    <p className="text-sm font-medium text-white mt-1">{fmt6(debtAtoms)} <span className="text-slate-500">mUSDC</span></p>
-                </div>
-
-                <div className="flex-1">
-                    <p className="text-xs text-slate-400 uppercase tracking-wider">Accrued Interest</p>
-                    <p className="text-sm font-medium text-amber-400 mt-1">{fmt6(accruedAtoms, 6)} <span className="text-slate-500">mUSDC</span></p>
-                </div>
-
-                <div className="flex-[0.8]">
-                    <p className="text-xs text-slate-400 uppercase tracking-wider">Health</p>
-                    <p className={cn("text-sm font-medium mt-1", tone === 'green' ? 'text-emerald-400' : tone === 'yellow' ? 'text-amber-400' : 'text-rose-400')}>{isFinite(healthNum(healthRatio)) ? healthNum(healthRatio).toFixed(2) : '—'}</p>
-                </div>
-
-                <div className="shrink-0 flex items-center justify-end gap-2 w-full sm:w-auto">
+        <tr className="hover:bg-white/[0.02] transition-colors group">
+            <td className="px-5 py-4 align-middle text-sm font-medium text-white whitespace-nowrap">
+                PAS Market
+            </td>
+            <td className="px-5 py-4 align-middle whitespace-nowrap">
+                <span className="text-sm font-medium text-white">{fmt18(collateralWei, 4)}</span> <span className="text-xs text-slate-500">PAS</span>
+            </td>
+            <td className="px-5 py-4 align-middle whitespace-nowrap">
+                <span className="text-sm font-medium text-white">{fmt6(debtAtoms)}</span> <span className="text-xs text-slate-500">mUSDC</span>
+            </td>
+            <td className="px-5 py-4 align-middle whitespace-nowrap">
+                <span className="text-sm font-medium text-amber-400">{fmt6(accruedAtoms, 6)}</span> <span className="text-xs text-slate-500">mUSDC</span>
+            </td>
+            <td className="px-5 py-4 align-middle whitespace-nowrap">
+                <span className={cn("inline-flex items-center px-2 py-1 rounded text-xs font-semibold border", tone === 'green' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : tone === 'yellow' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400 animate-pulse')}>{isFinite(healthNum(healthRatio)) ? healthNum(healthRatio).toFixed(2) : '—'}</span>
+            </td>
+            <td className="px-5 py-4 align-middle text-right whitespace-nowrap">
+                <div className="flex items-center justify-end gap-2">
                     {repayPhase === 'idle' && withdrawPhase === 'idle' ? (
                         <>
-                            {debtAtoms > 0n && <button onClick={() => { onBusy(true); setRepayPhase('confirming'); }} className="px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 hover:text-white transition-colors">Repay</button>}
-                            <button onClick={() => { onBusy(true); setWithdrawPhase('confirming'); }} disabled={!canWithdraw} className="px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors">Withdraw</button>
+                            {debtAtoms > 0n && <button onClick={() => { onBusy(true); setRepayPhase('confirming'); }} className="px-3 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 hover:text-white transition-colors">Repay</button>}
+                            <button onClick={() => { onBusy(true); setWithdrawPhase('confirming'); }} disabled={!canWithdraw} className="px-3 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors">Withdraw</button>
                         </>
                     ) : repayPhase !== 'idle' ? (
-                        <div className="flex gap-2">
+                        <div className="flex justify-end gap-2">
                             {repayPhase === 'confirming' && (<>
-                                <button onClick={handleConfirmRepay} className="px-3 py-2 rounded-xl text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-colors">Confirm</button>
-                                <button onClick={() => { setRepayPhase('idle'); onBusy(false); }} className="px-3 py-2 rounded-xl text-xs font-medium border border-white/10 text-slate-400 hover:text-white transition-colors">Cancel</button>
+                                <button onClick={handleConfirmRepay} className="px-3 py-1.5 rounded-xl text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-colors">Confirm</button>
+                                <button onClick={() => { setRepayPhase('idle'); onBusy(false); }} className="px-3 py-1.5 rounded-xl text-xs font-medium border border-white/10 text-slate-400 hover:text-white transition-colors">Cancel</button>
                             </>)}
-                            {repayPhase === 'approving' && (<div className="flex items-center gap-2 text-xs text-indigo-300 px-3 py-2"><Spinner small />Approving…</div>)}
-                            {repayPhase === 'repaying' && (<div className="flex items-center gap-2 text-xs text-indigo-300 px-3 py-2"><Spinner small />Repaying…</div>)}
-                            {repayPhase === 'success' && (<div className="flex items-center gap-1.5 text-xs text-emerald-400 px-3 py-2"><Check />Done</div>)}
+                            {repayPhase === 'approving' && (<div className="flex items-center gap-2 text-xs text-indigo-300 px-3 py-1.5"><Spinner small />Approving…</div>)}
+                            {repayPhase === 'repaying' && (<div className="flex items-center gap-2 text-xs text-indigo-300 px-3 py-1.5"><Spinner small />Repaying…</div>)}
+                            {repayPhase === 'success' && (<div className="flex items-center gap-1.5 text-xs text-emerald-400 px-3 py-1.5"><Check />Done</div>)}
                         </div>
                     ) : withdrawPhase !== 'idle' ? (
-                        <div className="flex gap-2">
+                        <div className="flex justify-end gap-2">
                             {withdrawPhase === 'confirming' && (<>
-                                <button onClick={handleConfirmWithdraw} className="px-3 py-2 rounded-xl text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-colors">Confirm</button>
-                                <button onClick={() => { setWithdrawPhase('idle'); onBusy(false); }} className="px-3 py-2 rounded-xl text-xs font-medium border border-white/10 text-slate-400 hover:text-white transition-colors">Cancel</button>
+                                <button onClick={handleConfirmWithdraw} className="px-3 py-1.5 rounded-xl text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-colors">Confirm</button>
+                                <button onClick={() => { setWithdrawPhase('idle'); onBusy(false); }} className="px-3 py-1.5 rounded-xl text-xs font-medium border border-white/10 text-slate-400 hover:text-white transition-colors">Cancel</button>
                             </>)}
-                            {withdrawPhase === 'withdrawing' && (<div className="flex items-center gap-2 text-xs text-slate-400 px-3 py-2"><Spinner small />Withdrawing…</div>)}
-                            {withdrawPhase === 'success' && (<div className="flex items-center gap-1.5 text-xs text-emerald-400 px-3 py-2"><Check />Done</div>)}
+                            {withdrawPhase === 'withdrawing' && (<div className="flex items-center gap-2 text-xs text-slate-400 px-3 py-1.5"><Spinner small />Withdrawing…</div>)}
+                            {withdrawPhase === 'success' && (<div className="flex items-center gap-1.5 text-xs text-emerald-400 px-3 py-1.5"><Check />Done</div>)}
                         </div>
                     ) : null}
                 </div>
-            </div>
-        </div>
+            </td>
+        </tr>
     );
 }
 
@@ -434,7 +427,9 @@ function USDCBorrowRow({ collateralAtoms, debtAtoms, accruedAtoms, totalOwedAtom
     useEffect(() => { if (repayIsError && repayPhase === 'repaying') { setRepayPhase('idle'); resetRepay(); onBusy(false); } }, [repayIsError]);
     useEffect(() => { if (withdrawIsError && withdrawPhase === 'withdrawing') { setWithdrawPhase('idle'); onBusy(false); } }, [withdrawIsError]);
 
-    const handleConfirmRepay = () => { onBusy(true); resetApprove(); resetRepay(); setRepayPhase('approving'); writeApprove({ address: config.mUSDC, abi: ABIS.ERC20, functionName: 'approve', args: [config.lending, totalOwedAtoms] }); };
+    // Approve maxUint256 so that additional interest accruing between the approve
+    // block and the repay block can never cause the transferFrom to fail.
+    const handleConfirmRepay = () => { onBusy(true); resetApprove(); resetRepay(); setRepayPhase('approving'); writeApprove({ address: config.mUSDC, abi: ABIS.ERC20, functionName: 'approve', args: [config.lending, maxUint256] }); };
     const handleConfirmWithdraw = () => { setWithdrawPhase('withdrawing'); writeWithdraw({ address: config.lending, abi: ABIS.KREDIO_LENDING, functionName: 'withdrawCollateral' }); };
 
     const canWithdraw = walletCollateralAtoms > 0n && debtAtoms === 0n && collateralAtoms === 0n;
@@ -443,65 +438,137 @@ function USDCBorrowRow({ collateralAtoms, debtAtoms, accruedAtoms, totalOwedAtom
     if (collateralAtoms === 0n && debtAtoms === 0n && walletCollateralAtoms === 0n && repayPhase === 'idle' && withdrawPhase === 'idle') return null;
 
     return (
-        <div className="rounded-2xl border border-white/10 bg-black/30 backdrop-blur-xl hover:border-white/20 hover:bg-black/35 transition-colors">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 gap-5">
-                <div className="flex-[1.2]">
-                    <p className="text-xs text-slate-400 uppercase tracking-wider">USDC Market</p>
-                    <p className="text-sm font-semibold text-white mt-1">Borrow Position</p>
-                </div>
-
-                <div className="flex-1">
-                    <p className="text-xs text-slate-400 uppercase tracking-wider">Collateral</p>
-                    <p className="text-sm font-medium text-white mt-1">{fmt6(collateralAtoms > 0n ? collateralAtoms : walletCollateralAtoms)} <span className="text-slate-500">mUSDC</span></p>
-                    {walletCollateralAtoms > 0n && collateralAtoms === 0n && <p className="text-xs text-slate-600 mt-0.5">Unlocked — no active position</p>}
-                </div>
-
-                <div className="flex-1">
-                    <p className="text-xs text-slate-400 uppercase tracking-wider">Principal</p>
-                    <p className="text-sm font-medium text-white mt-1">{fmt6(debtAtoms)} <span className="text-slate-500">mUSDC</span></p>
-                </div>
-
-                <div className="flex-1">
-                    <p className="text-xs text-slate-400 uppercase tracking-wider">Accrued Interest</p>
-                    <p className="text-sm font-medium text-amber-400 mt-1">{fmt6(accruedAtoms, 6)} <span className="text-slate-500">mUSDC</span></p>
-                </div>
-
-                <div className="flex-[0.8]">
-                    <p className="text-xs text-slate-400 uppercase tracking-wider">Health</p>
-                    <p className={cn("text-sm font-medium mt-1", tone === 'green' ? 'text-emerald-400' : tone === 'yellow' ? 'text-amber-400' : 'text-rose-400')}>{isFinite(healthNum(healthRatio)) ? healthNum(healthRatio).toFixed(2) : '—'}</p>
-                </div>
-
-                <div className="shrink-0 flex items-center justify-end gap-2 w-full sm:w-auto">
+        <tr className="hover:bg-white/[0.02] transition-colors group">
+            <td className="px-5 py-4 align-middle text-sm font-medium text-white whitespace-nowrap">
+                USDC Market
+            </td>
+            <td className="px-5 py-4 align-middle whitespace-nowrap">
+                <span className="text-sm font-medium text-white">{fmt6(collateralAtoms > 0n ? collateralAtoms : walletCollateralAtoms)}</span> <span className="text-xs text-slate-500">mUSDC</span>
+                {walletCollateralAtoms > 0n && collateralAtoms === 0n && <span className="block text-[10px] text-slate-600 mt-0.5">Unlocked — no active position</span>}
+            </td>
+            <td className="px-5 py-4 align-middle whitespace-nowrap">
+                <span className="text-sm font-medium text-white">{fmt6(debtAtoms)}</span> <span className="text-xs text-slate-500">mUSDC</span>
+            </td>
+            <td className="px-5 py-4 align-middle whitespace-nowrap">
+                <span className="text-sm font-medium text-amber-400">{fmt6(accruedAtoms, 6)}</span> <span className="text-xs text-slate-500">mUSDC</span>
+            </td>
+            <td className="px-5 py-4 align-middle whitespace-nowrap">
+                <span className={cn("inline-flex items-center px-2 py-1 rounded text-xs font-semibold border", tone === 'green' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : tone === 'yellow' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400 animate-pulse')}>{isFinite(healthNum(healthRatio)) ? healthNum(healthRatio).toFixed(2) : '—'}</span>
+            </td>
+            <td className="px-5 py-4 align-middle text-right whitespace-nowrap">
+                <div className="flex items-center justify-end gap-2">
                     {repayPhase === 'idle' && withdrawPhase === 'idle' ? (
                         <>
-                            {debtAtoms > 0n && <button onClick={() => { onBusy(true); setRepayPhase('confirming'); }} className="px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 hover:text-white transition-colors">Repay</button>}
-                            <button onClick={() => { onBusy(true); setWithdrawPhase('confirming'); }} disabled={!canWithdraw} className="px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors">Withdraw</button>
+                            {debtAtoms > 0n && <button onClick={() => { onBusy(true); setRepayPhase('confirming'); }} className="px-3 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 hover:text-white transition-colors">Repay</button>}
+                            <button onClick={() => { onBusy(true); setWithdrawPhase('confirming'); }} disabled={!canWithdraw} className="px-3 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors">Withdraw</button>
                         </>
                     ) : repayPhase !== 'idle' ? (
-                        <div className="flex gap-2">
+                        <div className="flex justify-end gap-2">
                             {repayPhase === 'confirming' && (<>
-                                <button onClick={handleConfirmRepay} className="px-3 py-2 rounded-xl text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-colors">Confirm</button>
-                                <button onClick={() => { setRepayPhase('idle'); onBusy(false); }} className="px-3 py-2 rounded-xl text-xs font-medium border border-white/10 text-slate-400 hover:text-white transition-colors">Cancel</button>
+                                <button onClick={handleConfirmRepay} className="px-3 py-1.5 rounded-xl text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-colors">Confirm</button>
+                                <button onClick={() => { setRepayPhase('idle'); onBusy(false); }} className="px-3 py-1.5 rounded-xl text-xs font-medium border border-white/10 text-slate-400 hover:text-white transition-colors">Cancel</button>
                             </>)}
-                            {repayPhase === 'approving' && (<div className="flex items-center gap-2 text-xs text-indigo-300 px-3 py-2"><Spinner small />Approving…</div>)}
-                            {repayPhase === 'repaying' && (<div className="flex items-center gap-2 text-xs text-indigo-300 px-3 py-2"><Spinner small />Repaying…</div>)}
-                            {repayPhase === 'success' && (<div className="flex items-center gap-1.5 text-xs text-emerald-400 px-3 py-2"><Check />Done</div>)}
+                            {repayPhase === 'approving' && (<div className="flex items-center gap-2 text-xs text-indigo-300 px-3 py-1.5"><Spinner small />Approving…</div>)}
+                            {repayPhase === 'repaying' && (<div className="flex items-center gap-2 text-xs text-indigo-300 px-3 py-1.5"><Spinner small />Repaying…</div>)}
+                            {repayPhase === 'success' && (<div className="flex items-center gap-1.5 text-xs text-emerald-400 px-3 py-1.5"><Check />Done</div>)}
                         </div>
                     ) : withdrawPhase !== 'idle' ? (
-                        <div className="flex gap-2">
+                        <div className="flex justify-end gap-2">
                             {withdrawPhase === 'confirming' && (<>
-                                <button onClick={handleConfirmWithdraw} className="px-3 py-2 rounded-xl text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-colors">Confirm</button>
-                                <button onClick={() => { setWithdrawPhase('idle'); onBusy(false); }} className="px-3 py-2 rounded-xl text-xs font-medium border border-white/10 text-slate-400 hover:text-white transition-colors">Cancel</button>
+                                <button onClick={handleConfirmWithdraw} className="px-3 py-1.5 rounded-xl text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-colors">Confirm</button>
+                                <button onClick={() => { setWithdrawPhase('idle'); onBusy(false); }} className="px-3 py-1.5 rounded-xl text-xs font-medium border border-white/10 text-slate-400 hover:text-white transition-colors">Cancel</button>
                             </>)}
-                            {withdrawPhase === 'withdrawing' && (<div className="flex items-center gap-2 text-xs text-slate-400 px-3 py-2"><Spinner small />Withdrawing…</div>)}
-                            {withdrawPhase === 'success' && (<div className="flex items-center gap-1.5 text-xs text-emerald-400 px-3 py-2"><Check />Done</div>)}
+                            {withdrawPhase === 'withdrawing' && (<div className="flex items-center gap-2 text-xs text-slate-400 px-3 py-1.5"><Spinner small />Withdrawing…</div>)}
+                            {withdrawPhase === 'success' && (<div className="flex items-center gap-1.5 text-xs text-emerald-400 px-3 py-1.5"><Check />Done</div>)}
                         </div>
                     ) : null}
                 </div>
+            </td>
+        </tr>
+    );
+}
+
+// ── Intelligent Yield Strategy panel (shown in Claim / Activity tab) ─────
+
+function IntelligentYieldPanel({
+    strategy,
+    lendingDeposit,
+    totalDeposited,
+}: {
+    strategy: StrategySnapshot;
+    lendingDeposit: bigint;
+    totalDeposited: bigint;
+}) {
+    const isConfigured = strategy.pool !== '0x0000000000000000000000000000000000000000';
+    if (!isConfigured) return null;
+
+    const isActive = strategy.investedAmount > 0n;
+    const investPct = Number(strategy.investRatioBps) / 100;
+
+    // Lender's pro-rata share of deployed capital and accruing yield
+    const userShare = totalDeposited > 0n && lendingDeposit > 0n
+        ? (strategy.investedAmount * lendingDeposit) / totalDeposited
+        : 0n;
+    const userPendingShare = totalDeposited > 0n && lendingDeposit > 0n
+        ? (strategy.pendingStrategyYield * lendingDeposit) / totalDeposited
+        : 0n;
+
+    return (
+        <div className="rounded-2xl border border-purple-500/20 bg-purple-500/5 backdrop-blur-xl p-5 flex flex-col gap-4">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${isActive ? 'bg-purple-400 animate-pulse' : 'bg-slate-500'}`} />
+                    <h3 className="text-sm font-semibold text-white">Intelligent Yield Strategy</h3>
+                </div>
+                <span className={cn(
+                    'text-xs font-semibold px-2.5 py-1 rounded-lg border',
+                    isActive
+                        ? 'border-purple-500/30 bg-purple-500/10 text-purple-400'
+                        : 'border-white/10 bg-white/5 text-slate-400'
+                )}>
+                    {isActive ? 'ACTIVE' : 'IDLE'}
+                </span>
             </div>
+
+            {/* Metrics grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="rounded-xl border border-white/5 bg-black/30 p-3">
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wider">Pool Deployed</p>
+                    <p className="text-base font-semibold text-purple-400 mt-1">{fmt6(strategy.investedAmount)}</p>
+                    <p className="text-[10px] text-slate-600 mt-0.5">mUSDC</p>
+                </div>
+                <div className="rounded-xl border border-white/5 bg-black/30 p-3">
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wider">Yield Accruing</p>
+                    <p className="text-base font-semibold text-amber-400 mt-1">{fmt6(strategy.pendingStrategyYield, 6)}</p>
+                    <p className="text-[10px] text-slate-600 mt-0.5">mUSDC pending</p>
+                </div>
+                <div className="rounded-xl border border-white/5 bg-black/30 p-3">
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wider">Total Earned</p>
+                    <p className="text-base font-semibold text-emerald-400 mt-1">{fmt6(strategy.totalStrategyYieldEarned, 6)}</p>
+                    <p className="text-[10px] text-slate-600 mt-0.5">mUSDC lifetime</p>
+                </div>
+                <div className="rounded-xl border border-white/5 bg-black/30 p-3">
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wider">Your Share</p>
+                    <p className="text-base font-semibold text-cyan-400 mt-1">{fmt6(userShare)}</p>
+                    <p className="text-[10px] text-slate-600 mt-0.5">mUSDC deployed</p>
+                </div>
+            </div>
+
+            {/* Description */}
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+                {investPct}% of idle pool capital is automatically deployed to a yield strategy.
+                Strategy yield is distributed directly into your pending harvest —
+                {' '}<span className="text-white/60">claim it alongside your base borrower-interest yield above.</span>
+                {userPendingShare > 0n && (
+                    <span className="text-amber-400 font-medium"> ~{fmt6(userPendingShare, 6)} mUSDC is accruing for you right now.</span>
+                )}
+                {' '}When utilization rises, funds are automatically pulled back so borrows and your withdrawals are never blocked.
+            </p>
         </div>
     );
 }
+
 
 // ── Unified lending activity table ───────────────────────────────────────
 
@@ -519,11 +586,13 @@ function UnifiedLendingActivity({
     lendingDeposit, lendingYield,
     pasDeposit, pasYield,
     history, historyLoading,
+    strategy, totalDeposited: poolTotalDeposited,
     onRefresh, onBusy,
 }: {
     lendingDeposit: bigint; lendingYield: bigint;
     pasDeposit: bigint; pasYield: bigint;
     history: LendHistoryEntry[]; historyLoading: boolean;
+    strategy: StrategySnapshot; totalDeposited: bigint;
     onRefresh: () => void; onBusy: (v: boolean) => void;
 }) {
     const { address } = useAccount();
@@ -714,6 +783,15 @@ function UnifiedLendingActivity({
 
     return (
         <div className="flex flex-col gap-4">
+            {/* Intelligent Yield Strategy panel — only visible when lender has USDC deposits */}
+            {lendingDeposit > 0n && (
+                <IntelligentYieldPanel
+                    strategy={strategy}
+                    lendingDeposit={lendingDeposit}
+                    totalDeposited={poolTotalDeposited}
+                />
+            )}
+
             {/* Summary strip */}
             <div className="rounded-2xl border border-white/10 bg-black/30 backdrop-blur-xl p-5">
                 <div className="grid grid-cols-3 divide-x divide-white/5">
@@ -821,7 +899,7 @@ function UnifiedLendingActivity({
             </div>
 
             <p className="text-xs text-slate-500 px-1">
-                Yield accrues from borrower interest. Harvest claims it any time — also auto-claimed on every deposit/withdraw. Withdraw supports partial amounts.
+                Yield accrues from borrower interest and the intelligent yield strategy. Harvest claims all pending yield — also auto-claimed on every deposit/withdraw. Withdraw supports partial amounts.
             </p>
         </div>
     );
@@ -931,6 +1009,7 @@ export default function DashboardPage() {
     const { score, refresh: refreshScore } = useUserScore();
     const portfolio = useUserPortfolio();
     const { history: lendHistory, loading: historyLoading, refresh: refreshHistory } = useLendingHistory();
+    const { strategy, refresh: refreshStrategy } = useStrategyData();
 
     const [activeTab, setActiveTab] = useState<'positions' | 'activity'>('positions');
     const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
@@ -947,9 +1026,9 @@ export default function DashboardPage() {
     // Full manual refresh (button). useGlobalProtocolData + useUserPortfolio already have
     // their own 30s timers so we only need to kick score + history here for the background tick.
     const handleRefresh = useCallback(() => {
-        portfolio.refresh(); refreshGlobal(); refreshScore(); refreshHistory();
+        portfolio.refresh(); refreshGlobal(); refreshScore(); refreshHistory(); refreshStrategy();
         lastRefreshRef.current = Date.now(); setSecondsAgo(0);
-    }, [portfolio, refreshGlobal, refreshScore, refreshHistory]);
+    }, [portfolio, refreshGlobal, refreshScore, refreshHistory, refreshStrategy]);
 
     // Background tick: only refresh score + history (global + portfolio self-refresh).
     // Using a stable ref so the interval is created once and never recreated on re-renders.
@@ -1086,32 +1165,46 @@ export default function DashboardPage() {
                                                 <Link href="/borrow/usdc" className="px-6 py-2.5 rounded-none text-sm font-bold border border-white/10 bg-transparent hover:bg-white/5 text-slate-300 hover:text-white transition-colors">Open a Borrow Position</Link>
                                             </div>
                                         ) : (
-                                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                                                {hasPasBorrow && (
-                                                    <PASBorrowRow
-                                                        collateralWei={portfolio.pasPosition[0]}
-                                                        debtAtoms={portfolio.pasPosition[2]}
-                                                        accruedAtoms={portfolio.pasPosition[3]}
-                                                        totalOwedAtoms={portfolio.pasPosition[4]}
-                                                        healthRatio={portfolio.pasHealthRatio}
-                                                        oraclePrice8={oracle.price8}
-                                                        ltvBps={ltvBps}
-                                                        onRefresh={handleRefresh}
-                                                        onBusy={setActionFlight}
-                                                    />
-                                                )}
-                                                {hasUsdcBorrow && (
-                                                    <USDCBorrowRow
-                                                        collateralAtoms={portfolio.lendingPosition[0]}
-                                                        debtAtoms={portfolio.lendingPosition[1]}
-                                                        accruedAtoms={portfolio.lendingPosition[2]}
-                                                        totalOwedAtoms={portfolio.lendingPosition[3]}
-                                                        healthRatio={portfolio.lendingHealthRatio}
-                                                        walletCollateralAtoms={portfolio.lendingCollateralWallet}
-                                                        onRefresh={handleRefresh}
-                                                        onBusy={setActionFlight}
-                                                    />
-                                                )}
+                                            <div className="rounded-2xl border border-white/10 bg-black/30 backdrop-blur-xl overflow-x-auto shadow-[0_0_0_1px_rgba(255,255,255,0.03)]">
+                                                <table className="w-full text-left min-w-[800px]">
+                                                    <thead>
+                                                        <tr className="border-b border-white/10 bg-white/[0.02]">
+                                                            <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Market</th>
+                                                            <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Collateral</th>
+                                                            <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Principal</th>
+                                                            <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Accrued Interest</th>
+                                                            <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Health</th>
+                                                            <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400 text-right">Actions</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-white/5 text-sm">
+                                                        {hasPasBorrow && (
+                                                            <PASBorrowRow
+                                                                collateralWei={portfolio.pasPosition[0]}
+                                                                debtAtoms={portfolio.pasPosition[2]}
+                                                                accruedAtoms={portfolio.pasPosition[3]}
+                                                                totalOwedAtoms={portfolio.pasPosition[4]}
+                                                                healthRatio={portfolio.pasHealthRatio}
+                                                                oraclePrice8={oracle.price8}
+                                                                ltvBps={ltvBps}
+                                                                onRefresh={handleRefresh}
+                                                                onBusy={setActionFlight}
+                                                            />
+                                                        )}
+                                                        {hasUsdcBorrow && (
+                                                            <USDCBorrowRow
+                                                                collateralAtoms={portfolio.lendingPosition[0]}
+                                                                debtAtoms={portfolio.lendingPosition[1]}
+                                                                accruedAtoms={portfolio.lendingPosition[2]}
+                                                                totalOwedAtoms={portfolio.lendingPosition[3]}
+                                                                healthRatio={portfolio.lendingHealthRatio}
+                                                                walletCollateralAtoms={portfolio.lendingCollateralWallet}
+                                                                onRefresh={handleRefresh}
+                                                                onBusy={setActionFlight}
+                                                            />
+                                                        )}
+                                                    </tbody>
+                                                </table>
                                             </div>
                                         )}
                                         <p className="text-xs text-slate-500 px-1 mt-1">To manage your supply positions, switch to the <button onClick={() => setActiveTab('activity')} className="underline text-slate-400 hover:text-slate-300 transition-colors">Activity</button> tab.</p>
@@ -1131,6 +1224,8 @@ export default function DashboardPage() {
                                         pasYield={portfolio.pasPendingYield}
                                         history={lendHistory}
                                         historyLoading={historyLoading}
+                                        strategy={strategy}
+                                        totalDeposited={lending.totalDeposited}
                                         onBusy={setActionFlight}
                                         onRefresh={handleRefresh}
                                     />

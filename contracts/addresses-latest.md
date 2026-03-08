@@ -1,7 +1,8 @@
 # Latest Deployment Addresses (Polkadot EVM Testnet)
 
 - Network RPC: https://eth-rpc-testnet.polkadot.io/
-- **KredioLending (v5 — new credit score): 0x95628ae051Ad15dBf44cb0A965F2f6D9eC8baE37**
+- **KredioLending (v6 — Intelligent Yield Strategy): 0xea6075702F8BCbb11Af4A48E2647EfDfaEFBa611**
+- **MockYieldPool (v1 — 6% APY, 2026-03-08): 0x1dB4Faad3081aAfe26eC0ef6886F04f28D944AAB**
 - **KredioPASMarket (v5 — new credit score): 0x879F48C0f1982F6Bb7932ed651f278e47c261E03**
 - **KredioXCMSettler (v1 — Phase 3 foundation): PENDING DEPLOY**
 - **KredioAccountRegistry (v1 — Phase 3 foundation): PENDING DEPLOY**

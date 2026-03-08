@@ -43,22 +43,22 @@ function readEnv(path) {
 
 const env = readEnv(envPath);
 
-const RPC      = 'https://eth-rpc-testnet.polkadot.io/';
+const RPC = 'https://eth-rpc-testnet.polkadot.io/';
 const CHAIN_ID = 420420417;
 
 const CONTRACTS = {
-    LENDING:    '0x0415C54C2F1b499EA03697A9Db77a1d5d640F4Bf',
+    LENDING: '0x0415C54C2F1b499EA03697A9Db77a1d5d640F4Bf',
     PAS_MARKET: '0x05d9B20573A6C7500d8b320902B473e1A442dbA5',
-    MUSDC:      '0x5998cE005b4f3923c988Ae31940fAa1DEAC0c646',
-    ORACLE:     '0x1494432a8Af6fa8c03C0d7DD7720E298D85C55c7',
+    MUSDC: '0x5998cE005b4f3923c988Ae31940fAa1DEAC0c646',
+    ORACLE: '0x1494432a8Af6fa8c03C0d7DD7720E298D85C55c7',
 };
 
 // Amount constants (all mUSDC = 6 decimals)
 const LENDER_DEPOSIT_LENDING = parseUnits('8000', 6);    // each lender seeds 8k into lending pool
-const LENDER_DEPOSIT_PAS     = parseUnits('5000', 6);    // each lender seeds 5k into PAS pool
-const BORROWER_COLLATERAL    = parseUnits('3000', 6);    // each borrower puts 3k mUSDC as collateral in lending
-const PAS_COLLATERAL_WEI     = BigInt('300000000000000000000'); // 300 PAS as collateral in PAS market
-const PAS_FUND_AMOUNT        = BigInt('350000000000000000000'); // 350 PAS sent to each borrower wallet
+const LENDER_DEPOSIT_PAS = parseUnits('5000', 6);    // each lender seeds 5k into PAS pool
+const BORROWER_COLLATERAL = parseUnits('3000', 6);    // each borrower puts 3k mUSDC as collateral in lending
+const PAS_COLLATERAL_WEI = BigInt('300000000000000000000'); // 300 PAS as collateral in PAS market
+const PAS_FUND_AMOUNT = BigInt('350000000000000000000'); // 350 PAS sent to each borrower wallet
 
 // ─── Chain definition ─────────────────────────────────────────────────────────
 
@@ -72,39 +72,39 @@ const chain = {
 // ─── ABIs (minimal) ───────────────────────────────────────────────────────────
 
 const ERC20_ABI = [
-    { type: 'function', name: 'balanceOf',   inputs: [{ name: 'a', type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
-    { type: 'function', name: 'allowance',   inputs: [{ name: 'owner', type: 'address' }, { name: 'spender', type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
-    { type: 'function', name: 'approve',     inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ type: 'bool' }], stateMutability: 'nonpayable' },
-    { type: 'function', name: 'mint',        inputs: [{ name: 'to', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
+    { type: 'function', name: 'balanceOf', inputs: [{ name: 'a', type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'allowance', inputs: [{ name: 'owner', type: 'address' }, { name: 'spender', type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'approve', inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ type: 'bool' }], stateMutability: 'nonpayable' },
+    { type: 'function', name: 'mint', inputs: [{ name: 'to', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
 ];
 
 const LENDING_ABI = [
-    { type: 'function', name: 'deposit',          inputs: [{ name: 'amount', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
+    { type: 'function', name: 'deposit', inputs: [{ name: 'amount', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
     { type: 'function', name: 'depositCollateral', inputs: [{ name: 'amount', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
-    { type: 'function', name: 'borrow',           inputs: [{ name: 'borrowAmount', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
-    { type: 'function', name: 'getScore',         inputs: [{ name: 'user', type: 'address' }], outputs: [{ type: 'uint64' }, { type: 'uint8' }, { type: 'uint32' }, { type: 'uint32' }], stateMutability: 'view' },
-    { type: 'function', name: 'positions',        inputs: [{ name: 'user', type: 'address' }], outputs: [{ type: 'uint256' }, { type: 'uint256' }, { type: 'uint256' }, { type: 'uint32' }, { type: 'uint32' }, { type: 'uint8' }, { type: 'bool' }], stateMutability: 'view' },
-    { type: 'function', name: 'depositBalance',   inputs: [{ name: 'user', type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
-    { type: 'function', name: 'pendingYield',     inputs: [{ name: 'user', type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
-    { type: 'function', name: 'totalDeposited',   inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
-    { type: 'function', name: 'totalBorrowed',    inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
-    { type: 'function', name: 'collateralBalance',inputs: [{ name: 'user', type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
-    { type: 'function', name: 'accruedInterest',  inputs: [{ name: 'borrower', type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'borrow', inputs: [{ name: 'borrowAmount', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
+    { type: 'function', name: 'getScore', inputs: [{ name: 'user', type: 'address' }], outputs: [{ type: 'uint64' }, { type: 'uint8' }, { type: 'uint32' }, { type: 'uint32' }], stateMutability: 'view' },
+    { type: 'function', name: 'positions', inputs: [{ name: 'user', type: 'address' }], outputs: [{ type: 'uint256' }, { type: 'uint256' }, { type: 'uint256' }, { type: 'uint32' }, { type: 'uint32' }, { type: 'uint8' }, { type: 'bool' }], stateMutability: 'view' },
+    { type: 'function', name: 'depositBalance', inputs: [{ name: 'user', type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'pendingYield', inputs: [{ name: 'user', type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'totalDeposited', inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'totalBorrowed', inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'collateralBalance', inputs: [{ name: 'user', type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'accruedInterest', inputs: [{ name: 'borrower', type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
 ];
 
 const PAS_MARKET_ABI = [
-    { type: 'function', name: 'deposit',           inputs: [{ name: 'amount', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
+    { type: 'function', name: 'deposit', inputs: [{ name: 'amount', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
     { type: 'function', name: 'depositCollateral', inputs: [], outputs: [], stateMutability: 'payable' },
-    { type: 'function', name: 'borrow',            inputs: [{ name: 'borrowAmount', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
-    { type: 'function', name: 'positions',         inputs: [{ name: 'user', type: 'address' }], outputs: [{ type: 'uint256' }, { type: 'uint256' }, { type: 'uint32' }, { type: 'uint256' }, { type: 'uint8' }, { type: 'bool' }], stateMutability: 'view' },
-    { type: 'function', name: 'depositBalance',    inputs: [{ name: 'user', type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
-    { type: 'function', name: 'pendingYield',      inputs: [{ name: 'user', type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
-    { type: 'function', name: 'totalDeposited',    inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
-    { type: 'function', name: 'totalBorrowed',     inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'borrow', inputs: [{ name: 'borrowAmount', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
+    { type: 'function', name: 'positions', inputs: [{ name: 'user', type: 'address' }], outputs: [{ type: 'uint256' }, { type: 'uint256' }, { type: 'uint32' }, { type: 'uint256' }, { type: 'uint8' }, { type: 'bool' }], stateMutability: 'view' },
+    { type: 'function', name: 'depositBalance', inputs: [{ name: 'user', type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'pendingYield', inputs: [{ name: 'user', type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'totalDeposited', inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'totalBorrowed', inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
     { type: 'function', name: 'collateralBalance', inputs: [{ name: 'user', type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
-    { type: 'function', name: 'accruedInterest',   inputs: [{ name: 'borrower', type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
-    { type: 'function', name: 'ltvBps',            inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
-    { type: 'function', name: 'getOraclePrice',    inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'accruedInterest', inputs: [{ name: 'borrower', type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'ltvBps', inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
+    { type: 'function', name: 'getOraclePrice', inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
 ];
 
 const ORACLE_ABI = [
@@ -117,13 +117,13 @@ function normaliseKey(k) {
     return k.startsWith('0x') ? k : `0x${k}`;
 }
 
-function fmt6(v)  { return `${formatUnits(v, 6)} mUSDC`; }
+function fmt6(v) { return `${formatUnits(v, 6)} mUSDC`; }
 function fmt18(v) { return `${formatUnits(v, 18)} PAS`; }
 
 function log(msg) { console.log(`  ${msg}`); }
 function section(title) { console.log(`\n${'─'.repeat(60)}\n  ${title}\n${'─'.repeat(60)}`); }
-function ok(msg)  { console.log(`  ✓ ${msg}`); }
-function warn(msg){ console.log(`  ⚠  ${msg}`); }
+function ok(msg) { console.log(`  ✓ ${msg}`); }
+function warn(msg) { console.log(`  ⚠  ${msg}`); }
 
 async function sendTx(walletClient, publicClient, params, label) {
     const gas = await publicClient.estimateGas({ ...params, account: walletClient.account });
@@ -154,15 +154,15 @@ async function usdcBalance(publicClient, addr) {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
-const PK_ADMIN  = normaliseKey(env.PRIVATE_KEY);
-const PK_LEND2  = normaliseKey(env.PRIVATE_KEY_2);
+const PK_ADMIN = normaliseKey(env.PRIVATE_KEY);
+const PK_LEND2 = normaliseKey(env.PRIVATE_KEY_2);
 const PK_BORROW1 = normaliseKey(env.KEY2);
 const PK_BORROW2 = normaliseKey(env.KEY3);
 
-const acctAdmin  = privateKeyToAccount(PK_ADMIN);
-const acctLend2  = privateKeyToAccount(PK_LEND2);
-const acctB1     = privateKeyToAccount(PK_BORROW1);
-const acctB2     = privateKeyToAccount(PK_BORROW2);
+const acctAdmin = privateKeyToAccount(PK_ADMIN);
+const acctLend2 = privateKeyToAccount(PK_LEND2);
+const acctB1 = privateKeyToAccount(PK_BORROW1);
+const acctB2 = privateKeyToAccount(PK_BORROW2);
 
 const transport = http(RPC);
 
@@ -172,10 +172,10 @@ function wallet(account) {
     return createWalletClient({ account, chain, transport });
 }
 
-const wAdmin  = wallet(acctAdmin);
-const wLend2  = wallet(acctLend2);
-const wB1     = wallet(acctB1);
-const wB2     = wallet(acctB2);
+const wAdmin = wallet(acctAdmin);
+const wLend2 = wallet(acctLend2);
+const wB1 = wallet(acctB1);
+const wB2 = wallet(acctB2);
 
 console.log('\n═══════════════════════════════════════════════════');
 console.log('  Tesseract / Kredio — Protocol Seeding Script');
@@ -191,13 +191,13 @@ section('STEP 1 — Mint mUSDC to all participants');
 // MockUSDC has no access control on mint() — anyone can call it
 const LEND1_USDC_NEEDED = LENDER_DEPOSIT_LENDING + LENDER_DEPOSIT_PAS + parseUnits('1000', 6);
 const LEND2_USDC_NEEDED = LENDER_DEPOSIT_LENDING + LENDER_DEPOSIT_PAS + parseUnits('1000', 6);
-const BORR_USDC_NEEDED  = BORROWER_COLLATERAL + parseUnits('1000', 6);
+const BORR_USDC_NEEDED = BORROWER_COLLATERAL + parseUnits('1000', 6);
 
 for (const [w, amt, label] of [
     [wAdmin, LEND1_USDC_NEEDED, 'Lender-1'],
     [wLend2, LEND2_USDC_NEEDED, 'Lender-2'],
-    [wB1,    BORR_USDC_NEEDED,  'Borrower-1'],
-    [wB2,    BORR_USDC_NEEDED,  'Borrower-2'],
+    [wB1, BORR_USDC_NEEDED, 'Borrower-1'],
+    [wB2, BORR_USDC_NEEDED, 'Borrower-2'],
 ]) {
     const bal = await usdcBalance(pub, w.account.address);
     if (bal >= amt) { log(`${label} already has ${fmt6(bal)}, skipping mint`); continue; }
@@ -348,10 +348,10 @@ for (const [w, label] of [[wB1, 'Borrower-1'], [wB2, 'Borrower-2']]) {
 
 section('FINAL STATE REPORT');
 
-const lendTotal    = await pub.readContract({ address: CONTRACTS.LENDING,    abi: LENDING_ABI,     functionName: 'totalDeposited' });
-const lendBorrowed = await pub.readContract({ address: CONTRACTS.LENDING,    abi: LENDING_ABI,     functionName: 'totalBorrowed' });
-const pasTotal     = await pub.readContract({ address: CONTRACTS.PAS_MARKET, abi: PAS_MARKET_ABI, functionName: 'totalDeposited' });
-const pasBorrowed  = await pub.readContract({ address: CONTRACTS.PAS_MARKET, abi: PAS_MARKET_ABI, functionName: 'totalBorrowed' });
+const lendTotal = await pub.readContract({ address: CONTRACTS.LENDING, abi: LENDING_ABI, functionName: 'totalDeposited' });
+const lendBorrowed = await pub.readContract({ address: CONTRACTS.LENDING, abi: LENDING_ABI, functionName: 'totalBorrowed' });
+const pasTotal = await pub.readContract({ address: CONTRACTS.PAS_MARKET, abi: PAS_MARKET_ABI, functionName: 'totalDeposited' });
+const pasBorrowed = await pub.readContract({ address: CONTRACTS.PAS_MARKET, abi: PAS_MARKET_ABI, functionName: 'totalBorrowed' });
 
 console.log('\n  KredioLending (mUSDC market)');
 log(`  Total Deposited : ${fmt6(lendTotal)}`);
@@ -367,17 +367,17 @@ console.log('\n  Per-wallet summary\n');
 for (const [acct, label] of [
     [acctAdmin, 'Lender-1 (admin)'],
     [acctLend2, 'Lender-2'],
-    [acctB1,    'Borrower-1'],
-    [acctB2,    'Borrower-2'],
+    [acctB1, 'Borrower-1'],
+    [acctB2, 'Borrower-2'],
 ]) {
-    const ubal  = await usdcBalance(pub, acct.address);
-    const pbal  = await pub.getBalance({ address: acct.address });
-    const lDep  = await pub.readContract({ address: CONTRACTS.LENDING,    abi: LENDING_ABI,     functionName: 'depositBalance', args: [acct.address] });
-    const pDep  = await pub.readContract({ address: CONTRACTS.PAS_MARKET, abi: PAS_MARKET_ABI, functionName: 'depositBalance', args: [acct.address] });
-    const lYld  = await pub.readContract({ address: CONTRACTS.LENDING,    abi: LENDING_ABI,     functionName: 'pendingYield',   args: [acct.address] });
-    const pYld  = await pub.readContract({ address: CONTRACTS.PAS_MARKET, abi: PAS_MARKET_ABI, functionName: 'pendingYield',   args: [acct.address] });
-    const lPos  = await pub.readContract({ address: CONTRACTS.LENDING,    abi: LENDING_ABI,     functionName: 'positions',      args: [acct.address] });
-    const pPos  = await pub.readContract({ address: CONTRACTS.PAS_MARKET, abi: PAS_MARKET_ABI, functionName: 'positions',      args: [acct.address] });
+    const ubal = await usdcBalance(pub, acct.address);
+    const pbal = await pub.getBalance({ address: acct.address });
+    const lDep = await pub.readContract({ address: CONTRACTS.LENDING, abi: LENDING_ABI, functionName: 'depositBalance', args: [acct.address] });
+    const pDep = await pub.readContract({ address: CONTRACTS.PAS_MARKET, abi: PAS_MARKET_ABI, functionName: 'depositBalance', args: [acct.address] });
+    const lYld = await pub.readContract({ address: CONTRACTS.LENDING, abi: LENDING_ABI, functionName: 'pendingYield', args: [acct.address] });
+    const pYld = await pub.readContract({ address: CONTRACTS.PAS_MARKET, abi: PAS_MARKET_ABI, functionName: 'pendingYield', args: [acct.address] });
+    const lPos = await pub.readContract({ address: CONTRACTS.LENDING, abi: LENDING_ABI, functionName: 'positions', args: [acct.address] });
+    const pPos = await pub.readContract({ address: CONTRACTS.PAS_MARKET, abi: PAS_MARKET_ABI, functionName: 'positions', args: [acct.address] });
 
     console.log(`  ── ${label} (${acct.address.slice(0, 10)}…)`);
     log(`Wallet: ${fmt6(ubal)} mUSDC | ${fmt18(pbal)} PAS`);

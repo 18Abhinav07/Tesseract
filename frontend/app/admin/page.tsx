@@ -71,8 +71,17 @@ export default function AdminPage() {
     const [staleness, setStaleness] = useState('3600');
     const [feeBps, setFeeBps] = useState('1000');
 
+    // ── Yield strategy state ──────────────────────────────────────────────
+    const [yieldRateBps, setYieldRateBps] = useState('600');
+    const [investAmount, setInvestAmount] = useState('');
+    const [pullAmount, setPullAmount] = useState('');
+    const [newInvestRatio, setNewInvestRatio] = useState('5000');
+    const [newMinBuffer, setNewMinBuffer] = useState('2000');
+    const [newYieldPool, setNewYieldPool] = useState('');
+
     const safeTarget = validAddress(targetUser) as `0x${string}` | null;
     const safeReceiver = validAddress(receiver) as `0x${string}` | null;
+    const safeNewYieldPool = validAddress(newYieldPool) as `0x${string}` | null;
     const bulkAddrs = parseAddresses(bulkUsers);
     const numeric = (s: string) => (/^\d+$/.test(s.trim()) ? BigInt(s.trim()) : null);
 
@@ -84,6 +93,15 @@ export default function AdminPage() {
     const { data: pasTotalBorrowed } = useReadContract({ address: config.pasMarket, abi: ABIS.KREDIO_PAS_MARKET, functionName: 'totalBorrowed', query: { refetchInterval: 5000 } });
     const { data: lendingFees } = useReadContract({ address: config.lending, abi: ABIS.KREDIO_LENDING, functionName: 'protocolFees', query: { refetchInterval: 5000 } });
     const { data: pasFees } = useReadContract({ address: config.pasMarket, abi: ABIS.KREDIO_PAS_MARKET, functionName: 'protocolFees', query: { refetchInterval: 5000 } });
+
+    // ── Yield strategy reads ────────────────────────────────────────────────
+    const { data: stratStatus, refetch: refetchStrategy } = useReadContract({ address: config.lending, abi: ABIS.KREDIO_LENDING, functionName: 'strategyStatus', query: { refetchInterval: 10000 } });
+    const { data: pendingYield } = useReadContract({ address: config.lending, abi: ABIS.KREDIO_LENDING, functionName: 'pendingStrategyYield', query: { refetchInterval: 10000 } });
+    const { data: poolYieldRate } = useReadContract({ address: config.yieldPool, abi: ABIS.MOCK_YIELD_POOL, functionName: 'yieldRateBps', query: { refetchInterval: 10000 } });
+    const { data: poolPrincipal } = useReadContract({ address: config.yieldPool, abi: ABIS.MOCK_YIELD_POOL, functionName: 'totalPrincipal', query: { refetchInterval: 10000 } });
+
+    // strategyStatus() returns [pool, invested, totalEarned, pendingYield, investRatioBps, minBufferBps]
+    const ss = stratStatus as readonly [string, bigint, bigint, bigint, bigint, bigint] | undefined;
 
     const run = useCallback(
         async (key: string, fn: () => Promise<{ ok: boolean }>) => {
@@ -322,6 +340,102 @@ export default function AdminPage() {
                     <ActionButton label="Unpause PAS Market" variant="ghost" loading={isBusy('unpausePas')} disabled={isBusy('unpausePas')}
                         onClick={() => run('unpausePas', () => actions.unpausePas())} />
                 </div>
+            </Panel>
+
+            {/* ── Intelligent Yield Strategy ─────────────────────────────── */}
+            <SectionTitle>Intelligent Yield Strategy</SectionTitle>
+
+            {/* Strategy status */}
+            <Grid>
+                <Panel title="Strategy Status (KredioLending)">
+                    <StatRow label="Yield Pool" value={ss ? `${String(ss[0]).slice(0, 8)}…${String(ss[0]).slice(-6)}` : '—'} tone={ss && ss[0] !== '0x0000000000000000000000000000000000000000' ? 'green' : 'red'} />
+                    <StatRow label="Invested" value={`${fmt6(ss?.[1])} mUSDC`} tone={ss && ss[1] > 0n ? 'green' : undefined} />
+                    <StatRow label="Total Earned by Strategy" value={`${fmt6(ss?.[2])} mUSDC`} />
+                    <StatRow label="Pending Yield (claimable)" value={`${fmt6(pendingYield as bigint | undefined)} mUSDC`} tone={pendingYield && (pendingYield as bigint) > 0n ? 'green' : undefined} />
+                    <StatRow label="Invest Ratio" value={ss ? `${Number(ss[4]) / 100}%` : '—'} />
+                    <StatRow label="Min Buffer" value={ss ? `${Number(ss[5]) / 100}%` : '—'} />
+                </Panel>
+                <Panel title="MockYieldPool Status">
+                    <StatRow label="Pool Address" value={config.yieldPool ? `${config.yieldPool.slice(0, 8)}…${config.yieldPool.slice(-6)}` : '—'} tone="green" />
+                    <StatRow label="Total Principal" value={`${fmt6(poolPrincipal as bigint | undefined)} mUSDC`} />
+                    <StatRow label="APY Rate" value={poolYieldRate !== undefined ? `${Number(poolYieldRate as bigint) / 100}% APY` : '—'} tone={poolYieldRate && (poolYieldRate as bigint) > 1000n ? 'green' : undefined} />
+                    <StatRow label="Mode" value={(poolYieldRate as bigint | undefined) && (poolYieldRate as bigint) > 10000n ? 'DEMO (fast)' : 'Normal'} tone={(poolYieldRate as bigint | undefined) && (poolYieldRate as bigint) > 10000n ? 'green' : undefined} />
+                </Panel>
+            </Grid>
+
+            {/* Crank yield rate */}
+            <Panel
+                title="Crank Yield Rate — MockYieldPool"
+                subtitle="Sets the annual yield rate on the mock pool. Use high values (e.g. 60000 = 600% APY) for demos where yield should be visible within minutes. Use 600 for realistic 6% APY.">
+                <InfoBox>
+                    <strong className="text-white">APY → Rate BPS:</strong>{' '}
+                    <code className="text-amber-300">rate = APY% × 100</code>.
+                    At 60 000 BPS (600% APY), a 500k principal earns ~1,370 mUSDC of yield per hour. At 600 BPS (6% APY), the same 500k earns ~274 mUSDC per day.
+                </InfoBox>
+                <div className="mt-3 flex flex-wrap gap-2">
+                    {[
+                        { label: '6% APY (realistic)', value: '600' },
+                        { label: '60% APY (fast)', value: '6000' },
+                        { label: '600% APY (demo)', value: '60000' },
+                        { label: '1000% APY (turbo)', value: '100000' },
+                    ].map(p => (
+                        <button key={p.value} onClick={() => setYieldRateBps(p.value)}
+                            className={`rounded-lg px-3 py-1.5 text-xs font-medium border transition-colors ${yieldRateBps === p.value ? 'bg-purple-500/20 border-purple-500/40 text-purple-300' : 'bg-white/5 border-white/10 text-slate-400 hover:border-white/20'}`}>
+                            {p.label}
+                        </button>
+                    ))}
+                </div>
+                <ActionInput label="Custom Rate BPS (100 = 1% APY)" value={yieldRateBps} onChange={setYieldRateBps} placeholder="e.g. 600" />
+                <ActionButton label="Set Yield Rate" loading={isBusy('yieldSetRate')} disabled={isBusy('yieldSetRate')}
+                    onClick={() => { const v = numeric(yieldRateBps); if (!v) return; run('yieldSetRate', () => { return actions.yieldSetRate(v).then(r => { refetchStrategy(); return r; }); }); }} />
+            </Panel>
+
+            {/* Manual invest / pull back */}
+            <Panel title="Manual Invest / Pull Back"
+                subtitle="Manually move capital between the lending pool and the yield pool. The backend monitor handles this automatically, but you can trigger it manually for demos.">
+                <Grid>
+                    <div>
+                        <ActionInput label="Invest Amount (mUSDC, 6 dec)" value={investAmount} onChange={setInvestAmount} placeholder="e.g. 250000000000" />
+                        <ActionButton label="Invest into Yield Pool" loading={isBusy('yieldInvest')} disabled={isBusy('yieldInvest') || !investAmount}
+                            onClick={() => { const v = numeric(investAmount); if (!v) return; run('yieldInvest', () => actions.yieldInvest(v).then(r => { refetchStrategy(); return r; })); }} />
+                    </div>
+                    <div>
+                        <ActionInput label="Pull Back Amount (mUSDC, 6 dec)" value={pullAmount} onChange={setPullAmount} placeholder="e.g. 100000000000" />
+                        <ActionButton label="Pull Back from Pool" variant="ghost" loading={isBusy('yieldPullBack')} disabled={isBusy('yieldPullBack') || !pullAmount}
+                            onClick={() => { const v = numeric(pullAmount); if (!v) return; run('yieldPullBack', () => actions.yieldPullBack(v).then(r => { refetchStrategy(); return r; })); }} />
+                    </div>
+                </Grid>
+                <div className="mt-2">
+                    <ActionButton label="Claim Yield & Inject into Lender Pool" loading={isBusy('yieldClaim')} disabled={isBusy('yieldClaim') || !pendingYield || (pendingYield as bigint) === 0n}
+                        onClick={() => run('yieldClaim', () => actions.yieldClaimAndInject().then(r => { refetchStrategy(); return r; }))} />
+                    <p className="text-xs text-slate-500 mt-1">
+                        Pending: <span className="text-amber-300">{fmt6(pendingYield as bigint | undefined)} mUSDC</span> — distributes to all lenders via accYieldPerShare immediately.
+                    </p>
+                </div>
+            </Panel>
+
+            {/* Strategy parameters */}
+            <Panel title="Strategy Parameters"
+                subtitle="Tune the automated rebalancing formula. Changes take effect on the next backend monitor tick (every 30s).">
+                <InfoBox>
+                    <strong className="text-white">Invest Ratio:</strong> fraction of idle mUSDC to put to work (50% = 5000 BPS).{' '}
+                    <strong className="text-white">Min Buffer:</strong> minimum fraction of <em>total deposits</em> that must stay liquid (20% = 2000 BPS).
+                    The monitor targets: <code className="text-amber-300">invested = idle × investRatio</code>, subject to the min buffer floor.
+                </InfoBox>
+                <Grid>
+                    <ActionInput label="Invest Ratio BPS (max 9000)" value={newInvestRatio} onChange={setNewInvestRatio} placeholder="5000" />
+                    <ActionInput label="Min Buffer BPS (max 5000)" value={newMinBuffer} onChange={setNewMinBuffer} placeholder="2000" />
+                </Grid>
+                <ActionButton label="Update Strategy Params" loading={isBusy('yieldParams')} disabled={isBusy('yieldParams')}
+                    onClick={() => { const r = numeric(newInvestRatio), b = numeric(newMinBuffer); if (!r || !b) return; run('yieldParams', () => actions.yieldSetStrategyParams(r, b).then(res => { refetchStrategy(); return res; })); }} />
+            </Panel>
+
+            {/* Set yield pool address */}
+            <Panel title="Replace Yield Pool Contract"
+                subtitle="Point KredioLending at a different yield pool contract. Use when deploying a new MockYieldPool.">
+                <ActionInput label="New Yield Pool Address" value={newYieldPool} onChange={setNewYieldPool} placeholder="0x..." />
+                <ActionButton label="Set Yield Pool" variant="danger" loading={isBusy('yieldSetPool')} disabled={isBusy('yieldSetPool') || !safeNewYieldPool}
+                    onClick={() => run('yieldSetPool', () => actions.yieldSetPool(safeNewYieldPool!).then(r => { refetchStrategy(); return r; }))} />
             </Panel>
 
             {/* Governance */}
