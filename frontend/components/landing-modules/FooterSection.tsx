@@ -48,7 +48,6 @@ export function FooterSection() {
                         Fund, participate, and earn your score permanently on-chain.
                     </p>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 10px', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '6px', fontSize: '7.5px', fontFamily: 'ui-monospace,monospace', color: '#94A3B8', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
-                        <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#22C55E' }}></span> Mainnet Beta
                     </span>
                 </div>
 
