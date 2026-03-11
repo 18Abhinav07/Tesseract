@@ -151,6 +151,45 @@ contract KredioXCMSettler is ReentrancyGuard {
     event IntentPaused(uint8 intentType, bool status);
     event ContractPaused(bool status);
 
+    // ── Phase 5 AI Engine events ──────────────────────────────────────────────
+
+    /// @notice Fired at the start of every settleIntent() call — unique intentId for audit trail.
+    event IntentAuditLog(
+        bytes32 indexed intentId,
+        uint32  indexed sourceParaId,
+        address indexed sender,
+        uint8   intentType,
+        uint256 amount,
+        uint64  receivedBlock
+    );
+
+    /// @notice Recorded by xcmAcknowledger.js after intent processing dispatches a message.
+    event MessageDispatched(
+        bytes32 indexed intentId,
+        uint8   bridgeType,
+        uint32  destinationId,
+        bytes32 messageHash,
+        uint64  dispatchedBlock,
+        uint64  estimatedDeliveryBlocks
+    );
+
+    /// @notice Recorded by xcmAcknowledger.js after the delivery window elapses.
+    event ExecutionAcknowledged(
+        bytes32 indexed intentId,
+        bool    success,
+        bytes4  resultCode,
+        uint64  acknowledgedBlock
+    );
+
+    /// @notice Recorded by xcmAcknowledger.js when an ETH bridge operation is detected.
+    event EthBridgeInitiated(
+        bytes32 indexed bridgeId,
+        address indexed ethRecipient,
+        uint256 amount,
+        bytes32 bridgeTransactionHash,
+        uint64  initiatedBlock
+    );
+
     // ─────────────────────────────────────────────────────────────────────────
     // Modifiers
     // ─────────────────────────────────────────────────────────────────────────
@@ -211,6 +250,19 @@ contract KredioXCMSettler is ReentrancyGuard {
 
         // Commit nonce before execution to prevent any reentrancy-based replay.
         intentNonce[originAddress] = nonce;
+
+        // Phase 5: compute intentId and emit audit log before existing logic
+        bytes32 intentId = keccak256(abi.encode(
+            sourceParachain, originAddress, block.number, intentType
+        ));
+        emit IntentAuditLog(
+            intentId,
+            sourceParachain,
+            originAddress,
+            intentType,
+            _extractAmount(intentType, intentData),
+            uint64(block.number)
+        );
 
         emit IntentReceived(originAddress, intentType, sourceParachain, msg.value, nonce);
 
@@ -661,6 +713,67 @@ contract KredioXCMSettler is ReentrancyGuard {
     }
 
     /// @notice Recovers any ERC-20 tokens accidentally left in this contract.
+    // ── Phase 5 AI Engine: event-recording functions ─────────────────────────
+
+    /// @notice Emit ExecutionAcknowledged. Called by xcmAcknowledger.js after delivery window.
+    function acknowledgeExecution(
+        bytes32 intentId,
+        bool success,
+        bytes4 resultCode
+    ) external onlyOwner {
+        emit ExecutionAcknowledged(
+            intentId,
+            success,
+            resultCode,
+            uint64(block.number)
+        );
+    }
+
+    /// @notice Record that a cross-chain message was dispatched. Called by xcmAcknowledger.js.
+    function recordMessageDispatched(
+        bytes32 intentId,
+        uint8   bridgeType,
+        uint32  destinationId,
+        bytes32 messageHash,
+        uint64  estimatedDeliveryBlocks
+    ) external onlyOwner {
+        emit MessageDispatched(
+            intentId,
+            bridgeType,
+            destinationId,
+            messageHash,
+            uint64(block.number),
+            estimatedDeliveryBlocks
+        );
+    }
+
+    /// @notice Record an ETH bridge initiation. Called by xcmAcknowledger.js.
+    function recordEthBridgeInitiated(
+        bytes32 bridgeId,
+        address ethRecipient,
+        uint256 amount,
+        bytes32 bridgeTransactionHash
+    ) external onlyOwner {
+        emit EthBridgeInitiated(
+            bridgeId,
+            ethRecipient,
+            amount,
+            bridgeTransactionHash,
+            uint64(block.number)
+        );
+    }
+
+    /// @dev Extract amount from intent payload if well-formed (offset 20..52 = uint256).
+    ///      Returns 0 if payload is too short. Pure — no storage access.
+    function _extractAmount(uint8 /*intentType*/, bytes calldata payload)
+        internal pure returns (uint256)
+    {
+        if (payload.length >= 52) {
+            return abi.decode(payload[20:52], (uint256));
+        }
+        return 0;
+    }
+
     function recoverStuckTokens(
         address token,
         uint256 amount
