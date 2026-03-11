@@ -12,8 +12,8 @@ const provider = new ethers.JsonRpcProvider(RPC);
 
 const contracts = ['risk_assessor', 'neural_scorer', 'yield_mind'];
 for (const name of contracts) {
-  const bytecode = readFileSync(join(ROOT, `contracts/pvm/${name}/target/ink/${name}.polkavm`));
-  const data = '0x' + Buffer.from(bytecode).toString('hex') + '9bae9d5e';
-  const gas = await provider.estimateGas({from: ADMIN, to: null, data, value: ethers.parseEther('10')}).catch(e => 'ERROR: ' + e.shortMessage);
-  process.stdout.write(`${name}: estimated gas = ${gas}\n`);
+    const bytecode = readFileSync(join(ROOT, `contracts/pvm/${name}/target/ink/${name}.polkavm`));
+    const data = '0x' + Buffer.from(bytecode).toString('hex') + '9bae9d5e';
+    const gas = await provider.estimateGas({ from: ADMIN, to: null, data, value: ethers.parseEther('10') }).catch(e => 'ERROR: ' + e.shortMessage);
+    process.stdout.write(`${name}: estimated gas = ${gas}\n`);
 }

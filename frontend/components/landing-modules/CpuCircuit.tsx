@@ -186,10 +186,10 @@ export default function CpuCircuit({
 
                     {/* 4 Inner Processors */}
                     {[
-                        { x: 440, y: 120, c: '#8B5CF6', t: 'CREDIT ENGINE', s: 'Score · LTV' },
-                        { x: 640, y: 120, c: '#38BDF8', t: 'GOVERNANCE', s: 'Rates · Cache' },
-                        { x: 440, y: 350, c: '#A78BFA', t: 'IDENTITY', s: 'KYC · Boost' },
-                        { x: 640, y: 350, c: '#10B981', t: 'RISK ORACLE', s: 'Pricing' }
+                        { x: 440, y: 120, c: '#34D399', t: 'KREDIT AGENT', s: 'Deterministic Score' },
+                        { x: 640, y: 120, c: '#00E2FF', t: 'NEURAL SCORER', s: 'Anomaly Inference' },
+                        { x: 440, y: 350, c: '#F59E0B', t: 'RISK ASSESSOR', s: 'Volatility Engine' },
+                        { x: 640, y: 350, c: '#F472B6', t: 'YIELD MIND', s: 'Capital Routing' }
                     ].map((m, i) => (
                         <g key={i}>
                             <rect x={m.x} y={m.y} width={160} height={70} rx={6} fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
@@ -207,7 +207,7 @@ export default function CpuCircuit({
                         <rect x={520} y={260} width={200} height={80} rx={8} fill="#05060A" stroke="#1E293B" strokeWidth={1} />
                         <rect x={522} y={262} width={196} height={76} rx={6} fill="url(#grid)" stroke="none" />
                         <text x={620} y={296} fontSize={14} fontWeight={800} fill="#FFFFFF" letterSpacing="0.15em" textAnchor="middle">KREDIO</text>
-                        <text x={620} y={312} fontSize={7} fontWeight={600} fill="#64748B" letterSpacing="0.2em" textAnchor="middle">SCORING KERNEL · v3</text>
+                        <text x={620} y={312} fontSize={7} fontWeight={600} fill="#64748B" letterSpacing="0.2em" textAnchor="middle">AGENT CLUSTER · v4</text>
                     </g>
                 </g>
 

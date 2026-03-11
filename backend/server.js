@@ -43,7 +43,7 @@ app.use((_req, res) => {
 // ─── Start services ───────────────────────────────────────────────────────
 oracle.start().catch(err => console.error('[oracle] start error:', err.message));
 bridge.start();
-yieldStrategy.start().catch(err => console.error('[yield-strategy] start error:', err.message));aiEngine.start().catch(err => console.error('[aiEngine] start error:', err.message));
+yieldStrategy.start().catch(err => console.error('[yield-strategy] start error:', err.message)); aiEngine.start().catch(err => console.error('[aiEngine] start error:', err.message));
 xcmAcknowledger.start().catch(err => console.error('[xcmAcknowledger] start error:', err.message));
 protocolPing.start().catch(err => console.error('[protocolPing] start error:', err.message));
 // ─── Listen ───────────────────────────────────────────────────────────────

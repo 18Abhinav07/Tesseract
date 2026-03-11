@@ -29,16 +29,17 @@ export default function CircuitBoard() {
         return                  { px: n.x + NW / 2,  py: n.y };
     };
 
-    const chipPort = (n: typeof nodes[0]) => {
-        if (isLeft(n))   return { cx: CX - CHIP_W / 2, cy: CY };
-        if (isRight(n))  return { cx: CX + CHIP_W / 2, cy: CY };
-        if (isTop(n))    return { cx: CX,               cy: CY - CHIP_H / 2 };
-        return                  { cx: CX,               cy: CY + CHIP_H / 2 };
+    // Route differently to different parts of the MCM 
+    const mcmPort = (n: typeof nodes[0]) => {
+        if (isLeft(n))   return { cx: CX - CHIP_W / 2, cy: n.y > CY ? CY + 30 : CY - 30 };
+        if (isRight(n))  return { cx: CX + CHIP_W / 2, cy: n.y > CY ? CY + 30 : CY - 30 };
+        if (isTop(n))    return { cx: CX,             cy: CY - CHIP_H / 2 };
+        return                  { cx: CX,             cy: CY + CHIP_H / 2 };
     };
 
     const tracePath = (n: typeof nodes[0]) => {
         const { px, py } = port(n);
-        const { cx, cy } = chipPort(n);
+        const { cx, cy } = mcmPort(n);
         if (isLeft(n) || isRight(n)) return `M ${px} ${py} L ${cx} ${py} L ${cx} ${cy}`;
         return `M ${px} ${py} L ${px} ${cy} L ${cx} ${cy}`;
     };
@@ -54,7 +55,7 @@ export default function CircuitBoard() {
 
     const pillPos = (n: typeof nodes[0], frac: number) => {
         const { px, py } = port(n);
-        const { cx, cy } = chipPort(n);
+        const { cx, cy } = mcmPort(n);
         if (isLeft(n) || isRight(n)) {
             const s1 = Math.abs(cx - px), s2 = Math.abs(cy - py), tot = s1 + s2, d = tot * frac;
             if (d <= s1) return { x: px + (cx - px) * (d / (s1 || 1)), y: py };
@@ -126,10 +127,14 @@ export default function CircuitBoard() {
                             <stop offset="100%" stopColor="rgba(0,0,0,0.5)" />
                         </linearGradient>
                     ))}
+                    
+                    <pattern id="mcm-grid" width="16" height="16" patternUnits="userSpaceOnUse">
+                        <path d="M 16 0 L 0 0 0 16" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
+                    </pattern>
                 </defs>
 
                 {/* Floor glow */}
-                <ellipse cx={CX + EX * 2} cy={CY + CHIP_H + 60} rx={320} ry={70} fill="url(#floor-glow)" opacity={0.8} />
+                <ellipse cx={CX + EX * 2} cy={CY + CHIP_H + 60} rx={340} ry={70} fill="url(#floor-glow)" opacity={0.8} />
 
                 {/* Traces */}
                 {nodes.map((n, i) => (
@@ -174,40 +179,72 @@ export default function CircuitBoard() {
                     );
                 })}
 
-                {/* Center chip */}
+                {/* Multi-Chip Module (MCM) Core */}
                 <g className="cb-float">
-                    <circle cx={CX} cy={CY} r={38} fill="none" stroke={T.cyan}  strokeWidth={1.2} strokeOpacity={0} className="cb-p1" />
-                    <circle cx={CX} cy={CY} r={38} fill="none" stroke={T.pink}  strokeWidth={0.8} strokeOpacity={0} className="cb-p2" />
-                    <circle cx={CX} cy={CY} r={38} fill="none" stroke="#A78BFA" strokeWidth={0.5} strokeOpacity={0} className="cb-p3" />
+                    {/* MCM Base Extrusion */}
+                    <polygon points={`${CX + CHIP_W / 2},${CY - CHIP_H / 2} ${CX + CHIP_W / 2 + EX + 2},${CY - CHIP_H / 2 + EY + 2} ${CX + CHIP_W / 2 + EX + 2},${CY + CHIP_H / 2 + EY + 2} ${CX + CHIP_W / 2},${CY + CHIP_H / 2}`} fill="url(#chip-side-r)" />
+                    <polygon points={`${CX - CHIP_W / 2},${CY + CHIP_H / 2} ${CX + CHIP_W / 2},${CY + CHIP_H / 2} ${CX + CHIP_W / 2 + EX + 2},${CY + CHIP_H / 2 + EY + 2} ${CX - CHIP_W / 2 + EX + 2},${CY + CHIP_H / 2 + EY + 2}`} fill="url(#chip-side-b)" />
 
-                    <polygon points={`${CX+CHIP_W/2},${CY-CHIP_H/2} ${CX+CHIP_W/2+EX},${CY-CHIP_H/2+EY} ${CX+CHIP_W/2+EX},${CY+CHIP_H/2+EY} ${CX+CHIP_W/2},${CY+CHIP_H/2}`} fill="url(#chip-side-r)" />
-                    <polygon points={`${CX-CHIP_W/2},${CY+CHIP_H/2} ${CX+CHIP_W/2},${CY+CHIP_H/2} ${CX+CHIP_W/2+EX},${CY+CHIP_H/2+EY} ${CX-CHIP_W/2+EX},${CY+CHIP_H/2+EY}`} fill="url(#chip-side-b)" />
+                    {/* MCM Base Plate */}
+                    <rect x={CX - CHIP_W / 2} y={CY - CHIP_H / 2} width={CHIP_W} height={CHIP_H} rx={14} fill="#020617" stroke="rgba(255,255,255,0.2)" strokeWidth={1} filter="url(#node-shadow)" />
+                    <rect x={CX - CHIP_W / 2} y={CY - CHIP_H / 2} width={CHIP_W} height={CHIP_H} rx={14} fill="url(#mcm-grid)" />
+                    <rect x={CX - CHIP_W / 2} y={CY - CHIP_H / 2} width={CHIP_W} height={CHIP_H} rx={14} fill="none" stroke="#00E2FF" strokeOpacity={0.15} strokeWidth={1.5} filter="url(#chip-gf)" className="cb-breathe" />
 
-                    <rect x={CX-CHIP_W/2} y={CY-CHIP_H/2} width={CHIP_W} height={CHIP_H} rx={10}
-                        fill="none" stroke={T.cyan} strokeWidth={1} strokeOpacity={0.15}
-                        filter="url(#chip-gf)" className="cb-breathe" />
-                    <rect x={CX-CHIP_W/2} y={CY-CHIP_H/2} width={CHIP_W} height={CHIP_H} rx={10}
-                        fill="#0b0d10" stroke="rgba(255,255,255,0.14)" strokeWidth={1.2} />
-                    <rect x={CX-CHIP_W/2} y={CY-CHIP_H/2} width={CHIP_W} height={CHIP_H} rx={10} fill="url(#chip-top)" />
-                    <line x1={CX-CHIP_W/2+10} y1={CY-CHIP_H/2+1} x2={CX+CHIP_W/2-10} y2={CY-CHIP_H/2+1} stroke="rgba(255,255,255,0.18)" strokeWidth={0.8} />
+                    {/* Logic routing traces on the MCM */}
+                    <path d={`M ${CX} ${CY-45} L ${CX} ${CY+45} M ${CX-45} ${CY} L ${CX+45} ${CY}`} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={2} />
 
-                    {[-24,-8,8,24].map((o, i) => <line key={`cl-${i}`} x1={CX-CHIP_W/2+8} y1={CY+o} x2={CX+CHIP_W/2-8} y2={CY+o} stroke="rgba(255,255,255,0.05)" strokeWidth={0.5} />)}
-                    {[-40,-20,0,20,40].map((o, i) => <line key={`cv-${i}`} x1={CX+o} y1={CY-CHIP_H/2+8} x2={CX+o} y2={CY+CHIP_H/2-8} stroke="rgba(255,255,255,0.05)" strokeWidth={0.5} />)}
+                    {/* Sub Chip 1: Kredit Agent (Top Left) */}
+                    <g transform={`translate(${CX - 45}, ${CY - 40})`}>
+                        <rect x={-35} y={-25} width={70} height={50} rx={6} fill="#020617" stroke="#34D399" strokeWidth={1} strokeOpacity={0.6} />
+                        <rect x={-33} y={-23} width={66} height={2} fill="rgba(255,255,255,0.1)" />
+                        <text x={0} y={-4} textAnchor="middle" fontSize={8} fill="rgba(255,255,255,0.9)" fontFamily="ui-monospace,monospace" fontWeight="700">KREDIT</text>
+                        <text x={0} y={8} textAnchor="middle" fontSize={7} fill="#34D399" fontFamily="ui-monospace,monospace" letterSpacing={1}>AGENT</text>
+                        <circle cx={25} cy={15} r={3} fill="#34D399" className="cb-breathe" />
+                    </g>
 
-                    <text x={CX} y={CY-6} textAnchor="middle" fontSize={11} fill="rgba(255,255,255,0.8)" fontFamily="ui-monospace,monospace" letterSpacing={3} fontWeight="700">KREDIO</text>
-                    <text x={CX} y={CY+12} textAnchor="middle" fontSize={7.5} fill="#64748B" fontFamily="ui-monospace,monospace" letterSpacing={2}>CORE v3</text>
+                    {/* Sub Chip 2: Neural Scorer (Top Right) */}
+                    <g transform={`translate(${CX + 45}, ${CY - 40})`}>
+                        <rect x={-35} y={-25} width={70} height={50} rx={6} fill="#020617" stroke="#00E2FF" strokeWidth={1} strokeOpacity={0.6} />
+                        <rect x={-33} y={-23} width={66} height={2} fill="rgba(255,255,255,0.1)" />
+                        <text x={0} y={-4} textAnchor="middle" fontSize={8} fill="rgba(255,255,255,0.9)" fontFamily="ui-monospace,monospace" fontWeight="700">NEURAL</text>
+                        <text x={0} y={8} textAnchor="middle" fontSize={7} fill="#00E2FF" fontFamily="ui-monospace,monospace" letterSpacing={1}>SCORER</text>
+                        <circle cx={25} cy={15} r={3} fill="#00E2FF" className="cb-breathe" style={{ animationDelay: '0.5s' }} />
+                    </g>
 
-                    {[-44,-22,0,22,44].map((x, i) => <rect key={`pt-${i}`} x={CX+x-2} y={CY-CHIP_H/2-6} width={4} height={7} rx={1} fill="rgba(255,255,255,0.2)" />)}
-                    {[-44,-22,0,22,44].map((x, i) => (
+                    {/* Sub Chip 3: Risk Assessor (Bottom Left) */}
+                    <g transform={`translate(${CX - 45}, ${CY + 40})`}>
+                        <rect x={-35} y={-25} width={70} height={50} rx={6} fill="#020617" stroke="#F59E0B" strokeWidth={1} strokeOpacity={0.6} />
+                        <rect x={-33} y={-23} width={66} height={2} fill="rgba(255,255,255,0.1)" />
+                        <text x={0} y={-4} textAnchor="middle" fontSize={8} fill="rgba(255,255,255,0.9)" fontFamily="ui-monospace,monospace" fontWeight="700">RISK</text>
+                        <text x={0} y={8} textAnchor="middle" fontSize={7} fill="#F59E0B" fontFamily="ui-monospace,monospace" letterSpacing={1}>ASSESSOR</text>
+                        <circle cx={25} cy={15} r={3} fill="#F59E0B" className="cb-breathe" style={{ animationDelay: '1s' }} />
+                    </g>
+
+                    {/* Sub Chip 4: Yield Mind (Bottom Right) */}
+                    <g transform={`translate(${CX + 45}, ${CY + 40})`}>
+                        <rect x={-35} y={-25} width={70} height={50} rx={6} fill="#020617" stroke="#F472B6" strokeWidth={1} strokeOpacity={0.6} />
+                        <rect x={-33} y={-23} width={66} height={2} fill="rgba(255,255,255,0.1)" />
+                        <text x={0} y={-4} textAnchor="middle" fontSize={8} fill="rgba(255,255,255,0.9)" fontFamily="ui-monospace,monospace" fontWeight="700">YIELD</text>
+                        <text x={0} y={8} textAnchor="middle" fontSize={7} fill="#F472B6" fontFamily="ui-monospace,monospace" letterSpacing={1}>MIND</text>
+                        <circle cx={25} cy={15} r={3} fill="#F472B6" className="cb-breathe" style={{ animationDelay: '1.5s' }} />
+                    </g>
+
+                    {/* Central Kernel Sync */}
+                    <circle cx={CX} cy={CY} r={16} fill="#0B101E" stroke="#A78BFA" strokeWidth={1.5} />
+                    <circle cx={CX} cy={CY} r={6} fill="#A78BFA" opacity={0.8} className="cb-breathe" />
+
+                    {/* Pins along the perimeter */}
+                    {[-70, -35, 0, 35, 70].map((x, i) => <rect key={`pt-${i}`} x={CX + x - 3} y={CY - CHIP_H / 2 - 6} width={6} height={7} rx={1} fill="rgba(255,255,255,0.25)" />)}
+                    {[-70, -35, 0, 35, 70].map((x, i) => (
                         <g key={`pb-${i}`}>
-                            <rect x={CX+x-2} y={CY+CHIP_H/2}    width={4} height={7} rx={1} fill="rgba(0,0,0,0.4)" />
-                            <rect x={CX+x-2+EX} y={CY+CHIP_H/2+EY} width={4} height={3} rx={1} fill="rgba(0,0,0,0.6)" />
+                            <rect x={CX + x - 3} y={CY + CHIP_H / 2} width={6} height={7} rx={1} fill="rgba(0,0,0,0.5)" />
+                            <rect x={CX + x - 3 + EX} y={CY + CHIP_H / 2 + EY} width={6} height={3} rx={1} fill="rgba(0,0,0,0.7)" />
                         </g>
                     ))}
-                    {[-24,0,24].map((y, i) => (
+                    {[-60, -20, 20, 60].map((y, i) => (
                         <g key={`ps-${i}`}>
-                            <rect x={CX-CHIP_W/2-6} y={CY+y-2} width={7} height={4} rx={1} fill="rgba(255,255,255,0.2)" />
-                            <rect x={CX+CHIP_W/2}   y={CY+y-2} width={7} height={4} rx={1} fill="rgba(255,255,255,0.12)" />
+                            <rect x={CX - CHIP_W / 2 - 6} y={CY + y - 3} width={7} height={6} rx={1} fill="rgba(255,255,255,0.25)" />
+                            <rect x={CX + CHIP_W / 2}     y={CY + y - 3} width={7} height={6} rx={1} fill="rgba(255,255,255,0.15)" />
                         </g>
                     ))}
                 </g>

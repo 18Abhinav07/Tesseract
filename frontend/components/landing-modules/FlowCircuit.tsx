@@ -4,66 +4,63 @@ import { T } from './tokens';
 
 /**
  * FlowCircuit - user-journey circuit diagram.
- * Same visual language as CircuitBoard (L-shaped traces, animated packets,
- * 3D-extruded nodes) but nodes represent the USER'S action flow:
- *
- *  TOP:    XCM Deposits  │  ETH Bridge  │  Identity Boost
- *  CENTER:               KreditAgent (chip)
- *  BOTTOM: PAS Markets   │  Governance  │  Credit Tiers
+ * Top/Bottom Nodes route into a central Multi-Chip Module (MCM) representing the Kredio Core.
  */
 export default function FlowCircuit() {
     const CX = 450, CY = 252;
-    const NW = 138, NH = 52;
+    const NW = 142, NH = 56;
     const EX = 6, EY = 7;
-    const CHIP_W = 128, CHIP_H = 80;
+    // MCM Base Plate Dimensions
+    const MCM_W = 180, MCM_H = 160;
 
     const nodes = [
-        { id: 'xcm', label: 'XCM Deposits', sub: 'People Chain', color: T.cyan, x: 18, y: 58 },
-        { id: 'eth-bridge', label: 'ETH Bridge', sub: '5 EVM Chains', color: '#F59E0B', x: 381, y: 18 },
-        { id: 'identity', label: 'Identity Boost', sub: 'On-Chain Proof', color: '#A78BFA', x: 744, y: 58 },
-        { id: 'pas-market', label: 'PAS Markets', sub: 'Lend & Borrow', color: '#22C55E', x: 18, y: 408 },
-        { id: 'governance', label: 'Governance', sub: 'Vote & Earn', color: '#818CF8', x: 381, y: 468 },
-        { id: 'tiers', label: 'Credit Tiers', sub: 'ANON → DIAMOND', color: '#E81CFF', x: 744, y: 408 },
+        { id: 'xcm',        label: 'XCM Settler',     sub: 'People Chain', color: '#00E2FF', x: 20,  y: 40 },
+        { id: 'eth-bridge', label: 'ETH Bridge',      sub: 'Multi-EVM',    color: '#34D399', x: 379, y: 10 },
+        { id: 'identity',   label: 'Identity Proofs', sub: 'Substrate',    color: '#A78BFA', x: 738, y: 40 },
+        { id: 'lend-market',label: 'Lending Market',  sub: 'Earn & Borrow',color: '#60A5FA', x: 20,  y: 420 },
+        { id: 'pas-market', label: 'PAS Market',      sub: 'Collateral',   color: '#F59E0B', x: 379, y: 460 },
+        { id: 'ext-yield',  label: 'External Yield',  sub: 'Auto Routed',  color: '#F472B6', x: 738, y: 420 },
     ];
 
-    const isLeft = (n: typeof nodes[0]) => n.x < 300;
-    const isRight = (n: typeof nodes[0]) => n.x > 600;
-    const isTop = (n: typeof nodes[0]) => !isLeft(n) && !isRight(n) && n.y < 300;
+    const isLeft   = (n: typeof nodes[0]) => n.x < 300;
+    const isRight  = (n: typeof nodes[0]) => n.x > 600;
+    const isTop    = (n: typeof nodes[0]) => !isLeft(n) && !isRight(n) && n.y < 300;
     const isBottom = (n: typeof nodes[0]) => !isLeft(n) && !isRight(n) && n.y >= 300;
 
     const port = (n: typeof nodes[0]) => {
-        if (isLeft(n)) return { px: n.x + NW, py: n.y + NH / 2 };
-        if (isRight(n)) return { px: n.x, py: n.y + NH / 2 };
-        if (isTop(n)) return { px: n.x + NW / 2, py: n.y + NH };
-        return { px: n.x + NW / 2, py: n.y };
+        if (isLeft(n))   return { px: n.x + NW,     py: n.y + NH / 2 };
+        if (isRight(n))  return { px: n.x,           py: n.y + NH / 2 };
+        if (isTop(n))    return { px: n.x + NW / 2,  py: n.y + NH };
+        return                  { px: n.x + NW / 2,  py: n.y };
     };
 
-    const chipPort = (n: typeof nodes[0]) => {
-        if (isLeft(n)) return { cx: CX - CHIP_W / 2, cy: CY };
-        if (isRight(n)) return { cx: CX + CHIP_W / 2, cy: CY };
-        if (isTop(n)) return { cx: CX, cy: CY - CHIP_H / 2 };
-        return { cx: CX, cy: CY + CHIP_H / 2 };
+    // Route differently to different parts of the MCM 
+    const mcmPort = (n: typeof nodes[0]) => {
+        if (isLeft(n))   return { cx: CX - MCM_W / 2, cy: n.y > CY ? CY + 30 : CY - 30 };
+        if (isRight(n))  return { cx: CX + MCM_W / 2, cy: n.y > CY ? CY + 30 : CY - 30 };
+        if (isTop(n))    return { cx: CX,             cy: CY - MCM_H / 2 };
+        return                  { cx: CX,             cy: CY + MCM_H / 2 };
     };
 
     const tracePath = (n: typeof nodes[0]) => {
         const { px, py } = port(n);
-        const { cx, cy } = chipPort(n);
+        const { cx, cy } = mcmPort(n);
         if (isLeft(n) || isRight(n)) return `M ${px} ${py} L ${cx} ${py} L ${cx} ${cy}`;
         return `M ${px} ${py} L ${px} ${cy} L ${cx} ${cy}`;
     };
 
     const pillLabels = [
-        { idx: 0, label: 'XCM Transfer', frac: 0.38 },
-        { idx: 1, label: 'mUSDC Mint', frac: 0.34 },
-        { idx: 2, label: 'Score Boost', frac: 0.38 },
-        { idx: 3, label: 'Borrow PAS', frac: 0.38 },
-        { idx: 4, label: 'Vote History', frac: 0.34 },
-        { idx: 5, label: 'Tier Unlock', frac: 0.38 },
+        { idx: 0, label: 'Cross-chain Payload', frac: 0.38 },
+        { idx: 1, label: 'mUSDC Mint',          frac: 0.34 },
+        { idx: 2, label: 'Identity Sync',       frac: 0.38 },
+        { idx: 3, label: 'Borrow Action',       frac: 0.38 },
+        { idx: 4, label: 'Risk Update',         frac: 0.34 },
+        { idx: 5, label: 'Yield Route',         frac: 0.38 },
     ];
 
     const pillPos = (n: typeof nodes[0], frac: number) => {
         const { px, py } = port(n);
-        const { cx, cy } = chipPort(n);
+        const { cx, cy } = mcmPort(n);
         if (isLeft(n) || isRight(n)) {
             const s1 = Math.abs(cx - px), s2 = Math.abs(cy - py), tot = s1 + s2, d = tot * frac;
             if (d <= s1) return { x: px + (cx - px) * (d / (s1 || 1)), y: py };
@@ -78,15 +75,9 @@ export default function FlowCircuit() {
         <div style={{ position: 'relative', width: '100%' }}>
             <style>{`
                 @keyframes fcBreathe { 0%,100%{opacity:.38} 50%{opacity:1}   }
-                @keyframes fcPulse1  { 0%{r:40;opacity:.5}  100%{r:85;opacity:0}  }
-                @keyframes fcPulse2  { 0%{r:40;opacity:.28} 100%{r:105;opacity:0} }
-                @keyframes fcPulse3  { 0%{r:40;opacity:.16} 100%{r:125;opacity:0} }
                 @keyframes fcDash    { to{stroke-dashoffset:-56} }
                 @keyframes fcFloat   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
                 .fc-breathe { animation: fcBreathe 3.5s ease-in-out infinite; }
-                .fc-p1      { animation: fcPulse1  4.2s ease-out  infinite; }
-                .fc-p2      { animation: fcPulse2  4.2s ease-out  infinite; animation-delay:1.4s; }
-                .fc-p3      { animation: fcPulse3  4.2s ease-out  infinite; animation-delay:2.8s; }
                 .fc-dot     { animation: fcBreathe 2.2s ease-in-out infinite; }
                 .fc-float   { animation: fcFloat   6s   ease-in-out infinite; }
             `}</style>
@@ -99,29 +90,29 @@ export default function FlowCircuit() {
                             <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
                         </filter>
                     ))}
-                    <filter id="fc-chip-gf" x="-120%" y="-120%" width="340%" height="340%">
-                        <feGaussianBlur stdDeviation="18" result="b1" />
+                    <filter id="mcm-gf" x="-40%" y="-40%" width="180%" height="180%">
+                        <feGaussianBlur stdDeviation="12" result="b1" />
                         <feMerge><feMergeNode in="b1" /><feMergeNode in="SourceGraphic" /></feMerge>
                     </filter>
                     <filter id="fc-node-shadow" x="-20%" y="-20%" width="160%" height="180%">
                         <feDropShadow dx={EX} dy={EY} stdDeviation="4" floodColor="#000" floodOpacity="0.5" />
                     </filter>
                     <radialGradient id="fc-floor" cx="50%" cy="50%" r="50%">
-                        <stop offset="0%" stopColor={T.cyan} stopOpacity="0.06" />
-                        <stop offset="55%" stopColor="#818CF8" stopOpacity="0.03" />
+                        <stop offset="0%" stopColor="#818CF8" stopOpacity="0.06" />
+                        <stop offset="55%" stopColor={T.cyan} stopOpacity="0.02" />
                         <stop offset="100%" stopColor="#000" stopOpacity="0" />
                     </radialGradient>
-                    <linearGradient id="fc-chip-top" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="rgba(255,255,255,0.11)" />
-                        <stop offset="100%" stopColor="rgba(255,255,255,0.01)" />
+                    <linearGradient id="mcm-base" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#0F172A" />
+                        <stop offset="100%" stopColor="#020617" />
                     </linearGradient>
                     <linearGradient id="fc-side-r" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="rgba(0,0,0,0.7)" />
-                        <stop offset="100%" stopColor="rgba(0,0,0,0.35)" />
+                        <stop offset="0%" stopColor="rgba(0,0,0,0.8)" />
+                        <stop offset="100%" stopColor="rgba(0,0,0,0.4)" />
                     </linearGradient>
                     <linearGradient id="fc-side-b" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="rgba(0,0,0,0.6)" />
-                        <stop offset="100%" stopColor="rgba(0,0,0,0.25)" />
+                        <stop offset="0%" stopColor="rgba(0,0,0,0.7)" />
+                        <stop offset="100%" stopColor="rgba(0,0,0,0.3)" />
                     </linearGradient>
                     {nodes.map(n => (
                         <linearGradient key={`fc-ng-${n.id}`} id={`fc-ng-${n.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -132,21 +123,25 @@ export default function FlowCircuit() {
                     {nodes.map(n => (
                         <linearGradient key={`fc-nse-${n.id}`} id={`fc-nse-${n.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
                             <stop offset="0%" stopColor={n.color} stopOpacity="0.14" />
-                            <stop offset="100%" stopColor="rgba(0,0,0,0.5)" />
+                            <stop offset="100%" stopColor="rgba(0,0,0,0.6)" />
                         </linearGradient>
                     ))}
+                    
+                    <pattern id="mcm-grid" width="16" height="16" patternUnits="userSpaceOnUse">
+                        <path d="M 16 0 L 0 0 0 16" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
+                    </pattern>
                 </defs>
 
                 {/* Floor glow */}
-                <ellipse cx={CX + EX * 2} cy={CY + CHIP_H + 55} rx={310} ry={65} fill="url(#fc-floor)" opacity={0.75} />
+                <ellipse cx={CX + EX * 2} cy={CY + MCM_H/2 + 60} rx={340} ry={70} fill="url(#fc-floor)" opacity={0.8} />
 
                 {/* Traces */}
                 {nodes.map((n, i) => (
                     <g key={`fc-tr-${n.id}`}>
-                        <path d={tracePath(n)} fill="none" stroke={n.color} strokeWidth={4} strokeOpacity={0.05} strokeLinecap="round" />
-                        <path d={tracePath(n)} fill="none" stroke={n.color} strokeWidth={1.5} strokeOpacity={0.17} strokeLinecap="round" />
-                        <path d={tracePath(n)} fill="none" stroke={n.color} strokeWidth={1} strokeOpacity={0.55} strokeLinecap="round"
-                            strokeDasharray="6 50"
+                        <path d={tracePath(n)} fill="none" stroke={n.color} strokeWidth={4} strokeOpacity={0.06} strokeLinecap="round" />
+                        <path d={tracePath(n)} fill="none" stroke={n.color} strokeWidth={1.5} strokeOpacity={0.25} strokeLinecap="round" />
+                        <path d={tracePath(n)} fill="none" stroke={n.color} strokeWidth={1.5} strokeOpacity={0.7} strokeLinecap="round"
+                            strokeDasharray="8 50"
                             style={{ animation: `fcDash ${2.5 + i * 0.2}s linear infinite`, animationDelay: `${i * 0.52}s`, strokeDashoffset: 0 }}
                         />
                     </g>
@@ -159,7 +154,7 @@ export default function FlowCircuit() {
 
                 {/* Animated packets */}
                 {nodes.map((n, i) => (
-                    <circle key={`fc-pkt-${n.id}`} r={5} fill={n.color} filter={`url(#fc-gf-${n.id})`}>
+                    <circle key={`fc-pkt-${n.id}`} r={5.5} fill={n.color} filter={`url(#fc-gf-${n.id})`}>
                         <animateMotion dur={`${2.5 + i * 0.2}s`} repeatCount="indefinite" begin={`${i * 0.52}s`}
                             keyPoints={isBottom(nodes[i]) || isRight(nodes[i]) ? '1;0' : '0;1'}
                             keyTimes="0;1" calcMode="linear">
@@ -173,58 +168,82 @@ export default function FlowCircuit() {
                     const pos = pillPos(nodes[p.idx], p.frac);
                     return (
                         <g key={`fc-pill-${i}`} transform={`translate(${pos.x},${pos.y})`}>
-                            <rect x={-38} y={-10} width={76} height={20} rx={10} fill="rgba(0,0,0,0.5)" transform={`translate(${EX * 0.5},${EY * 0.5})`} />
-                            <rect x={-38} y={-10} width={76} height={20} rx={10} fill="#0a0b0e" stroke={nodes[p.idx].color} strokeOpacity={0.32} strokeWidth={0.8} />
-                            <rect x={-37} y={-9} width={74} height={1} rx={1} fill="rgba(255,255,255,0.06)" />
-                            <text x={0} y={4} textAnchor="middle" fontSize={7.5} fill={nodes[p.idx].color} fontFamily="ui-monospace,monospace" letterSpacing={0.5}>
+                            <rect x={-42} y={-11} width={84} height={22} rx={11} fill="rgba(0,0,0,0.6)" transform={`translate(${EX * 0.5},${EY * 0.5})`} />
+                            <rect x={-42} y={-11} width={84} height={22} rx={11} fill="#0a0b0e" stroke={nodes[p.idx].color} strokeOpacity={0.4} strokeWidth={1} />
+                            <rect x={-41} y={-10} width={82} height={1} rx={1} fill="rgba(255,255,255,0.08)" />
+                            <text x={0} y={4} textAnchor="middle" fontSize={8} fill={nodes[p.idx].color} fontFamily="ui-monospace,monospace" letterSpacing={0.5} fontWeight="600">
                                 {p.label}
                             </text>
                         </g>
                     );
                 })}
 
-                {/* Center chip - KreditAgent */}
+                {/* Multi-Chip Module (MCM) Core */}
                 <g className="fc-float">
-                    <circle cx={CX} cy={CY} r={40} fill="none" stroke={T.cyan} strokeWidth={1.2} strokeOpacity={0} className="fc-p1" />
-                    <circle cx={CX} cy={CY} r={40} fill="none" stroke="#818CF8" strokeWidth={0.8} strokeOpacity={0} className="fc-p2" />
-                    <circle cx={CX} cy={CY} r={40} fill="none" stroke={T.pink} strokeWidth={0.5} strokeOpacity={0} className="fc-p3" />
+                    {/* MCM Base Extrusion */}
+                    <polygon points={`${CX + MCM_W / 2},${CY - MCM_H / 2} ${CX + MCM_W / 2 + EX + 2},${CY - MCM_H / 2 + EY + 2} ${CX + MCM_W / 2 + EX + 2},${CY + MCM_H / 2 + EY + 2} ${CX + MCM_W / 2},${CY + MCM_H / 2}`} fill="url(#fc-side-r)" />
+                    <polygon points={`${CX - MCM_W / 2},${CY + MCM_H / 2} ${CX + MCM_W / 2},${CY + MCM_H / 2} ${CX + MCM_W / 2 + EX + 2},${CY + MCM_H / 2 + EY + 2} ${CX - MCM_W / 2 + EX + 2},${CY + MCM_H / 2 + EY + 2}`} fill="url(#fc-side-b)" />
 
-                    {/* Extrusion sides */}
-                    <polygon points={`${CX + CHIP_W / 2},${CY - CHIP_H / 2} ${CX + CHIP_W / 2 + EX},${CY - CHIP_H / 2 + EY} ${CX + CHIP_W / 2 + EX},${CY + CHIP_H / 2 + EY} ${CX + CHIP_W / 2},${CY + CHIP_H / 2}`} fill="url(#fc-side-r)" />
-                    <polygon points={`${CX - CHIP_W / 2},${CY + CHIP_H / 2} ${CX + CHIP_W / 2},${CY + CHIP_H / 2} ${CX + CHIP_W / 2 + EX},${CY + CHIP_H / 2 + EY} ${CX - CHIP_W / 2 + EX},${CY + CHIP_H / 2 + EY}`} fill="url(#fc-side-b)" />
+                    {/* MCM Base Plate */}
+                    <rect x={CX - MCM_W / 2} y={CY - MCM_H / 2} width={MCM_W} height={MCM_H} rx={14} fill="url(#mcm-base)" stroke="rgba(255,255,255,0.2)" strokeWidth={1} filter="url(#fc-node-shadow)" />
+                    <rect x={CX - MCM_W / 2} y={CY - MCM_H / 2} width={MCM_W} height={MCM_H} rx={14} fill="url(#mcm-grid)" />
+                    <rect x={CX - MCM_W / 2} y={CY - MCM_H / 2} width={MCM_W} height={MCM_H} rx={14} fill="none" stroke="#A78BFA" strokeOpacity={0.15} strokeWidth={1.5} filter="url(#mcm-gf)" className="fc-breathe" />
 
-                    {/* Ambient glow */}
-                    <rect x={CX - CHIP_W / 2} y={CY - CHIP_H / 2} width={CHIP_W} height={CHIP_H} rx={10}
-                        fill="none" stroke={T.cyan} strokeWidth={1} strokeOpacity={0.14}
-                        filter="url(#fc-chip-gf)" className="fc-breathe" />
+                    {/* Logic routing traces on the MCM */}
+                    <path d={`M ${CX} ${CY-45} L ${CX} ${CY+45} M ${CX-45} ${CY} L ${CX+45} ${CY}`} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={2} />
 
-                    {/* Main body */}
-                    <rect x={CX - CHIP_W / 2} y={CY - CHIP_H / 2} width={CHIP_W} height={CHIP_H} rx={10}
-                        fill="#0b0d10" stroke="rgba(255,255,255,0.13)" strokeWidth={1.2} />
-                    <rect x={CX - CHIP_W / 2} y={CY - CHIP_H / 2} width={CHIP_W} height={CHIP_H} rx={10} fill="url(#fc-chip-top)" />
-                    <line x1={CX - CHIP_W / 2 + 12} y1={CY - CHIP_H / 2 + 1} x2={CX + CHIP_W / 2 - 12} y2={CY - CHIP_H / 2 + 1} stroke="rgba(255,255,255,0.16)" strokeWidth={0.8} />
+                    {/* Sub Chip 1: Kredit Agent (Top Left) */}
+                    <g transform={`translate(${CX - 45}, ${CY - 40})`}>
+                        <rect x={-35} y={-25} width={70} height={50} rx={6} fill="#020617" stroke="#34D399" strokeWidth={1} strokeOpacity={0.6} />
+                        <rect x={-33} y={-23} width={66} height={2} fill="rgba(255,255,255,0.1)" />
+                        <text x={0} y={-4} textAnchor="middle" fontSize={8} fill="rgba(255,255,255,0.9)" fontFamily="ui-monospace,monospace" fontWeight="700">KREDIT</text>
+                        <text x={0} y={8} textAnchor="middle" fontSize={7} fill="#34D399" fontFamily="ui-monospace,monospace" letterSpacing={1}>AGENT</text>
+                        <circle cx={25} cy={15} r={3} fill="#34D399" className="fc-breathe" />
+                    </g>
 
-                    {/* Grid */}
-                    {[-24, -8, 8, 24].map((o, i) => <line key={`fcl-${i}`} x1={CX - CHIP_W / 2 + 8} y1={CY + o} x2={CX + CHIP_W / 2 - 8} y2={CY + o} stroke="rgba(255,255,255,0.04)" strokeWidth={0.5} />)}
-                    {[-44, -22, 0, 22, 44].map((o, i) => <line key={`fcv-${i}`} x1={CX + o} y1={CY - CHIP_H / 2 + 8} x2={CX + o} y2={CY + CHIP_H / 2 - 8} stroke="rgba(255,255,255,0.04)" strokeWidth={0.5} />)}
+                    {/* Sub Chip 2: Neural Scorer (Top Right) */}
+                    <g transform={`translate(${CX + 45}, ${CY - 40})`}>
+                        <rect x={-35} y={-25} width={70} height={50} rx={6} fill="#020617" stroke="#00E2FF" strokeWidth={1} strokeOpacity={0.6} />
+                        <rect x={-33} y={-23} width={66} height={2} fill="rgba(255,255,255,0.1)" />
+                        <text x={0} y={-4} textAnchor="middle" fontSize={8} fill="rgba(255,255,255,0.9)" fontFamily="ui-monospace,monospace" fontWeight="700">NEURAL</text>
+                        <text x={0} y={8} textAnchor="middle" fontSize={7} fill="#00E2FF" fontFamily="ui-monospace,monospace" letterSpacing={1}>SCORER</text>
+                        <circle cx={25} cy={15} r={3} fill="#00E2FF" className="fc-breathe" style={{ animationDelay: '0.5s' }} />
+                    </g>
 
-                    {/* Labels */}
-                    <text x={CX} y={CY - 8} textAnchor="middle" fontSize={11} fill="rgba(255,255,255,0.82)" fontFamily="ui-monospace,monospace" letterSpacing={2.5} fontWeight="700">KREDIT</text>
-                    <text x={CX} y={CY + 9} textAnchor="middle" fontSize={8.5} fill={T.cyan} fontFamily="ui-monospace,monospace" letterSpacing={2}>AGENT</text>
-                    <text x={CX} y={CY + 23} textAnchor="middle" fontSize={6.5} fill="#475569" fontFamily="ui-monospace,monospace" letterSpacing={1.5}>ink! · Asset Hub</text>
+                    {/* Sub Chip 3: Risk Assessor (Bottom Left) */}
+                    <g transform={`translate(${CX - 45}, ${CY + 40})`}>
+                        <rect x={-35} y={-25} width={70} height={50} rx={6} fill="#020617" stroke="#F59E0B" strokeWidth={1} strokeOpacity={0.6} />
+                        <rect x={-33} y={-23} width={66} height={2} fill="rgba(255,255,255,0.1)" />
+                        <text x={0} y={-4} textAnchor="middle" fontSize={8} fill="rgba(255,255,255,0.9)" fontFamily="ui-monospace,monospace" fontWeight="700">RISK</text>
+                        <text x={0} y={8} textAnchor="middle" fontSize={7} fill="#F59E0B" fontFamily="ui-monospace,monospace" letterSpacing={1}>ASSESSOR</text>
+                        <circle cx={25} cy={15} r={3} fill="#F59E0B" className="fc-breathe" style={{ animationDelay: '1s' }} />
+                    </g>
 
-                    {/* Pins */}
-                    {[-48, -24, 0, 24, 48].map((x, i) => <rect key={`fcpt-${i}`} x={CX + x - 2} y={CY - CHIP_H / 2 - 6} width={4} height={7} rx={1} fill="rgba(255,255,255,0.18)" />)}
-                    {[-48, -24, 0, 24, 48].map((x, i) => (
+                    {/* Sub Chip 4: Yield Mind (Bottom Right) */}
+                    <g transform={`translate(${CX + 45}, ${CY + 40})`}>
+                        <rect x={-35} y={-25} width={70} height={50} rx={6} fill="#020617" stroke="#F472B6" strokeWidth={1} strokeOpacity={0.6} />
+                        <rect x={-33} y={-23} width={66} height={2} fill="rgba(255,255,255,0.1)" />
+                        <text x={0} y={-4} textAnchor="middle" fontSize={8} fill="rgba(255,255,255,0.9)" fontFamily="ui-monospace,monospace" fontWeight="700">YIELD</text>
+                        <text x={0} y={8} textAnchor="middle" fontSize={7} fill="#F472B6" fontFamily="ui-monospace,monospace" letterSpacing={1}>MIND</text>
+                        <circle cx={25} cy={15} r={3} fill="#F472B6" className="fc-breathe" style={{ animationDelay: '1.5s' }} />
+                    </g>
+
+                    {/* Central Kernel Sync */}
+                    <circle cx={CX} cy={CY} r={16} fill="#0B101E" stroke="#A78BFA" strokeWidth={1.5} />
+                    <circle cx={CX} cy={CY} r={6} fill="#A78BFA" opacity={0.8} className="fc-breathe" />
+
+                    {/* Pins along the perimeter */}
+                    {[-70, -35, 0, 35, 70].map((x, i) => <rect key={`fcpt-${i}`} x={CX + x - 3} y={CY - MCM_H / 2 - 6} width={6} height={7} rx={1} fill="rgba(255,255,255,0.25)" />)}
+                    {[-70, -35, 0, 35, 70].map((x, i) => (
                         <g key={`fcpb-${i}`}>
-                            <rect x={CX + x - 2} y={CY + CHIP_H / 2} width={4} height={7} rx={1} fill="rgba(0,0,0,0.45)" />
-                            <rect x={CX + x - 2 + EX} y={CY + CHIP_H / 2 + EY} width={4} height={3} rx={1} fill="rgba(0,0,0,0.6)" />
+                            <rect x={CX + x - 3} y={CY + MCM_H / 2} width={6} height={7} rx={1} fill="rgba(0,0,0,0.5)" />
+                            <rect x={CX + x - 3 + EX} y={CY + MCM_H / 2 + EY} width={6} height={3} rx={1} fill="rgba(0,0,0,0.7)" />
                         </g>
                     ))}
-                    {[-26, 0, 26].map((y, i) => (
+                    {[-60, -20, 20, 60].map((y, i) => (
                         <g key={`fcps-${i}`}>
-                            <rect x={CX - CHIP_W / 2 - 6} y={CY + y - 2} width={7} height={4} rx={1} fill="rgba(255,255,255,0.18)" />
-                            <rect x={CX + CHIP_W / 2} y={CY + y - 2} width={7} height={4} rx={1} fill="rgba(255,255,255,0.11)" />
+                            <rect x={CX - MCM_W / 2 - 6} y={CY + y - 3} width={7} height={6} rx={1} fill="rgba(255,255,255,0.25)" />
+                            <rect x={CX + MCM_W / 2}     y={CY + y - 3} width={7} height={6} rx={1} fill="rgba(255,255,255,0.15)" />
                         </g>
                     ))}
                 </g>

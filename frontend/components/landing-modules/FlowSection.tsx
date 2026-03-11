@@ -16,14 +16,13 @@ export function FlowSection() {
             >
                 {/* Header */}
                 <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-                    <p style={LABEL_STYLE}>How It Works</p>
+                    <p style={LABEL_STYLE}>Flow Architecture</p>
                     <h2 style={{ fontSize: 'clamp(24px, 3vw, 40px)', fontWeight: 700, color: T.white, letterSpacing: '-0.04em', lineHeight: 1.1 }}>
-                        Every action flows through{' '}
-                        <span style={{ color: T.cyan }}>KreditAgent.</span>
+                        Continuous{' '}
+                        <span style={{ color: T.cyan }}>multi-agent validation.</span>
                     </h2>
                     <p style={{ fontSize: '13px', color: '#64748B', marginTop: '10px', maxWidth: '480px', margin: '10px auto 0', lineHeight: 1.7 }}>
-                        Fund from any chain. Vote in governance. Build history.
-                        KreditAgent computes your score and unlocks better rates.
+                        Fund from any chain. Build history. Kredio's Agent Cluster simultaneously computes your score, guards against risk, and routes capital.
                     </p>
                 </div>
 
