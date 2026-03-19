@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@polkadot/api", "@polkadot/util-crypto", "@polkadot/util", "@polkadot/types", "@polkadot/rpc-provider", "@polkadot/rpc-core", "@polkadot/api-base", "@polkadot/types-known", "@polkadot/keyring"],
 
   output: "export",
+  trailingSlash: true,
 };
 
 export default nextConfig;
