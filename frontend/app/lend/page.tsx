@@ -8,15 +8,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     fetchPeopleBalance, formatPASFromEVM, formatPASFromPeople,
     pollHubArrival, sendXCMToHub, type XcmStatusStage,
-} from '../../../lib/xcm';
-import config from '../../../lib/addresses';
-import { ABIS } from '../../../lib/constants';
-import { formatDisplayBalance, formatTokenAmount, cn } from '../../../lib/utils';
-import { PageShell, StateNotice } from '../../../components/modules/ProtocolUI';
-import { useGlobalProtocolData, useUserPortfolio } from '../../../hooks/useProtocolData';
-import { useActionLog } from '../../../components/providers/ActionLogProvider';
-import { parseUsdcInput } from '../../../lib/input';
-import { useAccess } from '../../../hooks/useAccess';
+} from '../../lib/xcm';
+import config from '../../lib/addresses';
+import { ABIS } from '../../lib/constants';
+import { formatDisplayBalance, formatTokenAmount, cn } from '../../lib/utils';
+import { PageShell, StateNotice } from '../../components/modules/ProtocolUI';
+import { useGlobalProtocolData, useUserPortfolio } from '../../hooks/useProtocolData';
+import { useActionLog } from '../../components/providers/ActionLogProvider';
+import { parseUsdcInput } from '../../lib/input';
+import { useAccess } from '../../hooks/useAccess';
 
 const GAS_BUFFER = parseUnits('0.01', 18);
 type SourceTab = 'musdc' | 'swap' | 'bridge';
@@ -171,8 +171,8 @@ function LendDepositCard({
                     className={cn('w-full rounded-xl px-4 py-3 text-sm font-semibold transition-all flex items-center justify-center gap-2',
                         isProcessing ? 'bg-white/5 border border-white/10 text-slate-400 cursor-not-allowed'
                             : phase === 'error' ? 'bg-rose-500/20 border-rose-500/30 text-rose-400 cursor-not-allowed'
-                            : !amountAtoms || !isConnected ? 'bg-white/5 border border-white/10 text-slate-600 cursor-not-allowed'
-                                : 'bg-indigo-600 hover:bg-indigo-500 text-white')}>
+                                : !amountAtoms || !isConnected ? 'bg-white/5 border border-white/10 text-slate-600 cursor-not-allowed'
+                                    : 'bg-indigo-600 hover:bg-indigo-500 text-white')}>
                     {isProcessing && <Spinner />}{btnLabel}
                 </button>
             ) : (
@@ -262,8 +262,8 @@ function SwapStep({ onSuccess }: { onSuccess: (receivedMusdc: string) => void })
                 className={cn('w-full rounded-xl px-4 py-3 text-sm font-semibold transition-all flex items-center justify-center gap-2',
                     busy ? 'bg-white/5 border border-white/10 text-slate-400 cursor-not-allowed'
                         : phase === 'error' ? 'bg-rose-500/20 border-rose-500/30 text-rose-400 cursor-not-allowed'
-                        : !amount || overBalance || oracle.isCrashed || !quoteResult ? 'bg-white/5 border border-white/10 text-slate-600 cursor-not-allowed'
-                            : 'bg-indigo-600 hover:bg-indigo-500 text-white')}>
+                            : !amount || overBalance || oracle.isCrashed || !quoteResult ? 'bg-white/5 border border-white/10 text-slate-600 cursor-not-allowed'
+                                : 'bg-indigo-600 hover:bg-indigo-500 text-white')}>
                 {busy ? <><Spinner />{isSigning ? 'Waiting for MetaMask…' : 'Confirming…'}</> : phase === 'error' ? 'Action Cancelled' : `Swap ${amount || '0'} PAS → mUSDC`}
             </button>
             {oracle.isCrashed && <StateNotice tone="error" message="Oracle is down - swaps paused." />}
