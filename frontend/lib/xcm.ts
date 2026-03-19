@@ -1,7 +1,3 @@
-import { ApiPromise, WsProvider } from '@polkadot/api';
-import { Builder } from '@paraspell/sdk-pjs';
-import { hexToU8a } from '@polkadot/util';
-import { encodeAddress } from '@polkadot/util-crypto';
 import { formatUnits } from 'viem';
 
 export const PEOPLE_RPC = 'wss://people-paseo.rpc.amforc.com';
@@ -35,7 +31,11 @@ export type PollHubArrivalParams = {
     intervalMs?: number;
 };
 
-export function h160ToSS58(evmAddress: string): string {
+// Lazy-loads @polkadot/util & @polkadot/util-crypto on demand to avoid
+// bundling WASM initializers into the initial page JS chunk.
+export async function h160ToSS58(evmAddress: string): Promise<string> {
+    const { hexToU8a } = await import('@polkadot/util');
+    const { encodeAddress } = await import('@polkadot/util-crypto');
     const h160 = hexToU8a(evmAddress);
     if (h160.length !== 20) {
         throw new Error('Invalid EVM address: expected 20-byte H160');
@@ -57,6 +57,8 @@ export function formatPASFromPeople(raw: bigint): string {
 }
 
 export async function fetchPeopleBalance(address: string): Promise<bigint> {
+    // Lazy-load @polkadot/api to avoid bundling WASM into the initial chunk.
+    const { ApiPromise, WsProvider } = await import('@polkadot/api');
     const provider = new WsProvider(PEOPLE_RPC);
     const api = await ApiPromise.create({ provider });
     try {
@@ -86,7 +88,13 @@ function normalizeXcmError(error: unknown): Error {
 
 export async function sendXCMToHub(params: SendXcmParams): Promise<{ blockHash: string }> {
     const { senderAddress, destinationEVM, amountPAS, onStatus } = params;
-    let api: ApiPromise | null = null;
+
+    // Lazy-load @polkadot/api and @paraspell/sdk-pjs only when this function
+    // is actually called (i.e., when the user triggers a bridge transaction).
+    const { ApiPromise, WsProvider } = await import('@polkadot/api');
+    const { Builder } = await import('@paraspell/sdk-pjs');
+
+    let api: InstanceType<typeof ApiPromise> | null = null;
 
     try {
         onStatus?.('connecting', 'Connecting to People Chain...');
@@ -95,7 +103,7 @@ export async function sendXCMToHub(params: SendXcmParams): Promise<{ blockHash: 
 
         onStatus?.('building', 'Building XCM transaction...');
         const amount = toSubstrateAmount(amountPAS);
-        const ss58Dest = h160ToSS58(destinationEVM);
+        const ss58Dest = await h160ToSS58(destinationEVM);
 
         const tx = await Builder(api)
             .from('PeoplePaseo')

@@ -273,7 +273,7 @@ function PasTab() {
                 setBalanceBefore(snapshot);
                 setBalanceNow(snapshot);
             }
-            h160ToSS58(hubAddress);
+            // h160ToSS58 is called internally by sendXCMToHub below
             await sendXCMToHub({
                 senderAddress: selectedAccount.address,
                 destinationEVM: hubAddress,
