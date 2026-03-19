@@ -188,6 +188,7 @@ async function step(actor, action, contractName, txFn, opts = {}) {
         step: stepNum,
         actor,
         action,
+        params: opts.params || '',
         contract: contractName,
         expected: opts.expected || '',
         observedBefore: null,
@@ -438,22 +439,27 @@ async function main() {
         const curPas = await provider.getBalance(usr.address);
         console.log(`\n  ${name} (${usr.address.slice(0, 10)}...)  mUSDC=${fmt6(curMusdc)}  PAS=${fmt18(curPas)}`);
 
-        // Mint exactly 200 000 mUSDC (MockUSDC.mint is permissionless)
-        await step('ADMIN', `Mint 200,000 mUSDC to ${name}`, 'MockUSDC',
-            () => musdc.connect(admin).mint(usr.address, TARGET_MUSDC),
-            { expected: `${name}.mUSDC = 200 000 (fresh mint)` }
-        );
+        // Check current mUSDC and conditionally mint
+        if (curMusdc >= TARGET_MUSDC) {
+            console.log(`  [skip] ${name} already has ${fmt6(curMusdc)} mUSDC (>= 200,000)`);
+        } else {
+            const needed = TARGET_MUSDC - curMusdc;
+            await step('ADMIN', `Mint ${fmt6(needed)} mUSDC to ${name}`, 'MockUSDC',
+                () => musdc.connect(admin).mint(usr.address, needed),
+                { expected: `${name}.mUSDC = 200 000`, params: `amount=${fmt6(needed)}` }
+            );
+        }
 
-        // Top-up PAS from admin if user < 900 PAS (keep 1050 to cover gas)
-        if (curPas < u18('900')) {
-            const toSend = TARGET_PAS - curPas + u18('100'); // 100 PAS extra for gas
-            console.log(`  Sending ${fmt18(toSend)} PAS to ${name} (has ${fmt18(curPas)} PAS)`);
+        // Top-up PAS from admin if user < 49000 PAS
+        if (curPas < u18('500')) {
+            const toSend = TARGET_PAS - curPas;
+            console.log(`  Sending ${fmt18(toSend)} PAS to ${name}`);
             await step('ADMIN', `Send PAS to ${name}`, 'Native',
                 () => admin.sendTransaction({ to: usr.address, value: toSend }),
-                { expected: `${name}.PAS ≈ 1 100 PAS` }
+                { expected: `${name}.PAS ≈ 50 000 PAS`, params: `value=${fmt18(toSend)} PAS` }
             );
         } else {
-            console.log(`  [skip] ${name} already has sufficient PAS`);
+            console.log(`  [skip] ${name} already has sufficient PAS (${fmt18(curPas)})`);
         }
     }
 
@@ -477,14 +483,14 @@ async function main() {
         { expected: 'yieldRateBps = 100 000; yield accrues rapidly for demo' }
     );
 
-    // 3.2  globalTick = 1 440 on both markets (1 real second ≈ 24 simulated minutes)
-    await step('ADMIN', 'Set KredioLending globalTick = 1 440 (1 s = 24 min interest)', 'KredioLending',
-        () => lending.connect(admin).adminSetGlobalTick(1440),
-        { expected: 'globalTick = 1440' }
+    // 3.2  globalTick = 86400 on both markets (1 real second ≈ 1 simulated day)
+    await step('ADMIN', 'Set KredioLending globalTick = 86400 (1 s = 1 day interest)', 'KredioLending',
+        () => lending.connect(admin).adminSetGlobalTick(86400),
+        { expected: 'globalTick = 86400', params: 'tickMultiplier=86400' }
     );
-    await step('ADMIN', 'Set KredioPASMarket globalTick = 1 440', 'KredioPASMarket',
-        () => pasMarket.connect(admin).adminSetGlobalTick(1440),
-        { expected: 'globalTick = 1440' }
+    await step('ADMIN', 'Set KredioPASMarket globalTick = 86400', 'KredioPASMarket',
+        () => pasMarket.connect(admin).adminSetGlobalTick(86400),
+        { expected: 'globalTick = 86400', params: 'tickMultiplier=86400' }
     );
 
     // 3.3  Wire yield pool (re-confirm)
@@ -570,13 +576,13 @@ async function main() {
     console.log('  PHASE 4 - TEST SEQUENCE');
     console.log('─'.repeat(110));
 
-    // ── T1  USER1 lends 50 000 mUSDC to KredioLending ────────────────────────
-    console.log('\n  ── T1: USER1 → Lend 50 000 mUSDC into KredioLending ──');
-    const T1_AMOUNT = u6('50000');
+    // ── T1  USER1 lends 100 000 mUSDC to KredioLending ────────────────────────
+    console.log('\n  ── T1: USER1 → Lend 100 000 mUSDC into KredioLending ──');
+    const T1_AMOUNT = u6('100000');
 
     await step('USER1', 'Approve 50 000 mUSDC to KredioLending', 'MockUSDC',
         () => musdc.connect(users.USER1).approve(ADDR.LENDING, T1_AMOUNT),
-        { expected: 'Allowance set' }
+        { expected: 'Allowance set', params: 'MAX or exact amount' }
     );
     await step('USER1', 'Deposit 50 000 mUSDC into KredioLending', 'KredioLending',
         () => lending.connect(users.USER1).deposit(T1_AMOUNT),
@@ -589,13 +595,13 @@ async function main() {
 
     await viewLog('USER1 deposit balance', () => lending.depositBalance(users.USER1.address).then(fmt6));
 
-    // ── T2  USER3 lends 80 000 mUSDC to KredioPASMarket ──────────────────────
-    console.log('\n  ── T2: USER3 → Lend 80 000 mUSDC into KredioPASMarket ──');
-    const T2_AMOUNT = u6('80000');
+    // ── T2  USER3 lends 150 000 mUSDC to KredioPASMarket ──────────────────────
+    console.log('\n  ── T2: USER3 → Lend 150 000 mUSDC into KredioPASMarket ──');
+    const T2_AMOUNT = u6('150000');
 
     await step('USER3', 'Approve 80 000 mUSDC to KredioPASMarket', 'MockUSDC',
         () => musdc.connect(users.USER3).approve(ADDR.PAS_MARKET, T2_AMOUNT),
-        { expected: 'Allowance set' }
+        { expected: 'Allowance set', params: 'MAX or exact amount' }
     );
     await step('USER3', 'Deposit 80 000 mUSDC into KredioPASMarket', 'KredioPASMarket',
         () => pasMarket.connect(users.USER3).deposit(T2_AMOUNT),
@@ -625,14 +631,46 @@ async function main() {
         console.log(`  [warn] getScore failed (${e.message?.slice(0, 80)}); using defaults`);
     }
 
-    const T3_COLLATERAL = u6('20000');
+    
+    // ── Pre-Borrow: Invest idle capital and verify intelligent yield ────────
+    console.log('\n  ── Pre-Borrow Check: ADMIN → Invest 200 000 mUSDC idle capital into yield pool ──');
+    let lTotalDep = await lending.totalDeposited();
+    let lTotalBor = await lending.totalBorrowed();
+    let lIdle = lTotalDep > lTotalBor ? lTotalDep - lTotalBor : 0n;
+    
+    // Use 400k invest to be more aggressive
+    const INVEST_AMT = u6('400000');
+    let minBuffer = (lTotalDep * 2000n) / 10000n; 
+    let canInvest = lIdle > INVEST_AMT + minBuffer;
+
+    if (canInvest) {
+        await step('ADMIN', `Invest ${fmt6(INVEST_AMT)} mUSDC from KredioLending into yield pool`, 'KredioLending',
+            () => lending.connect(admin).adminInvest(INVEST_AMT),
+            {
+                expected: 'Yield starts accruing on underutilized capital',
+                params: `amount=${fmt6(INVEST_AMT)}`,
+                beforeFn: async () => ({ investedAmount: (await lending.investedAmount()).toString(), yieldPrincipal: (await yieldPool.totalPrincipal()).toString() }),
+                afterFn: async () => ({ investedAmount: (await lending.investedAmount()).toString(), yieldPrincipal: (await yieldPool.totalPrincipal()).toString() }),
+            }
+        );
+    } else {
+        console.log(`  [skip] Not enough idle buffer to safely invest 400k`);
+    }
+
+    console.log('\n  ── WAIT 5 seconds (1 sec = 1 day) to generate demonstrable intelligent yield ──');
+    await sleep(5000); // 5 days 
+    const externalYieldGenerated = await lending.pendingStrategyYield();
+    console.log(`  [Intelligent Yield Check]: Pending yield generated on idle capital = ${fmt6(externalYieldGenerated)} mUSDC`);
+
+
+    const T3_COLLATERAL = u6('100000');
     const T3_maxBorrow = (T3_COLLATERAL * 10000n) / u2CollateralRatioBps;
-    const T3_BORROW = (T3_maxBorrow * 8000n) / 10000n; // 80% of max for safety
+    const T3_BORROW = (T3_maxBorrow * 8000n) / 10000n; // 80% of max for safety, around 40k
     console.log(`  collateralRatioBps=${u2CollateralRatioBps}, maxBorrow=${fmt6(T3_maxBorrow)}, borrowing 80%=${fmt6(T3_BORROW)}`);
 
     await step('USER2', 'Approve 20 000 mUSDC to KredioLending (collateral)', 'MockUSDC',
         () => musdc.connect(users.USER2).approve(ADDR.LENDING, T3_COLLATERAL),
-        { expected: 'Allowance set' }
+        { expected: 'Allowance set', params: 'MAX or exact amount' }
     );
     await step('USER2', 'Deposit 20 000 mUSDC as USDC collateral into KredioLending', 'KredioLending',
         () => lending.connect(users.USER2).depositCollateral(T3_COLLATERAL),
@@ -645,7 +683,8 @@ async function main() {
     await step('USER2', `Borrow ${fmt6(T3_BORROW)} mUSDC from KredioLending (credit-score gated)`, 'KredioLending',
         () => lending.connect(users.USER2).borrow(T3_BORROW),
         {
-            expected: `Position opened: debt=${fmt6(T3_BORROW)}, collateral=20 000; totalBorrowed += ${fmt6(T3_BORROW)}`,
+            params: `borrowAmount=${fmt6(T3_BORROW)}`,
+            expected: `Position opened: debt=${fmt6(T3_BORROW)}, collateral=100 000; totalBorrowed += ${fmt6(T3_BORROW)}`,
             beforeFn: async () => ({ totalBorrowed: (await lending.totalBorrowed()).toString(), mUSDCBal: (await musdc.balanceOf(users.USER2.address)).toString() }),
             afterFn: async () => ({ totalBorrowed: (await lending.totalBorrowed()).toString(), mUSDCBal: (await musdc.balanceOf(users.USER2.address)).toString() }),
         }
@@ -657,7 +696,7 @@ async function main() {
     // _toUSDCValue = (pasWei * price) / 1e20  →  gives mUSDC (6 dec)
     const oraclePriceN = BigInt(oraclePrice.toString());
     const ltvBps = await pasMarket.ltvBps();
-    const T4_PAS = u18('300');
+    const T4_PAS = u18('800');
     const T4_collValue = (T4_PAS * oraclePriceN) / (10n ** 20n);
     const T4_maxBorrow = (T4_collValue * ltvBps) / 10000n;
     const T4_BORROW = (T4_maxBorrow * 7000n) / 10000n; // 70% of max
@@ -682,7 +721,7 @@ async function main() {
 
     // ── T5  USER5 deposits PAS + borrows near max (liquidation target) ────────
     console.log('\n  ── T5: USER5 → Deposit 400 PAS + Borrow 95% of max (liquidation target) ──');
-    const T5_PAS = u18('400');
+    const T5_PAS = u18('900');
     const T5_collValue = (T5_PAS * oraclePriceN) / (10n ** 20n);
     const T5_maxBorrow = (T5_collValue * ltvBps) / 10000n;
     const T5_BORROW = (T5_maxBorrow * 9500n) / 10000n; // 95% - near-instant liquidation risk
@@ -705,48 +744,11 @@ async function main() {
         }
     );
 
-    // ── T6  Invest idle capital into yield pool ───────────────────────────────
-    console.log('\n  ── T6: ADMIN → Invest 200 000 mUSDC from KredioLending into yield pool ──');
-    const lTotalDep = await lending.totalDeposited();
-    const lTotalBor = await lending.totalBorrowed();
-    const lIdle = lTotalDep > lTotalBor ? lTotalDep - lTotalBor : 0n;
-    console.log(`  KredioLending idle capital: ${fmt6(lIdle)} mUSDC`);
-
-    const INVEST_AMT = u6('200000');
-    const minBuffer = (lTotalDep * 2000n) / 10000n; // 20% buffer
-    const canInvest = lIdle > INVEST_AMT + minBuffer;
-
-    if (canInvest) {
-        await step('ADMIN', `Invest ${fmt6(INVEST_AMT)} mUSDC from KredioLending into yield pool`, 'KredioLending',
-            () => lending.connect(admin).adminInvest(INVEST_AMT),
-            {
-                expected: 'KredioLending.investedAmount += 200 000; YieldPool.totalPrincipal += 200 000; yield starts accruing',
-                beforeFn: async () => ({ investedAmount: (await lending.investedAmount()).toString(), yieldPrincipal: (await yieldPool.totalPrincipal()).toString() }),
-                afterFn: async () => ({ investedAmount: (await lending.investedAmount()).toString(), yieldPrincipal: (await yieldPool.totalPrincipal()).toString() }),
-            }
-        );
-    } else {
-        console.log(`  [skip] Not enough idle (${fmt6(lIdle)}) after minBuffer to safely invest 200k`);
-    }
-
-    // ── T7  Verify strategy status ────────────────────────────────────────────
-    console.log('\n  ── T7: CHECK - Strategy status after investment ──');
-    try {
-        const strat = await lending.strategyStatus();
-        console.log(`  pool           : ${strat.pool}`);
-        console.log(`  invested       : ${fmt6(strat.invested)} mUSDC`);
-        console.log(`  totalEarned    : ${fmt6(strat.totalEarned)} mUSDC (lifetime)`);
-        console.log(`  pendingYield   : ${fmt6(strat.pendingYield_)} mUSDC (in pool, not yet claimed)`);
-        console.log(`  investRatioBps : ${strat.investRatio_}`);
-        console.log(`  minBufferBps   : ${strat.minBuffer_}`);
-    } catch (e) {
-        console.log(`  [warn] strategyStatus failed: ${e.message?.slice(0, 100)}`);
-    }
-
-    // ── T8  Wait 45 s for interest + yield to accrue ─────────────────────────
-    console.log('\n  ── T8: WAIT 45 seconds (tick=1440 → ~18 hrs simulated interest; yield accruing) ──');
-    console.log('  Waiting 45 seconds...');
-    await sleep(45000);
+    // (T6, T7, T8 were shifted to occur before borrowing)
+    
+    // ── T6/7 Wait 5 sec for interest (1 sec = 1 day)
+    console.log('\n  ── WAIT 5 seconds (5 days simulated interest) ──');
+    await sleep(5000);
 
     const u2Interest = await lending.accruedInterest(users.USER2.address);
     const u4Interest = await pasMarket.accruedInterest(users.USER4.address);
@@ -845,9 +847,11 @@ async function main() {
     const u1MusdcBefore = await musdc.balanceOf(users.USER1.address);
     console.log(`  USER1 pending yield: ${fmt6(u1PendingBefore)} mUSDC`);
 
+    console.log(`  [Verification] USER1 Harvesting ${fmt6(u1PendingBefore)} mUSDC. This includes base interest + intelligent yield share.`);
     await step('USER1', `Harvest ${fmt6(u1PendingBefore)} mUSDC yield from KredioLending`, 'KredioLending',
         () => lending.connect(users.USER1).pendingYieldAndHarvest(users.USER1.address),
         {
+            params: `harvestAmount=${fmt6(u1PendingBefore)}`,
             expected: `USER1.mUSDC += ${fmt6(u1PendingBefore)}; pendingYield[USER1] → 0`,
             beforeFn: async () => ({ mUSDCBal: u1MusdcBefore.toString(), pendingYield: u1PendingBefore.toString() }),
             afterFn: async () => ({ mUSDCBal: (await musdc.balanceOf(users.USER1.address)).toString(), pendingYield: (await lending.pendingYield(users.USER1.address)).toString() }),
@@ -860,9 +864,11 @@ async function main() {
     const u3MusdcBefore = await musdc.balanceOf(users.USER3.address);
     console.log(`  USER3 pending yield: ${fmt6(u3PendingBefore)} mUSDC`);
 
+    console.log(`  [Verification] USER3 Harvesting ${fmt6(u3PendingBefore)} mUSDC, consisting entirely of KredioPASMarket borrower interests.`);
     await step('USER3', `Harvest ${fmt6(u3PendingBefore)} mUSDC yield from KredioPASMarket`, 'KredioPASMarket',
         () => pasMarket.connect(users.USER3).pendingYieldAndHarvest(users.USER3.address),
         {
+            params: `harvestAmount=${fmt6(u3PendingBefore)}`,
             expected: `USER3.mUSDC += ${fmt6(u3PendingBefore)}; pendingYield[USER3] → 0`,
             beforeFn: async () => ({ mUSDCBal: u3MusdcBefore.toString(), pendingYield: u3PendingBefore.toString() }),
             afterFn: async () => ({ mUSDCBal: (await musdc.balanceOf(users.USER3.address)).toString(), pendingYield: (await pasMarket.pendingYield(users.USER3.address)).toString() }),
@@ -880,10 +886,13 @@ async function main() {
             () => musdc.connect(users.USER2).approve(ADDR.LENDING, repayAmt),
             { expected: 'Allowance ≥ totalOwed' }
         );
+        const interestPaid = u2PosFull.totalOwed - u2PosFull.debt;
+        console.log(`  [Verification] USER2 Repaying: Principal=${fmt6(u2PosFull.debt)} mUSDC, Interest Generated=${fmt6(interestPaid)} mUSDC`);
         await step('USER2', `repay() - pay ${fmt6(u2PosFull.totalOwed)} mUSDC (principal + interest)`, 'KredioLending',
             () => lending.connect(users.USER2).repay(),
             {
-                expected: 'Position deleted; collateral 20 000 mUSDC returned to USER2; interest distributed to lenders; repaymentCount[USER2]++',
+                params: `principal=${fmt6(u2PosFull.debt)}, interest=${fmt6(interestPaid)}`,
+                expected: 'Position deleted; collateral 100 000 mUSDC returned to USER2; interest distributed to lenders; repaymentCount[USER2]++',
                 beforeFn: async () => ({ active: u2PosFull.active.toString(), totalBorrowed: (await lending.totalBorrowed()).toString(), mUSDCBal: (await musdc.balanceOf(users.USER2.address)).toString() }),
                 afterFn: async () => ({ active: (await lending.getPositionFull(users.USER2.address)).active.toString(), totalBorrowed: (await lending.totalBorrowed()).toString(), mUSDCBal: (await musdc.balanceOf(users.USER2.address)).toString() }),
             }
@@ -901,11 +910,14 @@ async function main() {
         const u4RepayAmt = u4PosFull.totalOwed + u6('50'); // +50 mUSDC buffer for tick accrual between approve and repay
         await step('USER4', `Approve ${fmt6(u4RepayAmt)} mUSDC to KredioPASMarket`, 'MockUSDC',
             () => musdc.connect(users.USER4).approve(ADDR.PAS_MARKET, u4RepayAmt),
-            { expected: 'Allowance set' }
+            { expected: 'Allowance set', params: 'MAX or exact amount' }
         );
+        const u4InterestPaid = u4PosFull.totalOwed - u4PosFull.debtUSDC;
+        console.log(`  [Verification] USER4 Repaying: Principal=${fmt6(u4PosFull.debtUSDC)} mUSDC, Interest Generated=${fmt6(u4InterestPaid)} mUSDC`);
         await step('USER4', `repay() - pay ${fmt6(u4PosFull.totalOwed)} mUSDC (principal + interest)`, 'KredioPASMarket',
             () => pasMarket.connect(users.USER4).repay(),
             {
+                params: `principal=${fmt6(u4PosFull.debtUSDC)}, interest=${fmt6(u4InterestPaid)}`,
                 expected: 'Position inactive; totalBorrowed decreases; interest to PM lenders; repaymentCount[USER4]++',
                 beforeFn: async () => ({ totalBorrowed: (await pasMarket.totalBorrowed()).toString(), mUSDCBal: (await musdc.balanceOf(users.USER4.address)).toString() }),
                 afterFn: async () => ({ totalBorrowed: (await pasMarket.totalBorrowed()).toString(), mUSDCBal: (await musdc.balanceOf(users.USER4.address)).toString() }),
@@ -1104,7 +1116,46 @@ async function main() {
 
     const reportPath = path.resolve(__dirname, '../test-report.json');
     fs.writeFileSync(reportPath, JSON.stringify(jsonReport, null, 2));
-    console.log(`\n  Full report saved → ${reportPath}`);
+    console.log(`\n  Full JSON report saved → ${reportPath}`);
+    
+    // BUILD MARKDOWN REPORT
+    let md = `# Kredio Full Test Run Report\n\n`;
+    md += `- **Run Date:** ${new Date().toISOString()}\n`;
+    md += `- **Duration:** ${elapsed}s\n`;
+    md += `\n## Pre-Test Snapshots\n`;
+    md += `### KredioLending\n`;
+    md += `- Total Deposited: ${fmt6(BigInt(p0.lending.totalDeposited))} mUSDC\n`;
+    md += `- Total Borrowed: ${fmt6(BigInt(p0.lending.totalBorrowed))} mUSDC\n`;
+    md += `\n### Users Initial\n`;
+    for(const [n, w] of Object.entries(users)) {
+        md += `- ${n} (${w.address}): 200,000 mUSDC, 50,000 PAS\n`;
+    }
+    
+    md += `\n## Active Execution Log\n\n`;
+    md += `| Step | Actor | Action | Params | Expected | Status | TxHash/Err |\n`;
+    md += `|---|---|---|---|---|---|---|\n`;
+    
+    for(const r of REPORT) {
+        let obsB = 'N/A';
+        let obsA = 'N/A';
+        if(r.observedBefore) obsB = JSON.stringify(r.observedBefore).replace(/"/g, '');
+        if(r.observedAfter) obsA = JSON.stringify(r.observedAfter).replace(/"/g, '');
+        let prm = r.params ? r.params : '-';
+        md += `| ${r.step} | ${r.actor} | ${r.action} | ${prm} | **Exp:** ${r.expected} <br> **Obs. Before:** ${obsB} <br> **Obs. After:** ${obsA} | ${r.status} | ${r.txHash ? '`'+r.txHash+'`' : (r.error || '-')} |\n`;
+    }
+    
+    md += `\n## Post-Test Snapshots\n`;
+    md += `### KredioLending (Final)\n`;
+    md += `- Total Deposited: ${fmt6(finalL.totalDeposited)} mUSDC\n`;
+    md += `- Total Borrowed: ${fmt6(finalL.totalBorrowed)} mUSDC\n`;
+    md += `- Protocol Fees: ${fmt6(finalL.protocolFees)} mUSDC\n`;
+    md += `\n### Mock Yield Pool (Final)\n`;
+    md += `- Total Principal: ${fmt6(finalYP.principal)} mUSDC\n`;
+    md += `- Pending Yield: ${fmt6(finalYP.pendingYield)} mUSDC\n`;
+    
+    const mdPath = path.resolve(__dirname, '../test-report.md');
+    fs.writeFileSync(mdPath, md);
+    console.log(`  Markdown comprehensive report saved → ${mdPath}`);
     console.log('  Run complete.\n');
 }
 

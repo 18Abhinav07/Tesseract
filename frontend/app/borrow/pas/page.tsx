@@ -140,9 +140,18 @@ function DepositStep({ prefillAmount, onSuccess }: {
 
     const preview = useBorrowPreview(debouncedInput, ltvBps, oracle.price8);
 
-    const { writeContract, data: txHash, isPending: isSigning, reset: resetWrite } = useWriteContract();
+    const { writeContract, data: txHash, isPending: isSigning, isError: depositError, reset: resetWrite } = useWriteContract();
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
     const busy = isSigning || isConfirming;
+
+    const [phase, setPhase] = useState<'idle' | 'error'>('idle');
+    useEffect(() => {
+        if (depositError) {
+            setPhase('error');
+            const t = setTimeout(() => { setPhase('idle'); resetWrite(); }, 3000);
+            return () => clearTimeout(t);
+        }
+    }, [depositError, resetWrite]);
 
     useEffect(() => {
         if (!isSuccess) return;
@@ -191,12 +200,13 @@ function DepositStep({ prefillAmount, onSuccess }: {
             )}
 
             <button onClick={() => { if (!input || Number(input) <= 0) return; writeContract({ address: config.pasMarket, abi: ABIS.KREDIO_PAS_MARKET, functionName: 'depositCollateral', value: pasWei }); }}
-                disabled={!input || Number(input) <= 0 || overBalance || busy || oracle.isCrashed}
+                disabled={!input || Number(input) <= 0 || overBalance || busy || oracle.isCrashed || phase === 'error'}
                 className={cn('w-full rounded-xl px-4 py-3 text-sm font-semibold transition-all flex items-center justify-center gap-2',
                     busy ? 'bg-white/5 border border-white/10 text-slate-400 cursor-not-allowed'
+                        : phase === 'error' ? 'bg-rose-500/20 border-rose-500/30 text-rose-400 cursor-not-allowed'
                         : !input || overBalance || oracle.isCrashed ? 'bg-white/5 border border-white/10 text-slate-600 cursor-not-allowed'
                             : 'bg-indigo-600 hover:bg-indigo-500 text-white')}>
-                {busy ? <><Spinner />{statusMsg}</> : `Deposit ${input || '0'} PAS as Collateral`}
+                {busy ? <><Spinner />{statusMsg}</> : phase === 'error' ? 'Action Cancelled' : `Deposit ${input || '0'} PAS as Collateral`}
             </button>
             {oracle.isCrashed && <StateNotice tone="error" message="Oracle is down - collateral deposits paused." />}
         </div>
@@ -244,11 +254,11 @@ function BorrowStep({ depositedWei, maxBorrowAtoms, onSuccess }: {
     const [busy, setBusy] = useState(false);
     const [success, setSuccess] = useState(false);
     const [statusMsg, setStatusMsg] = useState('');
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [phase, setPhase] = useState<'idle' | 'error'>('idle');
 
     const handleBorrow = async () => {
         if (borrowAtoms === 0n) return;
-        setErrorMsg(null);
+        setPhase('idle');
         setBusy(true);
         setStatusMsg('Waiting for MetaMask...');
         const res = await actions.borrowPas(borrowAtoms);
@@ -257,11 +267,12 @@ function BorrowStep({ depositedWei, maxBorrowAtoms, onSuccess }: {
             await portfolio.refresh();
             setSuccess(true);
             onSuccess();
+            setBusy(false); setStatusMsg('');
         } else {
-            setErrorMsg(res.error);
+            setBusy(false); setStatusMsg('');
+            setPhase('error');
+            setTimeout(() => setPhase('idle'), 3000);
         }
-        setBusy(false);
-        setStatusMsg('');
     };
 
     if (success) {
@@ -313,21 +324,15 @@ function BorrowStep({ depositedWei, maxBorrowAtoms, onSuccess }: {
                 <StateNotice tone="warning" message="Health ratio is low - consider borrowing less to reduce liquidation risk." />
             )}
 
-            {errorMsg ? (
-                <div className="flex items-center gap-3 rounded-xl border border-rose-500/20 bg-rose-500/8 px-4 py-3">
-                    <span className="text-rose-400 text-sm shrink-0">✕</span>
-                    <span className="text-sm text-rose-300 flex-1 min-w-0 truncate">{errorMsg}</span>
-                    <button onClick={() => setErrorMsg(null)} className="text-slate-500 hover:text-white text-sm leading-none shrink-0" aria-label="Dismiss">✕</button>
-                </div>
-            ) : (
-                <button onClick={handleBorrow} disabled={borrowAtoms === 0n || busy || (healthNum < 1.1 && healthNum > 0)}
-                    className={cn('w-full rounded-xl px-4 py-3 text-sm font-semibold transition-all flex items-center justify-center gap-2',
-                        busy ? 'bg-white/5 border border-white/10 text-slate-400 cursor-not-allowed'
-                            : borrowAtoms === 0n ? 'bg-white/5 border border-white/10 text-slate-600 cursor-not-allowed'
-                                : 'bg-emerald-700 hover:bg-emerald-600 text-white')}>
-                    {busy ? <><Spinner />{statusMsg}</> : `Borrow ${borrowDisplay} mUSDC`}
-                </button>
-            )}
+            <button onClick={handleBorrow} disabled={borrowAtoms === 0n || busy || (healthNum < 1.1 && healthNum > 0) || phase === 'error'}
+                className={cn('w-full rounded-xl px-4 py-3 text-sm font-semibold transition-all flex items-center justify-center gap-2',
+                    busy ? 'bg-white/5 border border-white/10 text-slate-400 cursor-not-allowed'
+                        : phase === 'error' ? 'bg-rose-500/20 border-rose-500/30 text-rose-400 cursor-not-allowed'
+                        : borrowAtoms === 0n ? 'bg-white/5 border border-white/10 text-slate-600 cursor-not-allowed'
+                            : 'bg-emerald-700 hover:bg-emerald-600 text-white')}>
+                {busy ? <><Spinner />{statusMsg}</> : phase === 'error' ? 'Action Cancelled' : `Borrow ${borrowDisplay} mUSDC`}
+            </button>
+
         </div>
     );
 }

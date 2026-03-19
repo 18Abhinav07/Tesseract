@@ -5,7 +5,7 @@ export default function IntroPage() {
         <div className="animate-in fade-in duration-500">
             <h1>Introduction to Kredio</h1>
             <p className="text-xl text-slate-300 mb-8 border-l-4 border-cyan-500 pl-4">
-                A credit protocol with memory. Built on Polkadot Asset Hub &mdash; live on testnet today.
+                A credit protocol with memory. Built on Polkadot Asset Hub - live on testnet today.
             </p>
 
             <h2 id="problem">The Problem</h2>
@@ -16,14 +16,14 @@ export default function IntroPage() {
             </p>
             <p>
                 This works well enough to process volume. It does not work for participants who have built
-                genuine on-chain track records &mdash; borrowers who have repaid consistently across months or years,
+                genuine on-chain track records - borrowers who have repaid consistently across months or years,
                 who participate in governance, who carry a verifiable financial history. They get priced
                 identically to a wallet opened this morning.
             </p>
             <p>
                 The data to fix this has always existed. Every repayment, every liquidation, every governance
                 vote is timestamped and immutable on-chain. The obstacle is turning that record into a
-                defensible, manipulation-resistant credit score that materially changes borrowing terms &mdash; all
+                defensible, manipulation-resistant credit score that materially changes borrowing terms - all
                 inside smart contracts, with no off-chain trust assumption.
             </p>
             <p>That is what Kredio is.</p>
@@ -32,12 +32,12 @@ export default function IntroPage() {
             <p>
                 Kredio assigns every borrower a credit score from 0 to 100, computed live at borrow time from
                 four fully on-chain inputs: repayment history, deposit volume, liquidation record, and account
-                age. The score maps directly to a collateral ratio and interest rate &mdash; locked into each
+                age. The score maps directly to a collateral ratio and interest rate - locked into each
                 position at open, with no external oracle and no manual review.
             </p>
             <p>
                 A first-time borrower at <strong>ANON</strong> tier posts 200% collateral and pays 15% APR.
-                The same borrower after twelve repayments reaches <strong>DIAMOND</strong> tier &mdash; 110%
+                The same borrower after twelve repayments reaches <strong>DIAMOND</strong> tier - 110%
                 collateral, 4% APR. The improvement is earned entirely through behaviour. No application. No
                 identity verification required. No human in the loop.
             </p>
@@ -67,7 +67,7 @@ export default function IntroPage() {
 
             <div className="space-y-4 my-6">
                 <div className="bg-slate-800/20 border border-slate-700 p-5 rounded-lg">
-                    <h3 className="text-white mt-0 mb-2">EVM &mdash; Capital and Settlement</h3>
+                    <h3 className="text-white mt-0 mb-2">EVM - Capital and Settlement</h3>
                     <p className="text-sm text-slate-400 mb-0">
                         Solidity contracts on Polkadot Asset Hub EVM handle all capital flows: lending,
                         collateral management, swapping, cross-chain bridging, and XCM intent execution.
@@ -75,19 +75,19 @@ export default function IntroPage() {
                     </p>
                 </div>
                 <div className="bg-cyan-900/10 border border-cyan-500/30 p-5 rounded-lg">
-                    <h3 className="text-cyan-400 mt-0 mb-2">ink! Wasm &mdash; Deterministic Credit Scoring</h3>
+                    <h3 className="text-cyan-400 mt-0 mb-2">ink! Wasm - Deterministic Credit Scoring</h3>
                     <p className="text-sm text-slate-300 mb-0">
                         <code>KreditAgent</code> is an ink! Wasm contract invoked by Solidity market
-                        contracts via SCALE-encoded cross-VM <code>staticcall</code> &mdash; in the same
+                        contracts via SCALE-encoded cross-VM <code>staticcall</code> - in the same
                         block, with no off-chain dependency. This atomic EVM-to-Wasm call is unique to
                         Polkadot&apos;s hybrid Asset Hub runtime.
                     </p>
                 </div>
                 <div className="bg-purple-900/10 border border-purple-500/30 p-5 rounded-lg">
-                    <h3 className="text-purple-400 mt-0 mb-2">ink! PVM &mdash; Continuous AI Assessment</h3>
+                    <h3 className="text-purple-400 mt-0 mb-2">ink! PVM - Continuous AI Assessment</h3>
                     <p className="text-sm text-slate-300 mb-0">
-                        Three PVM contracts &mdash; <code>NeuralScorer</code>, <code>RiskAssessor</code>,
-                        and <code>YieldMind</code> &mdash; run continuously alongside the protocol, called
+                        Three PVM contracts - <code>NeuralScorer</code>, <code>RiskAssessor</code>,
+                        and <code>YieldMind</code> - run continuously alongside the protocol, called
                         by the backend AI Engine on every lending event. Each emits a permanent on-chain
                         audit event after every computation.
                     </p>

@@ -119,8 +119,8 @@ export default function DocsSidebar() {
                                             <Link
                                                 href={item.href}
                                                 className={`flex items-center gap-2 px-2.5 py-1.5 text-sm rounded-md transition-all no-underline ${isActive
-                                                        ? 'bg-white/[0.07] text-white font-medium'
-                                                        : 'text-slate-400 hover:text-slate-200 hover:bg-white/4'
+                                                    ? 'bg-white/[0.07] text-white font-medium'
+                                                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/4'
                                                     }`}
                                             >
                                                 {isActive && (

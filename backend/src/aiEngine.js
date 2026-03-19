@@ -7,30 +7,14 @@ const { ethers } = require('ethers');
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 
 const RPC_URL = process.env.RPC || 'https://eth-rpc-testnet.polkadot.io/';
-const KEY = process.env.KEY;
+const KEY = process.env.KEY_AI_ENGINE || process.env.KEY;
 
-if (!KEY) { console.error('[aiEngine] KEY not set in .env - skipping AI engine'); }
+if (!KEY) { console.error('[aiEngine] KEY_AI_ENGINE/KEY not set in .env - skipping AI engine'); }
 
 const provider = new ethers.JsonRpcProvider(RPC_URL);
-const wallet = new ethers.Wallet(KEY, provider);
+const wallet = KEY ? new ethers.Wallet(KEY, provider) : null;
 
 // ─── ABI fragments ────────────────────────────────────────────────────────────
-
-const NEURAL_ABI = [
-    'function infer(bytes20 account, uint32 repaymentCount, uint32 liquidationCount, uint8 depositTier, uint32 ageBlocks, uint8 deterministicScore) external',
-    'event ScoreInferred(bytes20 indexed account, uint8 neuralScore, uint8 deterministicScore, uint8 confidencePct, uint8 dominantSignal, int8 deltaFromRule, uint32 modelVersion)',
-];
-
-const RISK_ABI = [
-    'function assess_position(bytes20 borrower, uint64 collateralUsdX6, uint64 debtUsdX6, uint8 creditScore, int32 price7dChangeBps, uint32 liqRatioBps) external',
-    'function assess_batch(bytes20[16] borrowers, uint64[16] collaterals, uint64[16] debts, uint8[16] scores, int32 priceChange, uint32 liqRatio, uint8 activeCount) external',
-    'event RiskAssessed(bytes20 indexed borrower, uint8 riskTier, uint8 liqProb, uint32 bufferBps, uint32 blocksToLiq)',
-];
-
-const YIELD_ABI = [
-    'function compute_allocation(uint64 totalDeposited, uint64 totalBorrowed, uint64 strategyBalance, uint8 avgCreditScore, uint32 volatilityBps, uint32 blocksSinceRebalance) external',
-    'event AllocationComputed(uint32 utilizationBps, uint32 conservativeBps, uint32 balancedBps, uint32 aggressiveBps, uint32 idleBps, uint32 projectedApyBps, uint8 reasoningCode)',
-];
 
 const LENDING_ABI = [
     'function repaymentCount(address) view returns (uint64)',
@@ -53,10 +37,6 @@ const YIELD_POOL_ABI = [
     'function totalPrincipal() view returns (uint256)',
 ];
 
-const KREDIT_AGENT_ABI = [
-    'function compute_score(uint64 repayments, uint64 liquidations, uint64 deposit_tier, uint64 blocks_since_first) view returns (uint64)',
-];
-
 const ORACLE_ABI = [
     'function latestPrice() view returns (int256)',
     'event PriceUpdated(int256 price, uint80 roundId, uint256 updatedAt)',
@@ -64,25 +44,36 @@ const ORACLE_ABI = [
 
 // ─── Contract instances ───────────────────────────────────────────────────────
 
-const LENDING_ADDR = process.env.LENDING_ADDR || '0x1eDaD1271FB9d1296939C6f4Fb762752b041C64E';
-const YIELD_POOL_ADDR = process.env.YIELD_POOL_ADDR || '0x1dB4Faad3081aAfe26eC0ef6886F04f28D944AAB';
-const KREDITAGENT_ADDR = '0x8c13E6fFDf27bB51304Efff108C9B646d148E5F3';
-const ORACLE_ADDR = process.env.ORACLE || '0x1494432a8Af6fa8c03C0d7DD7720E298D85C55c7';
-const NEURAL_ADDR = process.env.NEURAL_SCORER_ADDRESS;
-const RISK_ADDR = process.env.RISK_ASSESSOR_ADDRESS;
-const YIELD_MIND_ADDR = process.env.YIELD_MIND_ADDRESS;
+function normalizeAddress(addr, label) {
+    if (!addr) throw new Error(`[aiEngine] Missing ${label}`);
+    try {
+        return ethers.getAddress(addr);
+    } catch (_) {
+        return ethers.getAddress(String(addr).toLowerCase());
+    }
+}
+
+const LENDING_ADDR = normalizeAddress(process.env.LENDING_ADDR || '0x1eDaD1271FB9d1296939C6f4Fb762752b041C64E', 'LENDING_ADDR');
+const YIELD_POOL_ADDR = normalizeAddress(process.env.YIELD_POOL_ADDR || '0x1dB4Faad3081aAfe26eC0ef6886F04f28D944AAB', 'YIELD_POOL_ADDR');
+const KREDITAGENT_ADDR = normalizeAddress(process.env.KREDIT_AGENT_ADDRESS || '0x8c13e6ffdf27bb51304efff108c9b646d148e5f3', 'KREDIT_AGENT_ADDRESS');
+const ORACLE_ADDR = normalizeAddress(process.env.ORACLE || '0x1494432a8Af6fa8c03C0d7DD7720E298D85C55c7', 'ORACLE');
+const NEURAL_ADDR = process.env.NEURAL_SCORER_ADDRESS ? normalizeAddress(process.env.NEURAL_SCORER_ADDRESS, 'NEURAL_SCORER_ADDRESS') : null;
+const RISK_ADDR = process.env.RISK_ASSESSOR_ADDRESS ? normalizeAddress(process.env.RISK_ASSESSOR_ADDRESS, 'RISK_ASSESSOR_ADDRESS') : null;
+const YIELD_MIND_ADDR = process.env.YIELD_MIND_ADDRESS ? normalizeAddress(process.env.YIELD_MIND_ADDRESS, 'YIELD_MIND_ADDRESS') : null;
 
 if (!NEURAL_ADDR || !RISK_ADDR || !YIELD_MIND_ADDR) {
     console.error('[aiEngine] NEURAL_SCORER_ADDRESS / RISK_ASSESSOR_ADDRESS / YIELD_MIND_ADDRESS not set. Deploy contracts first.');
 }
 
-const lending = new ethers.Contract(LENDING_ADDR, LENDING_ABI, wallet);
+const lending = new ethers.Contract(LENDING_ADDR, LENDING_ABI, wallet || provider);
 const yieldPool = new ethers.Contract(YIELD_POOL_ADDR, YIELD_POOL_ABI, provider);
-const kreditAgent = new ethers.Contract(KREDITAGENT_ADDR, KREDIT_AGENT_ABI, provider);
 const oracle = new ethers.Contract(ORACLE_ADDR, ORACLE_ABI, provider);
-const neural = new ethers.Contract(NEURAL_ADDR, NEURAL_ABI, wallet);
-const risk = new ethers.Contract(RISK_ADDR, RISK_ABI, wallet);
-const yieldMind = new ethers.Contract(YIELD_MIND_ADDR, YIELD_ABI, wallet);
+
+// PVM ink! message selectors from compiled metadata.
+const SEL_AGENT_COMPUTE_SCORE = '0x3a518c00';
+const SEL_NEURAL_INFER = '0xb323a37b';
+const SEL_RISK_ASSESS_POSITION = '0x392c875f';
+const SEL_YIELDMIND_COMPUTE_ALLOCATION = '0x3f705728';
 
 // ─── In-memory state ──────────────────────────────────────────────────────────
 
@@ -147,6 +138,69 @@ function compute7dChangeBps() {
     return Math.round(((current - oldest) / oldest) * 10_000);
 }
 
+function bytes20FromAddress(addr) {
+    return ethers.getBytes(normalizeAddress(addr, 'bytes20 address')).slice(0, 20);
+}
+
+function leU32(v) {
+    const b = Buffer.alloc(4);
+    b.writeUInt32LE(Number(v));
+    return Uint8Array.from(b);
+}
+
+function leI32(v) {
+    const b = Buffer.alloc(4);
+    b.writeInt32LE(Number(v));
+    return Uint8Array.from(b);
+}
+
+function leU64(v) {
+    const b = Buffer.alloc(8);
+    b.writeBigUInt64LE(BigInt(v));
+    return Uint8Array.from(b);
+}
+
+function u8(v) {
+    return Uint8Array.from([Number(v) & 0xff]);
+}
+
+function buildPvmCalldata(selectorHex, parts) {
+    return ethers.hexlify(ethers.concat([ethers.getBytes(selectorHex), ...parts]));
+}
+
+function fromLE64(bytes, offset) {
+    let v = 0n;
+    for (let i = 0; i < 8; i++) {
+        v |= BigInt(bytes[offset + i]) << BigInt(i * 8);
+    }
+    return v;
+}
+
+async function callAgentComputeScore(repayments, liquidations, depositTier, ageBlocks) {
+    const data = buildPvmCalldata(SEL_AGENT_COMPUTE_SCORE, [
+        leU64(repayments),
+        leU64(liquidations),
+        leU64(depositTier),
+        leU64(ageBlocks),
+    ]);
+
+    const ret = await provider.call({ to: KREDITAGENT_ADDR, data });
+    const out = ethers.getBytes(ret);
+    if (out.length < 9 || out[0] !== 0x00) {
+        throw new Error('kreditAgent malformed response');
+    }
+    return Number(fromLE64(out, 1));
+}
+
+async function sendPvmMessage(contractAddress, selectorHex, parts, label) {
+    if (!wallet) throw new Error('no signer wallet');
+    const data = buildPvmCalldata(selectorHex, parts);
+    const tx = await wallet.sendTransaction({ to: contractAddress, data });
+    const rcpt = await tx.wait();
+    console.log(`[${label}] ✓  tx:${tx.hash} gas:${rcpt.gasUsed}`);
+    return tx.hash;
+}
+
 // ─── Data fetchers ────────────────────────────────────────────────────────────
 
 async function fetchBorrowerInputs(borrower) {
@@ -166,13 +220,12 @@ async function fetchBorrowerInputs(borrower) {
         // Call KreditAgent with the four numeric inputs
         let deterministicScore = 0;
         try {
-            const rawScore = await kreditAgent.compute_score(
+            deterministicScore = await callAgentComputeScore(
                 Number(repayments),
                 Number(liquidations),
                 depositTier,
                 ageBlocks,
             );
-            deterministicScore = Number(rawScore);
         } catch (e) {
             console.warn(`[aiEngine] compute_score failed for ${borrower}:`, e.message);
         }
@@ -217,26 +270,27 @@ async function callNeuralScorer(borrower) {
     const inputs = await fetchBorrowerInputs(borrower);
     if (!inputs) return;
     try {
-        // Pad borrower address to bytes20 (drop 0x, take 40 hex chars)
-        const tx = await neural.infer(
-            borrower,
-            inputs.repayments,
-            inputs.liquidations,
-            inputs.depositTier,
-            inputs.ageBlocks,
-            inputs.deterministicScore,
+        await sendPvmMessage(
+            NEURAL_ADDR,
+            SEL_NEURAL_INFER,
+            [
+                bytes20FromAddress(borrower),
+                leU32(inputs.repayments),
+                leU32(inputs.liquidations),
+                u8(inputs.depositTier),
+                leU32(inputs.ageBlocks),
+                u8(inputs.deterministicScore),
+            ],
+            `NeuralScorer infer() ${borrower}`,
         );
-        await tx.wait();
-        console.log(`[NeuralScorer] infer() ${borrower} ✓  tx:${tx.hash}`);
     } catch (err) {
         console.error(`[NeuralScorer] infer() failed ${borrower}:`, err.message);
     }
 }
 
 async function callRiskAssessor(borrower) {
-    const [posData, scoreResult] = await Promise.all([
+    const [posData] = await Promise.all([
         fetchPositionData(borrower),
-        kreditAgent.compute_score(0, 0, 0, 0).catch(() => 0n),   // fallback
     ]);
     if (!posData) return;
 
@@ -244,16 +298,19 @@ async function callRiskAssessor(borrower) {
     const creditScore = state.borrowerScores.get(borrower) ?? 0;
 
     try {
-        const tx = await risk.assess_position(
-            borrower,
-            posData.collateralUSD_x6,
-            posData.debtUSD_x6,
-            creditScore,
-            compute7dChangeBps(),
-            11_000,   // 110% liquidation threshold
+        await sendPvmMessage(
+            RISK_ADDR,
+            SEL_RISK_ASSESS_POSITION,
+            [
+                bytes20FromAddress(borrower),
+                leU64(posData.collateralUSD_x6),
+                leU64(posData.debtUSD_x6),
+                u8(creditScore),
+                leI32(compute7dChangeBps()),
+                leU32(11_000),
+            ],
+            `RiskAssessor assess_position() ${borrower}`,
         );
-        await tx.wait();
-        console.log(`[RiskAssessor] assess_position() ${borrower} ✓  tx:${tx.hash}`);
     } catch (err) {
         console.error(`[RiskAssessor] assess_position() failed ${borrower}:`, err.message);
     }
@@ -262,33 +319,8 @@ async function callRiskAssessor(borrower) {
 async function callRiskAssessorBatch() {
     const borrowers = [...state.activeBorrowers].slice(0, 16);
     if (!borrowers.length) return;
-
-    const addrArr = new Array(16).fill(ethers.ZeroAddress);
-    const collArr = new Array(16).fill(0n);
-    const debtArr = new Array(16).fill(0n);
-    const scoreArr = new Array(16).fill(0);
-
-    let realCount = 0;
-    for (let i = 0; i < borrowers.length; i++) {
-        const pos = await fetchPositionData(borrowers[i]);
-        if (!pos) continue;
-        addrArr[i] = borrowers[i];
-        collArr[i] = pos.collateralUSD_x6;
-        debtArr[i] = pos.debtUSD_x6;
-        scoreArr[i] = state.borrowerScores.get(borrowers[i]) ?? 0;
-        realCount++;
-    }
-    if (!realCount) return;
-
-    try {
-        const tx = await risk.assess_batch(
-            addrArr, collArr, debtArr, scoreArr,
-            compute7dChangeBps(), 11_000, realCount,
-        );
-        await tx.wait();
-        console.log(`[RiskAssessor] assess_batch() ${realCount} positions ✓  tx:${tx.hash}`);
-    } catch (err) {
-        console.error('[RiskAssessor] assess_batch() failed:', err.message);
+    for (const borrower of borrowers) {
+        await callRiskAssessor(borrower);
     }
 }
 
@@ -305,17 +337,20 @@ async function callYieldMind() {
             provider.getBlockNumber(),
         ]);
         const blocksSinceRebalance = Number(BigInt(currentBlock) - state.lastRebalanceBlock);
-        const tx = await yieldMind.compute_allocation(
-            BigInt(deposited),
-            BigInt(borrowed),
-            BigInt(stratBal),
-            state.avgCreditScore,
-            computeVolatilityBps(),
-            blocksSinceRebalance,
+        await sendPvmMessage(
+            YIELD_MIND_ADDR,
+            SEL_YIELDMIND_COMPUTE_ALLOCATION,
+            [
+                leU64(deposited),
+                leU64(borrowed),
+                leU64(stratBal),
+                u8(state.avgCreditScore),
+                leU32(computeVolatilityBps()),
+                leU32(blocksSinceRebalance),
+            ],
+            'YieldMind compute_allocation()',
         );
-        await tx.wait();
         state.lastRebalanceBlock = BigInt(currentBlock);
-        console.log(`[YieldMind] compute_allocation() ✓  tx:${tx.hash}`);
     } catch (err) {
         console.error('[YieldMind] compute_allocation() failed:', err.message);
     }
@@ -406,7 +441,7 @@ function setupPolling(startBlock) {
 // ─── Startup ──────────────────────────────────────────────────────────────────
 
 async function start() {
-    if (!KEY) return;
+    if (!KEY || !wallet) return;
     if (!NEURAL_ADDR || !RISK_ADDR || !YIELD_MIND_ADDR) {
         console.warn('[aiEngine] Contract addresses not set - event polling disabled');
         return;

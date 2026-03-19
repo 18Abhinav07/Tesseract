@@ -77,8 +77,8 @@ export default function ContractsPage() {
 
             <h3>Prerequisites</h3>
             <ul>
-                <li>Foundry (<code>forge</code>, <code>cast</code>) &mdash; <code>curl -L https://foundry.paradigm.xyz | bash && foundryup</code></li>
-                <li>Rust + <code>cargo-contract</code> &mdash; <code>rustup target add wasm32-unknown-unknown && cargo install cargo-contract</code></li>
+                <li>Foundry (<code>forge</code>, <code>cast</code>) - <code>curl -L https://foundry.paradigm.xyz | bash && foundryup</code></li>
+                <li>Rust + <code>cargo-contract</code> - <code>rustup target add wasm32-unknown-unknown && cargo install cargo-contract</code></li>
                 <li>Node.js &ge; 18 (for deployment scripts)</li>
             </ul>
 

@@ -322,8 +322,8 @@ function HealthBar({ ratio }: { ratio: bigint }) {
 }
 
 // ── Borrow position card (repay + withdraw) ───────────────────────────────
-type RepayPhase = 'idle' | 'confirming' | 'approving' | 'repaying' | 'success';
-type WithdrawPhase = 'idle' | 'confirming' | 'withdrawing' | 'success';
+type RepayPhase = 'idle' | 'confirming' | 'approving' | 'repaying' | 'success' | 'error';
+type WithdrawPhase = 'idle' | 'confirming' | 'withdrawing' | 'success' | 'error';
 
 function PASBorrowRow({ collateralWei, debtAtoms, accruedAtoms, totalOwedAtoms, healthRatio, oraclePrice8, ltvBps, onRefresh, onBusy }: {
     collateralWei: bigint; debtAtoms: bigint; accruedAtoms: bigint; totalOwedAtoms: bigint;
@@ -341,9 +341,8 @@ function PASBorrowRow({ collateralWei, debtAtoms, accruedAtoms, totalOwedAtoms, 
     useEffect(() => { if (!approveSuccess || repayPhase !== 'approving') return; setRepayPhase('repaying'); setTimeout(() => writeRepay({ address: config.pasMarket, abi: ABIS.KREDIO_PAS_MARKET, functionName: 'repay' }), 300); }, [approveSuccess]);
     useEffect(() => { if (!repaySuccess) return; setRepayPhase('success'); const t = setTimeout(() => { onRefresh(); setRepayPhase('idle'); onBusy(false); }, 1500); return () => clearTimeout(t); }, [repaySuccess]);
     useEffect(() => { if (!withdrawSuccess) return; setWithdrawPhase('success'); const t = setTimeout(() => { onRefresh(); setWithdrawPhase('idle'); onBusy(false); }, 1500); return () => clearTimeout(t); }, [withdrawSuccess]);
-    useEffect(() => { if (approveIsError && repayPhase === 'approving') { setRepayPhase('idle'); resetApprove(); onBusy(false); } }, [approveIsError]);
-    useEffect(() => { if (repayIsError && repayPhase === 'repaying') { setRepayPhase('idle'); resetRepay(); onBusy(false); } }, [repayIsError]);
-    useEffect(() => { if (withdrawIsError && withdrawPhase === 'withdrawing') { setWithdrawPhase('idle'); onBusy(false); } }, [withdrawIsError]);
+    useEffect(() => { if ((approveIsError && repayPhase === 'approving') || (repayIsError && repayPhase === 'repaying')) { setRepayPhase('error'); resetApprove(); resetRepay(); const t = setTimeout(() => { setRepayPhase('idle'); onBusy(false); }, 3000); return () => clearTimeout(t); } }, [approveIsError, repayIsError, repayPhase]);
+    useEffect(() => { if (withdrawIsError && withdrawPhase === 'withdrawing') { setWithdrawPhase('error'); const t = setTimeout(() => { setWithdrawPhase('idle'); onBusy(false); }, 3000); return () => clearTimeout(t); } }, [withdrawIsError, withdrawPhase]);
 
     // Approve maxUint256 so that additional interest accruing between the approve
     // block and the repay block can never cause the transferFrom to fail.
@@ -390,6 +389,7 @@ function PASBorrowRow({ collateralWei, debtAtoms, accruedAtoms, totalOwedAtoms, 
                             {repayPhase === 'approving' && (<div className="flex items-center gap-2 text-xs text-indigo-300 px-3 py-1.5"><Spinner small />Approving…</div>)}
                             {repayPhase === 'repaying' && (<div className="flex items-center gap-2 text-xs text-indigo-300 px-3 py-1.5"><Spinner small />Repaying…</div>)}
                             {repayPhase === 'success' && (<div className="flex items-center gap-1.5 text-xs text-emerald-400 px-3 py-1.5"><Check />Done</div>)}
+                            {repayPhase === 'error' && (<div className="flex items-center gap-1.5 text-xs text-rose-400 px-3 py-1.5">Action Cancelled</div>)}
                         </div>
                     ) : withdrawPhase !== 'idle' ? (
                         <div className="flex justify-end gap-2">
@@ -399,6 +399,7 @@ function PASBorrowRow({ collateralWei, debtAtoms, accruedAtoms, totalOwedAtoms, 
                             </>)}
                             {withdrawPhase === 'withdrawing' && (<div className="flex items-center gap-2 text-xs text-slate-400 px-3 py-1.5"><Spinner small />Withdrawing…</div>)}
                             {withdrawPhase === 'success' && (<div className="flex items-center gap-1.5 text-xs text-emerald-400 px-3 py-1.5"><Check />Done</div>)}
+                            {withdrawPhase === 'error' && (<div className="flex items-center gap-1.5 text-xs text-rose-400 px-3 py-1.5">Action Cancelled</div>)}
                         </div>
                     ) : null}
                 </div>
@@ -423,9 +424,8 @@ function USDCBorrowRow({ collateralAtoms, debtAtoms, accruedAtoms, totalOwedAtom
     useEffect(() => { if (!approveSuccess || repayPhase !== 'approving') return; setRepayPhase('repaying'); setTimeout(() => writeRepay({ address: config.lending, abi: ABIS.KREDIO_LENDING, functionName: 'repay' }), 300); }, [approveSuccess]);
     useEffect(() => { if (!repaySuccess) return; setRepayPhase('success'); const t = setTimeout(() => { onRefresh(); setRepayPhase('idle'); onBusy(false); }, 1500); return () => clearTimeout(t); }, [repaySuccess]);
     useEffect(() => { if (!withdrawSuccess) return; setWithdrawPhase('success'); const t = setTimeout(() => { onRefresh(); setWithdrawPhase('idle'); onBusy(false); }, 1500); return () => clearTimeout(t); }, [withdrawSuccess]);
-    useEffect(() => { if (approveIsError && repayPhase === 'approving') { setRepayPhase('idle'); resetApprove(); onBusy(false); } }, [approveIsError]);
-    useEffect(() => { if (repayIsError && repayPhase === 'repaying') { setRepayPhase('idle'); resetRepay(); onBusy(false); } }, [repayIsError]);
-    useEffect(() => { if (withdrawIsError && withdrawPhase === 'withdrawing') { setWithdrawPhase('idle'); onBusy(false); } }, [withdrawIsError]);
+    useEffect(() => { if ((approveIsError && repayPhase === 'approving') || (repayIsError && repayPhase === 'repaying')) { setRepayPhase('error'); resetApprove(); resetRepay(); const t = setTimeout(() => { setRepayPhase('idle'); onBusy(false); }, 3000); return () => clearTimeout(t); } }, [approveIsError, repayIsError, repayPhase]);
+    useEffect(() => { if (withdrawIsError && withdrawPhase === 'withdrawing') { setWithdrawPhase('error'); const t = setTimeout(() => { setWithdrawPhase('idle'); onBusy(false); }, 3000); return () => clearTimeout(t); } }, [withdrawIsError, withdrawPhase]);
 
     // Approve maxUint256 so that additional interest accruing between the approve
     // block and the repay block can never cause the transferFrom to fail.
@@ -573,8 +573,8 @@ function IntelligentYieldPanel({
 // ── Unified lending activity table ───────────────────────────────────────
 
 type WdTarget = 'lending' | 'pas' | null;
-type WdPhase = 'idle' | 'confirming' | 'withdrawing' | 'success';
-type HvPhase = 'idle' | 'harvesting' | 'success';
+type WdPhase = 'idle' | 'confirming' | 'withdrawing' | 'success' | 'error';
+type HvPhase = 'idle' | 'harvesting' | 'success' | 'error';
 
 const EVENT_META: Record<LendHistoryEntry['type'], { label: string; color: string }> = {
     deposit: { label: 'Deposit', color: 'text-indigo-300' },
@@ -626,8 +626,8 @@ function UnifiedLendingActivity({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [hvOk]);
 
-    useEffect(() => { if (wdErr && wdPhase === 'withdrawing') { setWdPhase('idle'); onBusy(false); } }, [wdErr, wdPhase]);
-    useEffect(() => { if (hvErr && hvPhase === 'harvesting') { setHvPhase('idle'); setHvTarget(null); onBusy(false); } }, [hvErr, hvPhase]);
+    useEffect(() => { if (wdErr && wdPhase === 'withdrawing') { setWdPhase('error'); const t = setTimeout(() => { setWdPhase('idle'); onBusy(false); }, 3000); return () => clearTimeout(t); } }, [wdErr, wdPhase]);
+    useEffect(() => { if (hvErr && hvPhase === 'harvesting') { setHvPhase('error'); const t = setTimeout(() => { setHvPhase('idle'); setHvTarget(null); onBusy(false); }, 3000); return () => clearTimeout(t); } }, [hvErr, hvPhase]);
 
     const openWithdraw = (target: 'lending' | 'pas') => {
         if (wdPhase !== 'idle') return;
@@ -712,7 +712,13 @@ function UnifiedLendingActivity({
                             <Check /> Withdrawal confirmed
                         </div>
                     )}
+                    {wdPhase === 'error' && (
+                        <div className="flex items-center gap-2 text-rose-400 text-xs py-1">
+                            Action Cancelled
+                        </div>
+                    )}
                 </td>
+
             </tr>
         );
     };
@@ -742,8 +748,8 @@ function UnifiedLendingActivity({
                         <div className="flex items-center justify-end gap-2">
                             {isHvThis && hvPhase !== 'idle' ? (
                                 <span className={cn('text-xs flex items-center gap-1.5 px-3 py-1.5',
-                                    hvPhase === 'success' ? 'text-emerald-400' : 'text-slate-400')}>
-                                    {hvPhase === 'harvesting' ? <><Spinner small /><span>Harvesting…</span></> : <><Check /><span>Claimed</span></>}
+                                    hvPhase === 'success' ? 'text-emerald-400' : hvPhase === 'error' ? 'text-rose-400' : 'text-slate-400')}>
+                                    {hvPhase === 'harvesting' ? <><Spinner small /><span>Harvesting…</span></> : hvPhase === 'error' ? <span>Action Cancelled</span> : <><Check /><span>Claimed</span></>}
                                 </span>
                             ) : (
                                 <button onClick={() => doHarvest(target)}

@@ -10,6 +10,7 @@ const { ethers } = require('ethers');
 const path = require('path');
 const fs = require('fs');
 const { HUB, KEY, YIELD_STRATEGY } = require('../config');
+const STRATEGY_KEY = process.env.KEY_YIELD_STRATEGY || KEY;
 
 // ─── Load ABIs ────────────────────────────────────────────────────────────
 function loadABI(name) {
@@ -221,8 +222,8 @@ async function start() {
         console.warn('[yield-strategy] YIELD_POOL_ADDR not set - skipping');
         return;
     }
-    if (!KEY) {
-        console.warn('[yield-strategy] KEY not set - cannot sign transactions');
+    if (!STRATEGY_KEY) {
+        console.warn('[yield-strategy] KEY_YIELD_STRATEGY/KEY not set - cannot sign transactions');
         return;
     }
 
@@ -234,7 +235,7 @@ async function start() {
     }
 
     provider = new ethers.JsonRpcProvider(HUB.rpcUrl);
-    wallet = new ethers.Wallet(KEY, provider);
+    wallet = new ethers.Wallet(STRATEGY_KEY, provider);
     lendingContract = new ethers.Contract(YIELD_STRATEGY.lendingAddr, lendingABI, wallet);
     yieldPoolContract = new ethers.Contract(YIELD_STRATEGY.yieldPoolAddr, yieldPoolABI, wallet);
 

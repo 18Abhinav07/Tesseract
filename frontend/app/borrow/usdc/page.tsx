@@ -53,7 +53,7 @@ function InfoRow({ label, value, tone }: { label: string; value: string; tone?: 
 }
 
 // ── Step 1: Approve + Deposit mUSDC Collateral ────────────────────────────
-type CollateralPhase = 'idle' | 'approving' | 'approved' | 'depositing' | 'success';
+type CollateralPhase = 'idle' | 'approving' | 'approved' | 'depositing' | 'success' | 'error';
 
 function CollateralStep({ onSuccess }: {
     onSuccess: (depositedAtoms: bigint, maxBorrowAtoms: bigint) => void;
@@ -90,10 +90,18 @@ function CollateralStep({ onSuccess }: {
         : 0n;
     const overBalance = !!amountAtoms && amountAtoms > musdcBalance;
 
-    const { writeContract: writeApprove, data: approveHash, isPending: approveSigning, reset: resetApprove } = useWriteContract();
+    const { writeContract: writeApprove, data: approveHash, isPending: approveSigning, isError: approveError, reset: resetApprove } = useWriteContract();
     const { isSuccess: approveSuccess } = useWaitForTransactionReceipt({ hash: approveHash });
-    const { writeContract: writeDeposit, data: depositHash, isPending: depositSigning, reset: resetDeposit } = useWriteContract();
+    const { writeContract: writeDeposit, data: depositHash, isPending: depositSigning, isError: depositError, reset: resetDeposit } = useWriteContract();
     const { isSuccess: depositSuccess } = useWaitForTransactionReceipt({ hash: depositHash });
+
+    useEffect(() => {
+        if (approveError || depositError) {
+            setPhase('error');
+            const t = setTimeout(() => { setPhase('idle'); resetApprove(); resetDeposit(); }, 3000);
+            return () => clearTimeout(t);
+        }
+    }, [approveError, depositError, resetApprove, resetDeposit]);
 
     useEffect(() => { if (approveSigning) setPhase('approving'); }, [approveSigning]);
     useEffect(() => { if (depositSigning) setPhase('depositing'); }, [depositSigning]);
@@ -121,7 +129,7 @@ function CollateralStep({ onSuccess }: {
     };
 
     const isProcessing = phase === 'approving' || phase === 'approved' || phase === 'depositing';
-    const btnLabel = phase === 'approving' ? 'Step 1/2 - Approving…'
+    const btnLabel = phase === 'error' ? 'Action Cancelled' : phase === 'approving' ? 'Step 1/2 - Approving…'
         : phase === 'approved' ? 'Approved ✓'
             : phase === 'depositing' ? 'Step 2/2 - Depositing…'
                 : amountAtoms ? `Deposit ${input} mUSDC as Collateral` : 'Deposit Collateral';
@@ -165,10 +173,10 @@ function CollateralStep({ onSuccess }: {
                     <button onClick={() => setDismissed(true)} className="text-slate-500 hover:text-white text-xs shrink-0">✕</button>
                 </div>
             )}
-            {/* Progress indicator removed here to avoid redundancy with the button state */}
-            <button onClick={handleDeposit} disabled={!amountAtoms || overBalance || isProcessing || phase === 'success'}
+            <button onClick={handleDeposit} disabled={!amountAtoms || overBalance || isProcessing || phase === 'success' || phase === 'error'}
                 className={cn('w-full rounded-xl px-4 py-3 text-sm font-semibold transition-all flex items-center justify-center gap-2',
                     isProcessing ? 'bg-white/5 border border-white/10 text-slate-400 cursor-not-allowed'
+                        : phase === 'error' ? 'bg-rose-500/20 border-rose-500/30 text-rose-400 cursor-not-allowed'
                         : !amountAtoms || overBalance ? 'bg-white/5 border border-white/10 text-slate-600 cursor-not-allowed'
                             : 'bg-indigo-600 hover:bg-indigo-500 text-white')}>
                 {isProcessing && <Spinner />}{btnLabel}
@@ -192,7 +200,7 @@ function BorrowStep({ collateralAtoms, maxBorrowAtoms, onSuccess }: {
     const [busy, setBusy] = useState(false);
     const [success, setSuccess] = useState(false);
     const [statusMsg, setStatusMsg] = useState('');
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [phase, setPhase] = useState<'idle' | 'error'>('idle');
 
     const borrowAtoms: bigint = (() => {
         if (manualInput && Number(manualInput) > 0) {
@@ -211,17 +219,19 @@ function BorrowStep({ collateralAtoms, maxBorrowAtoms, onSuccess }: {
 
     const handleBorrow = async () => {
         if (borrowAtoms === 0n) return;
-        setErrorMsg(null);
+        setPhase('idle');
         setBusy(true); setStatusMsg('Waiting for MetaMask…');
         const res = await actions.borrowLending(borrowAtoms);
         if (res.ok) {
             setStatusMsg('Confirming…');
             await portfolio.refresh();
             setSuccess(true); onSuccess();
+            setBusy(false); setStatusMsg('');
         } else {
-            setErrorMsg(res.error);
+            setBusy(false); setStatusMsg('');
+            setPhase('error');
+            setTimeout(() => setPhase('idle'), 3000);
         }
-        setBusy(false); setStatusMsg('');
     };
 
     if (success) {
@@ -269,21 +279,15 @@ function BorrowStep({ collateralAtoms, maxBorrowAtoms, onSuccess }: {
             {Number(estHealthBps) < 15000 && borrowAtoms > 0n && Number(estHealthBps) < 999998 && (
                 <StateNotice tone="warning" message="Health ratio is low - consider borrowing less." />
             )}
-            {errorMsg ? (
-                <div className="flex items-center gap-3 rounded-xl border border-rose-500/20 bg-rose-500/8 px-4 py-3">
-                    <span className="text-rose-400 text-sm shrink-0">✕</span>
-                    <span className="text-sm text-rose-300 flex-1 min-w-0 truncate">{errorMsg}</span>
-                    <button onClick={() => setErrorMsg(null)} className="text-slate-500 hover:text-white text-sm leading-none shrink-0" aria-label="Dismiss">✕</button>
-                </div>
-            ) : (
-                <button onClick={handleBorrow} disabled={borrowAtoms === 0n || busy}
-                    className={cn('w-full rounded-xl px-4 py-3 text-sm font-semibold transition-all flex items-center justify-center gap-2',
-                        busy ? 'bg-white/5 border border-white/10 text-slate-400 cursor-not-allowed'
-                            : borrowAtoms === 0n ? 'bg-white/5 border border-white/10 text-slate-600 cursor-not-allowed'
-                                : 'bg-emerald-700 hover:bg-emerald-600 text-white')}>
-                    {busy ? <><Spinner />{statusMsg}</> : `Borrow ${borrowDisplay} mUSDC`}
-                </button>
-            )}
+            <button onClick={handleBorrow} disabled={borrowAtoms === 0n || busy || phase === 'error'}
+                className={cn('w-full rounded-xl px-4 py-3 text-sm font-semibold transition-all flex items-center justify-center gap-2',
+                    busy ? 'bg-white/5 border border-white/10 text-slate-400 cursor-not-allowed'
+                        : phase === 'error' ? 'bg-rose-500/20 border-rose-500/30 text-rose-400 cursor-not-allowed'
+                        : borrowAtoms === 0n ? 'bg-white/5 border border-white/10 text-slate-600 cursor-not-allowed'
+                            : 'bg-emerald-700 hover:bg-emerald-600 text-white')}>
+                {busy ? <><Spinner />{statusMsg}</> : phase === 'error' ? 'Action Cancelled' : `Borrow ${borrowDisplay} mUSDC`}
+            </button>
+
         </div>
     );
 }

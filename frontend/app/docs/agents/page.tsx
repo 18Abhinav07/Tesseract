@@ -35,17 +35,17 @@ export default function AgentsPage() {
                             <div className="w-6 h-6 rounded bg-cyan-500/20 flex items-center justify-center border border-cyan-500/40 shrink-0">
                                 <span className="text-cyan-400 text-[10px] font-bold">1</span>
                             </div>
-                            <span className="text-[11px] text-slate-500 uppercase tracking-widest font-medium">ink! Wasm &mdash; Deterministic</span>
+                            <span className="text-[11px] text-slate-500 uppercase tracking-widest font-medium">ink! Wasm - Deterministic</span>
                         </div>
                         <h2 className="text-[1.4rem] font-medium text-white tracking-tight leading-snug border-b border-white/10 pb-3 mt-1 mb-0">
-                            KreditAgent &mdash; Deterministic Credit Scorer
+                            KreditAgent - Deterministic Credit Scorer
                         </h2>
                     </div>
                     <p>
                         The foundation of the credit system. <code>KreditAgent</code> is an ink! Wasm
                         contract called atomically by EVM market contracts via SCALE-encoded{' '}
                         <code>staticcall</code> at every borrow. It computes a score from 0 to 100
-                        entirely from on-chain protocol storage &mdash; nothing is self-reported.
+                        entirely from on-chain protocol storage - nothing is self-reported.
                     </p>
 
                     <h3>Scoring Inputs</h3>
@@ -89,12 +89,12 @@ export default function AgentsPage() {
                             </thead>
                             <tbody className="bg-slate-900/20">
                                 {([
-                                    ['ANON',     '0–14',   '200%', '15% APR'],
-                                    ['BRONZE',   '15–29',  '175%', '12% APR'],
-                                    ['SILVER',   '30–49',  '150%', '10% APR'],
-                                    ['GOLD',     '50–64',  '130%', '8% APR'],
-                                    ['PLATINUM', '65–79',  '120%', '6% APR'],
-                                    ['DIAMOND',  '80–100', '110%', '4% APR'],
+                                    ['ANON', '0–14', '200%', '15% APR'],
+                                    ['BRONZE', '15–29', '175%', '12% APR'],
+                                    ['SILVER', '30–49', '150%', '10% APR'],
+                                    ['GOLD', '50–64', '130%', '8% APR'],
+                                    ['PLATINUM', '65–79', '120%', '6% APR'],
+                                    ['DIAMOND', '80–100', '110%', '4% APR'],
                                 ] as [string, string, string, string][]).map(([tier, score, ratio, rate]) => (
                                     <tr key={tier} className="border-b border-slate-800">
                                         <td className="px-4 py-3 font-mono font-semibold text-white">{tier}</td>
@@ -110,7 +110,7 @@ export default function AgentsPage() {
                     <h3>Liquidation Penalty</h3>
                     <p>
                         A single liquidation event deducts 20 points. Two liquidations deduct 35.
-                        Three or more deduct 55 &mdash; enough to reset a DIAMOND borrower back to
+                        Three or more deduct 55 - enough to reset a DIAMOND borrower back to
                         ANON. This penalty is hard-coded in protocol storage and cannot be disputed.
                     </p>
                     <p className="text-sm text-slate-500">
@@ -129,10 +129,10 @@ export default function AgentsPage() {
                             <div className="w-6 h-6 rounded bg-emerald-500/20 flex items-center justify-center border border-emerald-500/40 shrink-0">
                                 <span className="text-emerald-400 text-[10px] font-bold">2</span>
                             </div>
-                            <span className="text-[11px] text-slate-500 uppercase tracking-widest font-medium">ink! PVM &mdash; Neural Cross-Validation</span>
+                            <span className="text-[11px] text-slate-500 uppercase tracking-widest font-medium">ink! PVM - Neural Cross-Validation</span>
                         </div>
                         <h2 className="text-[1.4rem] font-medium text-white tracking-tight leading-snug border-b border-white/10 pb-3 mt-1 mb-0">
-                            NeuralScorer &mdash; Neural Cross-Validation
+                            NeuralScorer - Neural Cross-Validation
                         </h2>
                     </div>
                     <p>
@@ -144,7 +144,7 @@ export default function AgentsPage() {
                         result against the deterministic baseline.
                     </p>
                     <p>
-                        The meaningful output is not the neural score in isolation &mdash; it is the
+                        The meaningful output is not the neural score in isolation - it is the
                         delta between the neural score and the deterministic score. A borrower whose
                         behaviour is genuinely healthy will produce a small, consistent delta. A borrower
                         engineering transactions to inflate the rule-based score will produce a growing
@@ -165,7 +165,7 @@ export default function AgentsPage() {
                     <p>
                         The <code>confidence_pct</code> is the protocol&apos;s real-time view of how
                         much it trusts any individual score. High confidence means both models agree
-                        &mdash; the borrower&apos;s profile is consistent. A widening delta is an early
+                        - the borrower&apos;s profile is consistent. A widening delta is an early
                         signal of score manipulation or an unusual behavioural pattern worth monitoring.
                     </p>
                     <p className="text-sm text-slate-500">
@@ -184,10 +184,10 @@ export default function AgentsPage() {
                             <div className="w-6 h-6 rounded bg-amber-500/20 flex items-center justify-center border border-amber-500/40 shrink-0">
                                 <span className="text-amber-400 text-[10px] font-bold">3</span>
                             </div>
-                            <span className="text-[11px] text-slate-500 uppercase tracking-widest font-medium">ink! PVM &mdash; Forward-Looking Risk</span>
+                            <span className="text-[11px] text-slate-500 uppercase tracking-widest font-medium">ink! PVM - Forward-Looking Risk</span>
                         </div>
                         <h2 className="text-[1.4rem] font-medium text-white tracking-tight leading-snug border-b border-white/10 pb-3 mt-1 mb-0">
-                            RiskAssessor &mdash; Forward-Looking Position Risk
+                            RiskAssessor - Forward-Looking Position Risk
                         </h2>
                     </div>
                     <p>
@@ -206,12 +206,12 @@ export default function AgentsPage() {
 
                     <h3>Inputs</h3>
                     <ul>
-                        <li><code>borrower</code> &mdash; position address</li>
-                        <li><code>collateral_usd_x6</code> &mdash; collateral value in micro-USD</li>
-                        <li><code>debt_usd_x6</code> &mdash; outstanding debt in micro-USD</li>
-                        <li><code>credit_score</code> &mdash; current KreditAgent score (0–100)</li>
-                        <li><code>price_7d_change_bps</code> &mdash; signed 7-day price trend in basis points</li>
-                        <li><code>liq_ratio_bps</code> &mdash; position-specific liquidation threshold</li>
+                        <li><code>borrower</code> - position address</li>
+                        <li><code>collateral_usd_x6</code> - collateral value in micro-USD</li>
+                        <li><code>debt_usd_x6</code> - outstanding debt in micro-USD</li>
+                        <li><code>credit_score</code> - current KreditAgent score (0–100)</li>
+                        <li><code>price_7d_change_bps</code> - signed 7-day price trend in basis points</li>
+                        <li><code>liq_ratio_bps</code> - position-specific liquidation threshold</li>
                     </ul>
 
                     <h3>Output per Position</h3>
@@ -244,16 +244,16 @@ export default function AgentsPage() {
                             <div className="w-6 h-6 rounded bg-pink-500/20 flex items-center justify-center border border-pink-500/40 shrink-0">
                                 <span className="text-pink-400 text-[10px] font-bold">4</span>
                             </div>
-                            <span className="text-[11px] text-slate-500 uppercase tracking-widest font-medium">ink! PVM &mdash; Yield Allocation</span>
+                            <span className="text-[11px] text-slate-500 uppercase tracking-widest font-medium">ink! PVM - Yield Allocation</span>
                         </div>
                         <h2 className="text-[1.4rem] font-medium text-white tracking-tight leading-snug border-b border-white/10 pb-3 mt-1 mb-0">
-                            YieldMind &mdash; Autonomous Yield Allocation
+                            YieldMind - Autonomous Yield Allocation
                         </h2>
                     </div>
                     <p>
-                        <strong>YieldMind</strong> reads three signals &mdash; pool utilisation, price
+                        <strong>YieldMind</strong> reads three signals - pool utilisation, price
                         volatility, and the weighted average credit score of the active borrower base
-                        &mdash; and computes the optimal allocation of idle capital across three yield
+                        - and computes the optimal allocation of idle capital across three yield
                         buckets: conservative (6.5% APY), balanced (11% APY), and aggressive (18% APY).
                     </p>
 
@@ -286,7 +286,7 @@ export default function AgentsPage() {
 
                     <p>
                         The <code>reasoning_code</code> documents the logic behind each allocation
-                        decision on-chain &mdash; not just what was decided, but why.
+                        decision on-chain - not just what was decided, but why.
                     </p>
                     <p className="text-sm text-slate-500">
                         <strong className="text-slate-400">Address:</strong>{' '}
@@ -300,7 +300,7 @@ export default function AgentsPage() {
             {/* ── Trigger Schedule ────────────────────────────────────────── */}
             <h2 id="trigger-schedule">Trigger Schedule</h2>
             <p>
-                The AI Engine calls these contracts on two cadences &mdash; event-driven (immediate)
+                The AI Engine calls these contracts on two cadences - event-driven (immediate)
                 and periodic (every 50 blocks, approximately every five minutes):
             </p>
             <div className="not-prose overflow-x-auto my-5">
@@ -330,7 +330,7 @@ export default function AgentsPage() {
             <p>
                 When no active borrowers are present on testnet, the AI Engine uses the deployer
                 address as a sentinel to keep all three PVM contracts emitting events on a regular
-                cadence &mdash; ensuring the on-chain event record remains continuous.
+                cadence - ensuring the on-chain event record remains continuous.
             </p>
         </div>
     );

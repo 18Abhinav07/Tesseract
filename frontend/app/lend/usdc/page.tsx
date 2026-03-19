@@ -56,7 +56,7 @@ function InfoRow({ label, value, tone }: { label: string; value: string; tone?: 
 }
 
 /* ── Seamless Approve + Deposit card ───────────────────────────────────── */
-type LendPhase = 'idle' | 'approving' | 'approved' | 'depositing' | 'success';
+type LendPhase = 'idle' | 'approving' | 'approved' | 'depositing' | 'success' | 'error';
 
 function LendDepositCard({
     prefillAmount, onSuccess, contractAddr, market,
@@ -90,10 +90,18 @@ function LendDepositCard({
     const aprDisplay = utilBps === 0n ? '-' : `${aprNum.toFixed(2)}%`;
     const yearlyYield = amountAtoms && utilBps > 0n ? (Number(amountAtoms) / 1e6) * (aprNum / 100) : 0;
 
-    const { writeContract: writeApprove, data: approveHash, isPending: approveSigning, reset: resetApprove } = useWriteContract();
+    const { writeContract: writeApprove, data: approveHash, isPending: approveSigning, isError: approveError, reset: resetApprove } = useWriteContract();
     const { isSuccess: approveSuccess } = useWaitForTransactionReceipt({ hash: approveHash });
-    const { writeContract: writeDeposit, data: depositHash, isPending: depositSigning, reset: resetDeposit } = useWriteContract();
+    const { writeContract: writeDeposit, data: depositHash, isPending: depositSigning, isError: depositError, reset: resetDeposit } = useWriteContract();
     const { isSuccess: depositSuccess } = useWaitForTransactionReceipt({ hash: depositHash });
+
+    useEffect(() => {
+        if (approveError || depositError) {
+            setPhase('error');
+            const t = setTimeout(() => { setPhase('idle'); resetApprove(); resetDeposit(); }, 3000);
+            return () => clearTimeout(t);
+        }
+    }, [approveError, depositError, resetApprove, resetDeposit]);
 
     useEffect(() => { if (approveSigning) setPhase('approving'); }, [approveSigning]);
     useEffect(() => { if (depositSigning) setPhase('depositing'); }, [depositSigning]);
@@ -118,7 +126,7 @@ function LendDepositCard({
     };
     const reset = () => { setPhase('idle'); setAmountInput(''); resetApprove(); resetDeposit(); };
     const isProcessing = phase === 'approving' || phase === 'approved' || phase === 'depositing';
-    const btnLabel = phase === 'approving' ? 'Step 1/2 - Approving…' : phase === 'approved' ? 'Approved ✓' : phase === 'depositing' ? 'Step 2/2 - Depositing…' : amountInput ? `Lend ${amountInput} mUSDC` : 'Lend mUSDC';
+    const btnLabel = phase === 'error' ? 'Action Cancelled' : phase === 'approving' ? 'Step 1/2 - Approving…' : phase === 'approved' ? 'Approved ✓' : phase === 'depositing' ? 'Step 2/2 - Depositing…' : amountInput ? `Lend ${amountInput} mUSDC` : 'Lend mUSDC';
 
     return (
         <div className="space-y-4">
@@ -143,25 +151,7 @@ function LendDepositCard({
                     <button onClick={() => setDismissed(true)} className="text-slate-500 hover:text-white text-xs shrink-0">✕</button>
                 </div>
             )}
-            <AnimatePresence>
-                {isProcessing && (
-                    <motion.div key="prog" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                        className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 space-y-2">
-                        <div className="flex items-center gap-3">
-                            <div className={cn('flex items-center gap-2 text-xs flex-1', phase === 'approved' || phase === 'depositing' ? 'text-emerald-400' : 'text-indigo-300')}>
-                                {phase === 'approved' || phase === 'depositing' ? <Check /> : <Spinner small />} Step 1/2 - Approve
-                            </div>
-                            <div className={cn('flex items-center gap-2 text-xs flex-1', phase === 'depositing' ? 'text-indigo-300' : 'text-slate-600')}>
-                                {phase === 'depositing' ? <Spinner small /> : <span className="w-4 h-4" />} Step 2/2 - Deposit
-                            </div>
-                        </div>
-                        <div className="w-full h-1 rounded-full bg-white/10 overflow-hidden">
-                            <motion.div className="h-full bg-indigo-500 rounded-full" initial={{ width: '0%' }}
-                                animate={{ width: phase === 'approved' ? '50%' : phase === 'depositing' ? '75%' : '25%' }} transition={{ duration: 0.4 }} />
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+
             <AnimatePresence>
                 {phase === 'success' && (
                     <motion.div key="ok" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
@@ -177,9 +167,10 @@ function LendDepositCard({
                 )}
             </AnimatePresence>
             {phase !== 'success' ? (
-                <button onClick={handleLend} disabled={!amountAtoms || isProcessing || !isConnected}
+                <button onClick={handleLend} disabled={!amountAtoms || isProcessing || !isConnected || phase === 'error'}
                     className={cn('w-full rounded-xl px-4 py-3 text-sm font-semibold transition-all flex items-center justify-center gap-2',
                         isProcessing ? 'bg-white/5 border border-white/10 text-slate-400 cursor-not-allowed'
+                            : phase === 'error' ? 'bg-rose-500/20 border-rose-500/30 text-rose-400 cursor-not-allowed'
                             : !amountAtoms || !isConnected ? 'bg-white/5 border border-white/10 text-slate-600 cursor-not-allowed'
                                 : 'bg-indigo-600 hover:bg-indigo-500 text-white')}>
                     {isProcessing && <Spinner />}{btnLabel}
@@ -211,9 +202,18 @@ function SwapStep({ onSuccess }: { onSuccess: (receivedMusdc: string) => void })
     });
     const { data: feeBpsRaw } = useReadContract({ address: config.swap, abi: ABIS.KREDIO_SWAP, functionName: 'feeBps' });
     const feeBps = (feeBpsRaw as bigint | undefined) ?? 30n;
-    const { writeContract, data: txHash, isPending: isSigning, reset: resetWrite } = useWriteContract();
+    const { writeContract, data: txHash, isPending: isSigning, isError: swapError, reset: resetWrite } = useWriteContract();
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
     const lastQuoteRef = useRef<bigint>(0n);
+
+    const [phase, setPhase] = useState<'idle' | 'error'>('idle');
+    useEffect(() => {
+        if (swapError) {
+            setPhase('error');
+            const t = setTimeout(() => { setPhase('idle'); resetWrite(); }, 3000);
+            return () => clearTimeout(t);
+        }
+    }, [swapError, resetWrite]);
     useEffect(() => {
         if (!isSuccess) return;
         const received = formatTokenAmount(lastQuoteRef.current, 6, 4, false);
@@ -258,12 +258,13 @@ function SwapStep({ onSuccess }: { onSuccess: (receivedMusdc: string) => void })
                 if (!amount || !quoteResult) return;
                 lastQuoteRef.current = quoteResult as bigint;
                 writeContract({ address: config.swap, abi: ABIS.KREDIO_SWAP, functionName: 'swap', args: [((quoteResult as bigint) * 99n) / 100n], value: pasWei });
-            }} disabled={!amount || Number(amount) <= 0 || overBalance || busy || oracle.isCrashed || !quoteResult}
+            }} disabled={!amount || Number(amount) <= 0 || overBalance || busy || oracle.isCrashed || !quoteResult || phase === 'error'}
                 className={cn('w-full rounded-xl px-4 py-3 text-sm font-semibold transition-all flex items-center justify-center gap-2',
                     busy ? 'bg-white/5 border border-white/10 text-slate-400 cursor-not-allowed'
+                        : phase === 'error' ? 'bg-rose-500/20 border-rose-500/30 text-rose-400 cursor-not-allowed'
                         : !amount || overBalance || oracle.isCrashed || !quoteResult ? 'bg-white/5 border border-white/10 text-slate-600 cursor-not-allowed'
                             : 'bg-indigo-600 hover:bg-indigo-500 text-white')}>
-                {busy ? <><Spinner />{isSigning ? 'Waiting for MetaMask…' : 'Confirming…'}</> : `Swap ${amount || '0'} PAS → mUSDC`}
+                {busy ? <><Spinner />{isSigning ? 'Waiting for MetaMask…' : 'Confirming…'}</> : phase === 'error' ? 'Action Cancelled' : `Swap ${amount || '0'} PAS → mUSDC`}
             </button>
             {oracle.isCrashed && <StateNotice tone="error" message="Oracle is down - swaps paused." />}
         </div>

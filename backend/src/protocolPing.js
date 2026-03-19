@@ -15,15 +15,12 @@
 // │                    │ view-only; result logged locally    │              │
 // └─────────────────────────────────────────────────────────────────────────┘
 //
-// Rules:
-//  - NO integration with core lending/bridge/yield-strategy logic.
-//  - Safe-guards: all state-changing calls inside try/catch, never throw.
-//  - Does NOT modify any existing service or contract's core state.
-
 const { ethers } = require('ethers');
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 
 const RPC_URL = process.env.RPC || 'https://eth-rpc-testnet.polkadot.io/';
+// GovernanceCache and AccountRegistry write paths are privileged.
+// Always use admin KEY to avoid role mismatches from stale per-service env vars.
 const KEY = process.env.KEY;
 
 // ─── Contract addresses (fixed per deployment) ───────────────────────────────
@@ -58,10 +55,53 @@ let lastGovBlock = 0n;
 let lastRegBlock = 0n;
 let lastSwapBlock = 0n;
 let regNonce = 1;     // incremented to generate unique substrate keys
+let nextNonce = null;
 
 const GOV_INTERVAL = 60n;   // ~6 min (60 blocks × 6s)
 const REG_INTERVAL = 300n;  // ~30 min
 const SWAP_INTERVAL = 50n;   // ~5 min
+
+function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableNonceError(err) {
+    if (err?.code === 'TRANSACTION_REPLACED') return true;
+    const msg = String(err?.message || '').toLowerCase();
+    return (
+        msg.includes('nonce too low') ||
+        msg.includes('already known') ||
+        msg.includes('replacement transaction underpriced') ||
+        msg.includes('could not coalesce error') ||
+        msg.includes('the tx doesn\'t have the correct nonce')
+    );
+}
+
+async function sendAdminTx(populateTx, label) {
+    if (!wallet) throw new Error('admin signer unavailable');
+
+    for (let attempt = 1; attempt <= 5; attempt++) {
+        try {
+            if (nextNonce === null) {
+                nextNonce = await provider.getTransactionCount(wallet.address, 'pending');
+            }
+
+            const txReq = await populateTx();
+            const tx = await wallet.sendTransaction({ ...txReq, nonce: nextNonce });
+            nextNonce += 1;
+            await tx.wait();
+            return tx;
+        } catch (err) {
+            if (!isRetryableNonceError(err) || attempt === 5) throw err;
+            nextNonce = await provider.getTransactionCount(wallet.address, 'pending');
+            await sleep(250 * attempt);
+            const suffix = err?.code === 'TRANSACTION_REPLACED' ? ' (tx replaced)' : '';
+            console.warn(`[protocolPing] ${label} nonce-sync retry ${attempt}/5${suffix}`);
+        }
+    }
+
+    throw new Error(`${label} failed after nonce retries`);
+}
 
 // ─── GovernanceCache ─────────────────────────────────────────────────────────
 
@@ -77,8 +117,10 @@ async function pingGovernanceCache(blockNumber) {
     const conviction = Number((block / 100n) % 6n);        // conviction tier 0–5
 
     try {
-        const tx = await govCache.setGovernanceData(wallet.address, voteCount, conviction);
-        await tx.wait();
+        const tx = await sendAdminTx(
+            () => govCache.setGovernanceData.populateTransaction(wallet.address, voteCount, conviction),
+            'GovernanceCache.setGovernanceData()',
+        );
         console.log(`[protocolPing] GovernanceCache.setGovernanceData() ✓  votes=${voteCount} conviction=${conviction}  tx:${tx.hash}`);
     } catch (err) {
         console.warn('[protocolPing] GovernanceCache.setGovernanceData() failed:', err.message);
@@ -97,8 +139,10 @@ async function pingAccountRegistry(blockNumber) {
         const existingKey = await accountReg.substrateKeyOf(wallet.address);
         if (existingKey !== ethers.ZeroHash) {
             // Cycle: unlink current key first
-            const tx1 = await accountReg.attestedUnlink(wallet.address);
-            await tx1.wait();
+            const tx1 = await sendAdminTx(
+                () => accountReg.attestedUnlink.populateTransaction(wallet.address),
+                'AccountRegistry.attestedUnlink()',
+            );
             console.log(`[protocolPing] AccountRegistry.attestedUnlink() ✓  tx:${tx1.hash}`);
         }
 
@@ -109,8 +153,10 @@ async function pingAccountRegistry(blockNumber) {
                 [wallet.address, regNonce++],
             )
         );
-        const tx2 = await accountReg.attestedLink(wallet.address, subKey);
-        await tx2.wait();
+        const tx2 = await sendAdminTx(
+            () => accountReg.attestedLink.populateTransaction(wallet.address, subKey),
+            'AccountRegistry.attestedLink()',
+        );
         console.log(`[protocolPing] AccountRegistry.attestedLink() ✓  key:${subKey.slice(0, 12)}…  tx:${tx2.hash}`);
     } catch (err) {
         console.warn('[protocolPing] AccountRegistry ping failed:', err.message);
@@ -179,11 +225,15 @@ async function start() {
         wallet = new ethers.Wallet(KEY, provider);
         govCache = new ethers.Contract(GOV_CACHE_ADDR, GOV_CACHE_ABI, wallet);
         accountReg = new ethers.Contract(ACCOUNT_REG_ADDR, ACCOUNT_REG_ABI, wallet);
+        nextNonce = await provider.getTransactionCount(wallet.address, 'pending');
     }
     swap = new ethers.Contract(SWAP_ADDR, SWAP_ABI, provider);
 
     const block = await provider.getBlockNumber();
     console.log(`[protocolPing] started at block ${block}`);
+    if (wallet) {
+        console.log(`[protocolPing]   signer             ${wallet.address}  (admin KEY)`);
+    }
     console.log(`[protocolPing]   GovernanceCache    ${GOV_CACHE_ADDR}  (every ${GOV_INTERVAL} blk)`);
     console.log(`[protocolPing]   AccountRegistry    ${ACCOUNT_REG_ADDR}  (every ${REG_INTERVAL} blk)`);
     console.log(`[protocolPing]   KredioSwap         ${SWAP_ADDR}  (quote every ${SWAP_INTERVAL} blk)`);

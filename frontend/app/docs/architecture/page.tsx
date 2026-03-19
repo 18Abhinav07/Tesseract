@@ -16,7 +16,7 @@ export default function ArchitecturePage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-8">
                 <div className="bg-slate-800/20 border border-slate-700 p-5 rounded-lg">
                     <div className="text-xs text-slate-500 uppercase tracking-wider mb-3">Layer 1</div>
-                    <h3 className="text-white mt-0 mb-2 text-base">EVM &mdash; Solidity</h3>
+                    <h3 className="text-white mt-0 mb-2 text-base">EVM - Solidity</h3>
                     <p className="text-sm text-slate-400 mb-0">
                         Capital state, positions, token custody, bridge, and XCM settlement.
                         Standard ethers.js / viem compatible.
@@ -24,7 +24,7 @@ export default function ArchitecturePage() {
                 </div>
                 <div className="bg-cyan-900/10 border border-cyan-500/30 p-5 rounded-lg">
                     <div className="text-xs text-slate-500 uppercase tracking-wider mb-3">Layer 2</div>
-                    <h3 className="text-cyan-400 mt-0 mb-2 text-base">ink! Wasm &mdash; KreditAgent</h3>
+                    <h3 className="text-cyan-400 mt-0 mb-2 text-base">ink! Wasm - KreditAgent</h3>
                     <p className="text-sm text-slate-300 mb-0">
                         Deterministic credit scoring. Called atomically via SCALE cross-VM
                         <code> staticcall</code> from EVM market contracts in the same transaction.
@@ -32,7 +32,7 @@ export default function ArchitecturePage() {
                 </div>
                 <div className="bg-purple-900/10 border border-purple-500/30 p-5 rounded-lg">
                     <div className="text-xs text-slate-500 uppercase tracking-wider mb-3">Layer 3</div>
-                    <h3 className="text-purple-400 mt-0 mb-2 text-base">ink! PVM &mdash; AI Layer</h3>
+                    <h3 className="text-purple-400 mt-0 mb-2 text-base">ink! PVM - AI Layer</h3>
                     <p className="text-sm text-slate-300 mb-0">
                         NeuralScorer, RiskAssessor, YieldMind. Called by the backend AI Engine;
                         each computation emits a permanent on-chain event.
@@ -40,7 +40,7 @@ export default function ArchitecturePage() {
                 </div>
             </div>
 
-            <h3>Layer 1 &mdash; EVM Contracts</h3>
+            <h3>Layer 1 - EVM Contracts</h3>
             <p>
                 All capital-bearing state lives in Solidity contracts on Polkadot Asset Hub EVM
                 (Chain&nbsp;ID&nbsp;<code>420420417</code>). These contracts are optimised for
@@ -55,7 +55,7 @@ export default function ArchitecturePage() {
                 <code>PASOracle</code>, <code>mUSDC</code>, <code>YieldPool</code>.
             </p>
 
-            <h3>Layer 2 &mdash; ink! Wasm (KreditAgent)</h3>
+            <h3>Layer 2 - ink! Wasm (KreditAgent)</h3>
             <p>
                 <code>KreditAgent</code> is compiled to WebAssembly and deployed on Asset Hub EVM
                 alongside the Solidity contracts. Market contracts invoke it with a low-level{' '}
@@ -66,28 +66,28 @@ bytes4 constant SEL_COLLATERAL_RATIO = 0xa70eec89;
 bytes4 constant SEL_INTEREST_RATE    = 0xb8dc60f2;
 bytes4 constant SEL_TIER             = 0x2b2bb477;`}</code></pre>
             <p>
-                The cross-VM call executes atomically &mdash; same transaction, same block. The score,
+                The cross-VM call executes atomically - same transaction, same block. The score,
                 collateral ratio, and interest rate come back ABI-decoded and are immediately locked into
                 the new position. No off-chain call, no latency, no trust assumption. This EVM-to-Wasm
                 atomic interaction is unique to Polkadot&apos;s hybrid Asset Hub runtime.
             </p>
             <p>
                 Because <code>KreditAgent</code> is a Wasm contract, the scoring algorithm can be
-                upgraded in place &mdash; incorporating governance signals in Phase 4, cross-chain
-                history in Phase 6 &mdash; without redeploying <code>KredioLending</code> or{' '}
+                upgraded in place - incorporating governance signals in Phase 4, cross-chain
+                history in Phase 6 - without redeploying <code>KredioLending</code> or{' '}
                 <code>KredioPASMarket</code>.
             </p>
 
-            <h3>Layer 3 &mdash; ink! PVM (AI Assessment)</h3>
+            <h3>Layer 3 - ink! PVM (AI Assessment)</h3>
             <p>
                 Three contracts compiled for PolkaVM run alongside the capital layer. They are called
-                by the backend AI Engine &mdash; not by EVM contracts directly &mdash; and each emits
+                by the backend AI Engine - not by EVM contracts directly - and each emits
                 a full on-chain event after every computation:
             </p>
             <ul>
-                <li><strong>NeuralScorer</strong> &mdash; neural cross-validation of the deterministic score; emits <code>ScoreInferred</code> with a confidence delta per borrower</li>
-                <li><strong>RiskAssessor</strong> &mdash; forward-looking liquidation risk; emits <code>RiskAssessed</code> with estimated blocks-to-liquidation and recommended collateral top-up</li>
-                <li><strong>YieldMind</strong> &mdash; optimal allocation across yield buckets; emits <code>AllocationComputed</code> with a documented reasoning code</li>
+                <li><strong>NeuralScorer</strong> - neural cross-validation of the deterministic score; emits <code>ScoreInferred</code> with a confidence delta per borrower</li>
+                <li><strong>RiskAssessor</strong> - forward-looking liquidation risk; emits <code>RiskAssessed</code> with estimated blocks-to-liquidation and recommended collateral top-up</li>
+                <li><strong>YieldMind</strong> - optimal allocation across yield buckets; emits <code>AllocationComputed</code> with a documented reasoning code</li>
             </ul>
 
             <h2 id="backend">Backend Service Layer</h2>
@@ -129,9 +129,9 @@ bytes4 constant SEL_TIER             = 0x2b2bb477;`}</code></pre>
                 <li>User calls <code>KredioPASMarket.borrow(amount)</code></li>
                 <li>Market calls <code>KreditAgent.compute_score()</code> via SCALE-encoded <code>staticcall</code>; receives score, collateral ratio, and rate in the same transaction</li>
                 <li>Position is stored on-chain with locked parameters; <code>Borrowed</code> event emitted</li>
-                <li>AI Engine polls the event; triggers <code>NeuralScorer.infer()</code> &mdash; emits <code>ScoreInferred</code></li>
-                <li>AI Engine triggers <code>RiskAssessor.assess_position()</code> &mdash; emits <code>RiskAssessed</code></li>
-                <li>On the next 50-block sweep, <code>YieldMind.compute_allocation()</code> runs over full pool state &mdash; emits <code>AllocationComputed</code></li>
+                <li>AI Engine polls the event; triggers <code>NeuralScorer.infer()</code> - emits <code>ScoreInferred</code></li>
+                <li>AI Engine triggers <code>RiskAssessor.assess_position()</code> - emits <code>RiskAssessed</code></li>
+                <li>On the next 50-block sweep, <code>YieldMind.compute_allocation()</code> runs over full pool state - emits <code>AllocationComputed</code></li>
             </ol>
             <p>
                 Steps 4&ndash;6 are permanent, queryable event records on Blockscout. The full credit and
@@ -149,7 +149,7 @@ bytes4 constant SEL_TIER             = 0x2b2bb477;`}</code></pre>
             <p>
                 <code>GovernanceCache</code> stores each user&apos;s OpenGov vote count and conviction level
                 on-chain. In Phase 4 this data feeds directly into the <code>KreditAgent</code> scoring
-                model &mdash; active governance participants earn a persistent credit bonus. The Polkadot
+                model - active governance participants earn a persistent credit bonus. The Polkadot
                 ConvictionVoting precompile makes this natively queryable from Asset Hub contracts
                 without any off-chain indexer.
             </p>
