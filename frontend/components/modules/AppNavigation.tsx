@@ -9,7 +9,7 @@ import { useAccess } from '../../hooks/useAccess';
 const LINKS = [
     { href: '/', label: 'Home' },
     { href: '/dashboard', label: 'Dashboard' },
-    { href: '/markets/usdc', label: 'Markets' },
+    { href: '/markets', label: 'Markets' },
     { href: '/lend', label: 'Lend' },
     { href: '/borrow', label: 'Borrow' },
     { href: '/swap', label: 'Swap' },
