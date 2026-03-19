@@ -377,6 +377,8 @@ __turbopack_context__.s([
     ()=>healthState,
     "tierLabel",
     ()=>tierLabel,
+    "useBorrowHistory",
+    ()=>useBorrowHistory,
     "useGlobalProtocolData",
     ()=>useGlobalProtocolData,
     "useLendingHistory",
@@ -1090,6 +1092,146 @@ function useLendingHistory() {
         refresh
     };
 }
+function useBorrowHistory() {
+    const publicClient = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$wagmi$2f$dist$2f$esm$2f$hooks$2f$usePublicClient$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["usePublicClient"])();
+    const { address } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$wagmi$2f$dist$2f$esm$2f$hooks$2f$useConnection$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__useConnection__as__useAccount$3e$__["useAccount"])();
+    const [history, setHistory] = __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"]([]);
+    const [loading, setLoading] = __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"](false);
+    const refresh = __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useCallback"](async ()=>{
+        if (!publicClient || !address) return;
+        setLoading(true);
+        try {
+            const addrLower = address.toLowerCase();
+            const [borrowedL, repaidL, liquidatedL, borrowedP, repaidP, liquidatedP] = await Promise.all([
+                publicClient.getLogs({
+                    address: __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$addresses$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"].lending,
+                    event: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$abitype$2f$dist$2f$esm$2f$human$2d$readable$2f$parseAbiItem$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["parseAbiItem"])('event Borrowed(address indexed user, uint256 amount, uint8 tier, uint32 ratioBps)'),
+                    fromBlock: DEPLOY_BLOCK
+                }),
+                publicClient.getLogs({
+                    address: __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$addresses$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"].lending,
+                    event: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$abitype$2f$dist$2f$esm$2f$human$2d$readable$2f$parseAbiItem$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["parseAbiItem"])('event Repaid(address indexed user, uint256 principal, uint256 interest)'),
+                    fromBlock: DEPLOY_BLOCK
+                }),
+                publicClient.getLogs({
+                    address: __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$addresses$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"].lending,
+                    event: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$abitype$2f$dist$2f$esm$2f$human$2d$readable$2f$parseAbiItem$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["parseAbiItem"])('event Liquidated(address indexed borrower, address indexed liquidator)'),
+                    fromBlock: DEPLOY_BLOCK
+                }),
+                publicClient.getLogs({
+                    address: __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$addresses$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"].pasMarket,
+                    event: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$abitype$2f$dist$2f$esm$2f$human$2d$readable$2f$parseAbiItem$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["parseAbiItem"])('event Borrowed(address indexed borrower, uint256 usdcAmount)'),
+                    fromBlock: DEPLOY_BLOCK
+                }),
+                publicClient.getLogs({
+                    address: __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$addresses$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"].pasMarket,
+                    event: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$abitype$2f$dist$2f$esm$2f$human$2d$readable$2f$parseAbiItem$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["parseAbiItem"])('event Repaid(address indexed borrower, uint256 totalOwed)'),
+                    fromBlock: DEPLOY_BLOCK
+                }),
+                publicClient.getLogs({
+                    address: __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$addresses$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"].pasMarket,
+                    event: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$abitype$2f$dist$2f$esm$2f$human$2d$readable$2f$parseAbiItem$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["parseAbiItem"])('event Liquidated(address indexed borrower, address indexed liquidator, uint256 pasSeized, uint256 usdcRepaid)'),
+                    fromBlock: DEPLOY_BLOCK
+                })
+            ]);
+            const entries = [];
+            for (const log of borrowedL){
+                if (log.args.user?.toLowerCase() !== addrLower) continue;
+                entries.push({
+                    type: 'borrow',
+                    market: 'USDC Market',
+                    amount: log.args.amount ?? 0n,
+                    collateralSeized: 0n,
+                    blockNumber: log.blockNumber ?? 0n,
+                    txHash: log.transactionHash ?? '',
+                    liquidator: ''
+                });
+            }
+            for (const log of repaidL){
+                if (log.args.user?.toLowerCase() !== addrLower) continue;
+                const principal = log.args.principal ?? 0n;
+                const interest = log.args.interest ?? 0n;
+                entries.push({
+                    type: 'repay',
+                    market: 'USDC Market',
+                    amount: principal + interest,
+                    collateralSeized: 0n,
+                    blockNumber: log.blockNumber ?? 0n,
+                    txHash: log.transactionHash ?? '',
+                    liquidator: ''
+                });
+            }
+            for (const log of liquidatedL){
+                if (log.args.borrower?.toLowerCase() !== addrLower) continue;
+                entries.push({
+                    type: 'liquidate',
+                    market: 'USDC Market',
+                    amount: 0n,
+                    collateralSeized: 0n,
+                    blockNumber: log.blockNumber ?? 0n,
+                    txHash: log.transactionHash ?? '',
+                    liquidator: log.args.liquidator ?? ''
+                });
+            }
+            for (const log of borrowedP){
+                if (log.args.borrower?.toLowerCase() !== addrLower) continue;
+                entries.push({
+                    type: 'borrow',
+                    market: 'PAS Market',
+                    amount: log.args.usdcAmount ?? 0n,
+                    collateralSeized: 0n,
+                    blockNumber: log.blockNumber ?? 0n,
+                    txHash: log.transactionHash ?? '',
+                    liquidator: ''
+                });
+            }
+            for (const log of repaidP){
+                if (log.args.borrower?.toLowerCase() !== addrLower) continue;
+                entries.push({
+                    type: 'repay',
+                    market: 'PAS Market',
+                    amount: log.args.totalOwed ?? 0n,
+                    collateralSeized: 0n,
+                    blockNumber: log.blockNumber ?? 0n,
+                    txHash: log.transactionHash ?? '',
+                    liquidator: ''
+                });
+            }
+            for (const log of liquidatedP){
+                if (log.args.borrower?.toLowerCase() !== addrLower) continue;
+                entries.push({
+                    type: 'liquidate',
+                    market: 'PAS Market',
+                    amount: log.args.usdcRepaid ?? 0n,
+                    collateralSeized: log.args.pasSeized ?? 0n,
+                    blockNumber: log.blockNumber ?? 0n,
+                    txHash: log.transactionHash ?? '',
+                    liquidator: log.args.liquidator ?? ''
+                });
+            }
+            entries.sort((a, b)=>b.blockNumber > a.blockNumber ? 1 : -1);
+            setHistory(entries.slice(0, 100));
+        } catch (err) {
+            console.error('useBorrowHistory:', err);
+        } finally{
+            setLoading(false);
+        }
+    }, [
+        publicClient,
+        address
+    ]);
+    __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"](()=>{
+        if (address) refresh();
+    }, [
+        address,
+        refresh
+    ]);
+    return {
+        history,
+        loading,
+        refresh
+    };
+}
 }),
 "[project]/hooks/useProtocolActions.ts [app-ssr] (ecmascript)", ((__turbopack_context__) => {
 "use strict";
@@ -1500,6 +1642,26 @@ function useProtocolActions() {
                     functionName: 'adminHardReset',
                     args: [
                         to
+                    ]
+                })),
+        adminCleanLending: (to, users, depositors)=>tx('Clean Lending pool', 'lending', ()=>walletClient.writeContract({
+                    address: __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$addresses$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"].lending,
+                    abi: __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$constants$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ABIS"].KREDIO_LENDING,
+                    functionName: 'adminCleanContract',
+                    args: [
+                        to,
+                        users,
+                        depositors
+                    ]
+                })),
+        adminCleanPas: (to, users, depositors)=>tx('Clean PAS pool', 'pas', ()=>walletClient.writeContract({
+                    address: __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$addresses$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"].pasMarket,
+                    abi: __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$constants$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ABIS"].KREDIO_PAS_MARKET,
+                    functionName: 'adminCleanContract',
+                    args: [
+                        to,
+                        users,
+                        depositors
                     ]
                 })),
         sweepPasFees: (to)=>tx('Sweep PAS market fees', 'pas', ()=>walletClient.writeContract({

@@ -1,10 +1,7 @@
 {
-  "/admin/page": "app/admin/page.js",
   "/borrow/page": "app/borrow/page.js",
-  "/bridge/page": "app/bridge/page.js",
   "/dashboard/page": "app/dashboard/page.js",
   "/lend/page": "app/lend/page.js",
   "/markets/page": "app/markets/page.js",
-  "/page": "app/page.js",
-  "/swap/page": "app/swap/page.js"
+  "/page": "app/page.js"
 }
