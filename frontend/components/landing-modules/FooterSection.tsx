@@ -56,7 +56,7 @@ export function FooterSection() {
                     <p style={{ fontSize: '8px', fontFamily: 'ui-monospace,monospace', color: T.muted, letterSpacing: '2.5px', textTransform: 'uppercase', marginBottom: '18px' }}>Protocol</p>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 32px' }}>
                         {NAV_LINKS.map(l => (
-                            <Link key={l.href} href="#"
+                            <Link key={l.href} href={l.href}
                                 style={{ fontSize: '12px', color: '#CBD5E1', textDecoration: 'none', transition: 'color 0.15s' }}
                                 onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = '#FFFFFF')}
                                 onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = '#CBD5E1')}
