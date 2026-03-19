@@ -7,18 +7,13 @@ import { cn } from '../../lib/utils';
 
 export function PageShell({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, ease: 'easeOut' }}
-            className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6"
-        >
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
             <div className="rounded-2xl border border-white/10 bg-black/30 backdrop-blur-xl p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.03)]">
                 <h1 className="text-2xl sm:text-3xl font-semibold text-white">{title}</h1>
                 <p className="text-sm text-slate-400 mt-1">{subtitle}</p>
             </div>
             {children}
-        </motion.div>
+        </div>
     );
 }
 
