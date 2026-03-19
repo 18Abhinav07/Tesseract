@@ -1,18 +1,17 @@
 'use strict';
 /**
- * test-full.js - Kredio Protocol Comprehensive Test Suite
+ * Product simulation runner for Kredio protocol.
  *
- * Phases:
- *   0  Current-state snapshot
- *   1  Sweep all contracts to clean default state
- *   2  Fund USER1-USER6 with 200 000 mUSDC + 1 000 PAS each
- *   3  Configure rates, seed pools, wire yield strategy
- *   4  Full test sequence (lend, borrow, yield, liquidate, repay, withdraw)
- *   5  Final state snapshot + structured report
- *
- * Usage:
- *   cd /Users/18abhinav07/Documents/Kredio/backend
- *   node scripts/test-full.js 2>&1 | tee scripts/test-run.log
+ * Scenario summary:
+ *  - Load all keys/addresses from backend/.env (with contracts/.env fallback)
+ *  - Reset protocol to a known state
+ *  - Ensure all users are funded to required simulation balances
+ *  - USER1 + USER2 become depositors
+ *  - USER3 + USER4 perform borrow and repay flows
+ *  - Oracle crash simulation forces liquidation of an unsafe USER4 position
+ *  - Intelligent yield strategy is exercised under low-liquidity conditions
+ *  - USER1 + USER2 harvest and withdraw assets
+ *  - Rich JSON + Markdown reports include expected-vs-actual failure classification
  */
 
 const { ethers } = require('ethers');
@@ -20,29 +19,27 @@ const dotenv = require('dotenv');
 const path = require('path');
 const fs = require('fs');
 
-dotenv.config({ path: path.resolve(__dirname, '../../contracts/.env') });
+// Prefer backend/.env first as requested, then fill missing values from contracts/.env.
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../contracts/.env'), override: false });
 
-// ─── Network ──────────────────────────────────────────────────────────────────
-const RPC = process.env.PASSET_RPC || 'https://eth-rpc-testnet.polkadot.io/';
+// -----------------------------------------------------------------------------
+// Network + addresses
+// -----------------------------------------------------------------------------
+const RPC = process.env.PASSET_RPC || process.env.RPC || 'https://eth-rpc-testnet.polkadot.io/';
 const CHAIN_ID = 420420417;
 
-// ─── Contract addresses ───────────────────────────────────────────────────────
 const ADDR = {
-    MUSDC: '0x5998cE005b4f3923c988Ae31940fAa1DEAC0c646',
-    LENDING: '0x1eDaD1271FB9d1296939C6f4Fb762752b041C64E',
-    PAS_MARKET: '0x0F90Fe6141AC29a6031C3ae2155749e9f38a0174',
-    YIELD_POOL: '0x1dB4Faad3081aAfe26eC0ef6886F04f28D944AAB',
-    ORACLE: '0x1494432a8Af6fa8c03C0d7DD7720E298D85C55c7',
+    MUSDC: process.env.MUSDC_ADDR || process.env.MUSDC || '0x5998cE005b4f3923c988Ae31940fAa1DEAC0c646',
+    LENDING: process.env.LENDING_ADDR || process.env.LENDING || '0x61c6b46f5094f2867Dce66497391d0fd41796CEa',
+    PAS_MARKET: process.env.MARKET_ADDR || process.env.PAS_MARKET_ADDR || '0x5617dBa1b13155fD6fD62f82ef6D9e8F0F3B0E86',
+    YIELD_POOL: process.env.YIELD_POOL_ADDR || process.env.YIELD_POOL || '0x1dB4Faad3081aAfe26eC0ef6886F04f28D944AAB',
+    ORACLE: process.env.ORACLE || '0x1494432a8Af6fa8c03C0d7DD7720E298D85C55c7',
 };
 
-// Old test addresses whose depositBalance may be stale (included in reset sweep)
-const OLD_ADDRS = [
-    '0x5EF0a87f578778Fc78cbFe318D3444D71Ff638da', // PRIVATE_KEY_2
-    '0x105952E94C36916757785C4F7f92DAf5f1cC99ad', // KEY2
-    '0x863930353d628aA250fB98A4Eb2C1bAa649d5617', // KEY3
-];
-
-// ─── ABIs ─────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+// ABIs
+// -----------------------------------------------------------------------------
 const MUSDC_ABI = [
     'function balanceOf(address) view returns (uint256)',
     'function approve(address,uint256) returns (bool)',
@@ -57,7 +54,6 @@ const LENDING_ABI = [
     'function depositCollateral(uint256)',
     'function borrow(uint256)',
     'function repay()',
-    'function fundReserve(uint256)',
     'function pendingYield(address) view returns (uint256)',
     'function pendingYieldAndHarvest(address)',
     'function totalDeposited() view returns (uint256)',
@@ -73,17 +69,13 @@ const LENDING_ABI = [
     'function getPositionFull(address) view returns (uint256 collateral, uint256 debt, uint256 accrued, uint256 totalOwed, uint32 interestBps, uint8 tier, bool active)',
     'function strategyStatus() view returns (address pool, uint256 invested, uint256 totalEarned, uint256 pendingYield_, uint256 investRatio_, uint256 minBuffer_)',
     'function pendingStrategyYield() view returns (uint256)',
-    'function adminHardReset(address)',
-    'function adminBulkWithdrawDeposits(address[])',
-    'function adminForceCloseAll(address[])',
-    'function adminResetUserScores(address[])',
     'function adminSetGlobalTick(uint256)',
     'function adminInvest(uint256)',
     'function adminPullBack(uint256)',
     'function adminClaimAndInjectYield()',
     'function adminTickPool(address[])',
     'function adminSetYieldPool(address)',
-    'function adminForceClose(address)',
+    'function adminCleanContract(address to, address[] users, address[] depositors)',
 ];
 
 const PAS_MARKET_ABI = [
@@ -107,43 +99,35 @@ const PAS_MARKET_ABI = [
     'function utilizationRate() view returns (uint256)',
     'function maxBorrowable(address) view returns (uint256)',
     'function getPositionFull(address) view returns (uint256 collateralPAS, uint256 collateralValueUSDC, uint256 debtUSDC, uint256 accrued, uint256 totalOwed, uint32 interestBps, uint8 tier, bool active)',
-    'function adminHardReset(address)',
-    'function adminBulkWithdrawDeposits(address[])',
-    'function adminForceCloseAll(address[])',
-    'function adminResetUserScores(address[])',
     'function adminSetGlobalTick(uint256)',
     'function adminTickPool(address[])',
     'function adminLiquidate(address)',
-    'function adminForceClose(address)',
+    'function adminCleanContract(address to, address[] users, address[] depositors)',
 ];
 
 const YIELD_POOL_ABI = [
-    'function deposit(uint256)',
-    'function withdraw(address,uint256)',
-    'function claimYield(address) returns (uint256)',
-    'function pendingYield(address) view returns (uint256)',
-    'function getStake(address) view returns (uint256 principal, uint256 accrued, uint256 pending)',
-    'function setYieldRate(uint256)',
     'function totalPrincipal() view returns (uint256)',
+    'function pendingYield(address) view returns (uint256)',
+    'function setYieldRate(uint256)',
     'function yieldRateBps() view returns (uint256)',
 ];
 
 const ORACLE_ABI = [
     'function latestRoundData() view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)',
-    'function latestPrice() view returns (int256)',
     'function normalPrice() view returns (int256)',
-    'function updatedAt() view returns (uint256)',
     'function crashed() view returns (bool)',
     'function setPrice(int256)',
     'function recover()',
-    'function decimals() view returns (uint8)',
 ];
 
-// ─── Setup provider ───────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+// Setup
+// -----------------------------------------------------------------------------
 const provider = new ethers.JsonRpcProvider(RPC, { chainId: CHAIN_ID, name: 'polkadot-hub-testnet' });
 
 function mkWallet(pk) {
-    const key = pk && !pk.startsWith('0x') ? '0x' + pk : pk;
+    if (!pk) throw new Error('Missing private key from env');
+    const key = pk.startsWith('0x') ? pk : `0x${pk}`;
     return new ethers.Wallet(key, provider);
 }
 
@@ -157,82 +141,21 @@ const users = {
     USER6: mkWallet(process.env.USER6),
 };
 
-// Read-only contract handles (connect a signer for writes)
 const musdc = new ethers.Contract(ADDR.MUSDC, MUSDC_ABI, provider);
 const lending = new ethers.Contract(ADDR.LENDING, LENDING_ABI, provider);
 const pasMarket = new ethers.Contract(ADDR.PAS_MARKET, PAS_MARKET_ABI, provider);
-const yieldPool = new ethers.Contract(ADDR.YIELD_POOL, YIELD_POOL_ABI, provider);
+let yieldPool = new ethers.Contract(ADDR.YIELD_POOL, YIELD_POOL_ABI, provider);
 const oracle = new ethers.Contract(ADDR.ORACLE, ORACLE_ABI, provider);
 
-// ─── Formatting helpers ───────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+// Helpers
+// -----------------------------------------------------------------------------
 const fmt6 = (n) => Number(ethers.formatUnits(n ?? 0n, 6)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
 const fmt18 = (n) => Number(ethers.formatEther(n ?? 0n)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
 const u6 = (n) => ethers.parseUnits(String(n), 6);
 const u18 = (n) => ethers.parseEther(String(n));
-
-// ─── Report infrastructure ────────────────────────────────────────────────────
-const REPORT = [];
-let stepNum = 0;
-
-/**
- * Execute one test step, capture tx hash, gas and before/after state.
- * @param {string}   actor       - who does the action
- * @param {string}   action      - human description
- * @param {string}   contractName
- * @param {Function} txFn        - async () => tx  (must call .wait() internally)
- * @param {object}   opts
- */
-async function step(actor, action, contractName, txFn, opts = {}) {
-    stepNum++;
-    const entry = {
-        step: stepNum,
-        actor,
-        action,
-        params: opts.params || '',
-        contract: contractName,
-        expected: opts.expected || '',
-        observedBefore: null,
-        observedAfter: null,
-        txHash: null,
-        gasUsed: null,
-        status: 'PENDING',
-        error: null,
-    };
-    console.log(`\n  [Step ${stepNum}] ${actor}: ${action}`);
-
-    try {
-        console.log("     [Wait] 4000ms...");
-        await sleep(4000); // Wait for L2 state sync across RPC load balancers before estimation
-        console.log("     [Wait] Done. Estimating / Sending...");
-        if (opts.beforeFn) entry.observedBefore = bigintSafe(await opts.beforeFn());
-        const tx = await txFn();
-        const receipt = await tx.wait();
-        entry.txHash = receipt.hash;
-        entry.gasUsed = receipt.gasUsed.toString();
-        if (opts.afterFn) entry.observedAfter = bigintSafe(await opts.afterFn());
-        entry.status = 'PASS';
-        console.log(`     ✓ tx: ${receipt.hash}   gas: ${receipt.gasUsed}`);
-    } catch (e) {
-        entry.status = 'FAIL';
-        entry.error = (e.shortMessage || e.message || String(e)).slice(0, 300);
-        console.error(`     ✗ FAILED: ${entry.error}`);
-    }
-
-    REPORT.push(entry);
-    return entry;
-}
-
-async function viewLog(label, fn) {
-    try {
-        const val = await fn();
-        console.log(`  [view] ${label}: ${val}`);
-        return val;
-    } catch (e) {
-        console.error(`  [view] ${label} ERROR: ${e.message?.slice(0, 120)}`);
-        return null;
-    }
-}
-
+const minBI = (...vals) => vals.reduce((a, b) => (a < b ? a : b));
+const maxBI = (a, b) => (a > b ? a : b);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function bigintSafe(obj) {
@@ -240,929 +163,833 @@ function bigintSafe(obj) {
     return JSON.parse(JSON.stringify(obj, (_, v) => (typeof v === 'bigint' ? v.toString() : v)));
 }
 
-// Snapshot pool+account state
-async function poolSnap() {
-    return {
-        lending: {
-            totalDeposited: (await lending.totalDeposited()).toString(),
-            totalBorrowed: (await lending.totalBorrowed()).toString(),
-            investedAmount: (await lending.investedAmount()).toString(),
-            globalTick: (await lending.globalTick()).toString(),
-            usdcBal: (await musdc.balanceOf(ADDR.LENDING)).toString(),
-        },
-        pasMarket: {
-            totalDeposited: (await pasMarket.totalDeposited()).toString(),
-            totalBorrowed: (await pasMarket.totalBorrowed()).toString(),
-            usdcBal: (await musdc.balanceOf(ADDR.PAS_MARKET)).toString(),
-        },
-        yieldPool: {
-            totalPrincipal: (await yieldPool.totalPrincipal()).toString(),
-            yieldRateBps: (await yieldPool.yieldRateBps()).toString(),
-            pendingForLending: (await yieldPool.pendingYield(ADDR.LENDING)).toString(),
-        },
-    };
+function isLikelyPrivateKey(v) {
+    return typeof v === 'string' && /^(0x)?[0-9a-fA-F]{64}$/.test(v.trim());
 }
 
-// ════════════════════════════════════════════════════════════════════════════════
-//  MAIN
-// ════════════════════════════════════════════════════════════════════════════════
-async function main() {
-    const startTs = Date.now();
-    const bar = '═'.repeat(110);
-    console.log('\n' + bar);
-    console.log('  KREDIO PROTOCOL - COMPREHENSIVE TEST SUITE');
-    console.log('  Run started:', new Date().toISOString());
-    console.log(bar + '\n');
-
-    // Print resolved addresses
-    console.log('Accounts:');
-    console.log(`  ADMIN  : ${admin.address}`);
-    for (const [n, w] of Object.entries(users)) console.log(`  ${n.padEnd(6)}: ${w.address}`);
-    console.log('\nContracts:');
-    for (const [n, a] of Object.entries(ADDR)) console.log(`  ${n.padEnd(10)}: ${a}`);
-
-    const allKnownAddrs = [admin.address, ...OLD_ADDRS, ...Object.values(users).map(w => w.address)];
-    const userAddrs = Object.values(users).map(w => w.address);
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  PHASE 0 - CURRENT STATE SNAPSHOT
-    // ══════════════════════════════════════════════════════════════════════════
-    console.log('\n' + '─'.repeat(110));
-    console.log('  PHASE 0 - CURRENT STATE SNAPSHOT');
-    console.log('─'.repeat(110));
-
-    // Oracle uses Chainlink latestRoundData() - staleness check happens on-chain
-    let oraclePrice = 502069300n; // fallback: $5.02 per PAS (8 decimals)
-    try {
-        const rd = await oracle.latestRoundData();
-        oraclePrice = rd[1]; // int256 answer
-        console.log(`\n  PAS oracle answer: ${oraclePrice} (8 decimals = $${(Number(oraclePrice) / 1e8).toFixed(4)} per PAS)`);
-        console.log(`  Implies 1 PAS ≈ ${fmt6((BigInt(oraclePrice.toString()) * 10n ** 18n) / 10n ** 20n)} mUSDC`);
-    } catch (e) {
-        console.log(`  [warn] Oracle latestRoundData failed (${e.shortMessage || e.message?.slice(0, 80)}); using fallback $5.02`);
-        console.log(`  Oracle will be refreshed in Phase 3 before borrow tests.`);
-    }
-
-    const p0 = await poolSnap();
-    console.log('\n  KredioLending:');
-    console.log(`    totalDeposited : ${fmt6(BigInt(p0.lending.totalDeposited))} mUSDC`);
-    console.log(`    totalBorrowed  : ${fmt6(BigInt(p0.lending.totalBorrowed))} mUSDC`);
-    console.log(`    investedAmount : ${fmt6(BigInt(p0.lending.investedAmount))} mUSDC`);
-    console.log(`    globalTick     : ${p0.lending.globalTick}`);
-    console.log(`    USDC balance   : ${fmt6(BigInt(p0.lending.usdcBal))} mUSDC`);
-
-    console.log('\n  KredioPASMarket:');
-    console.log(`    totalDeposited : ${fmt6(BigInt(p0.pasMarket.totalDeposited))} mUSDC`);
-    console.log(`    totalBorrowed  : ${fmt6(BigInt(p0.pasMarket.totalBorrowed))} mUSDC`);
-    console.log(`    USDC balance   : ${fmt6(BigInt(p0.pasMarket.usdcBal))} mUSDC`);
-
-    console.log('\n  MockYieldPool:');
-    console.log(`    totalPrincipal : ${fmt6(BigInt(p0.yieldPool.totalPrincipal))} mUSDC`);
-    console.log(`    yieldRateBps   : ${p0.yieldPool.yieldRateBps}`);
-    console.log(`    pendingYield   : ${fmt6(BigInt(p0.yieldPool.pendingForLending))} mUSDC`);
-
-    console.log('\n  Account Balances:');
-    for (const [n, w] of Object.entries({ ADMIN: admin, ...users })) {
-        const mu = await musdc.balanceOf(w.address);
-        const pa = await provider.getBalance(w.address);
-        console.log(`    ${n.padEnd(6)} ${w.address.slice(0, 10)}... | mUSDC: ${fmt6(mu).padStart(18)} | PAS: ${fmt18(pa).padStart(12)}`);
-    }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  PHASE 1 - SWEEP ALL CONTRACTS CLEAN
-    // ══════════════════════════════════════════════════════════════════════════
-    console.log('\n' + '─'.repeat(110));
-    console.log('  PHASE 1 - SWEEP ALL CONTRACTS CLEAN');
-    console.log('─'.repeat(110));
-
-    //─────────────────────────────────────────────────────────────────────────
-    //  1A  KredioLending
-    //─────────────────────────────────────────────────────────────────────────
-    const invested = await lending.investedAmount();
-    console.log(`\n  KredioLending investedAmount: ${fmt6(invested)} mUSDC`);
-
-    if (invested > 0n) {
-        await step('ADMIN', `Pull back ${fmt6(invested)} mUSDC from yield pool → KredioLending`, 'KredioLending',
-            () => lending.connect(admin).adminPullBack(invested),
-            { expected: 'investedAmount → 0; contract USDC balance restores; YieldPool principal drops' }
-        );
-    } else {
-        console.log('  [skip] investedAmount already 0');
-    }
-
-    // Identify which known addresses have non-zero depositBalance in KredioLending
-    const lendingDepositors = [];
-    for (const addr of allKnownAddrs) {
-        const bal = await lending.depositBalance(addr);
-        if (bal > 0n) {
-            lendingDepositors.push(addr);
-            console.log(`  KredioLending depositBalance[${addr.slice(0, 10)}...] = ${fmt6(bal)}`);
+function collectEnvWalletAddresses() {
+    const addrs = new Set();
+    for (const [key, value] of Object.entries(process.env)) {
+        if (!value) continue;
+        if (!/^(ADMIN|DEPLOYER|USER\d+|KEY\d+|PRIVATE_KEY(?:_\d+)?)$/.test(key)) continue;
+        if (!isLikelyPrivateKey(value)) continue;
+        try {
+            addrs.add(mkWallet(value).address);
+        } catch (_) {
+            // ignore malformed values
         }
     }
-    if (lendingDepositors.length > 0) {
-        await step('ADMIN', `Bulk-withdraw ${lendingDepositors.length} depositor(s) from KredioLending`, 'KredioLending',
-            () => lending.connect(admin).adminBulkWithdrawDeposits(lendingDepositors),
-            { expected: 'depositBalance zeroed for all; USDC returned to depositors' }
-        );
-    } else {
-        console.log('  [skip] No depositors with balance in KredioLending');
+    return [...addrs];
+}
+
+async function withTimeout(promise, ms, label) {
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)),
+    ]);
+}
+
+function isRetryableTxError(err) {
+    const msg = String(err?.shortMessage || err?.message || '').toLowerCase();
+    return (
+        msg.includes('could not coalesce error') ||
+        msg.includes('timeout') ||
+        msg.includes('nonce too low') ||
+        msg.includes('already known') ||
+        msg.includes('replacement transaction underpriced') ||
+        msg.includes('priority is too low') ||
+        msg.includes('temporarily unavailable')
+    );
+}
+
+async function waitForReceiptWithTimeout(txHash, timeoutMs = 180000) {
+    const started = Date.now();
+    while (Date.now() - started < timeoutMs) {
+        const r = await provider.getTransactionReceipt(txHash);
+        if (r) return r;
+        await sleep(2500);
     }
-
-    // Force-close any active positions
-    await step('ADMIN', 'Force-close all borrower positions in KredioLending', 'KredioLending',
-        () => lending.connect(admin).adminForceCloseAll(allKnownAddrs),
-        { expected: 'All borrow positions closed; USDC collateral returned; totalBorrowed → 0' }
-    );
-
-    // Hard reset: sweeps remaining USDC to admin, zeros all counters
-    await step('ADMIN', 'Hard-reset KredioLending (sweep all USDC dust to admin)', 'KredioLending',
-        () => lending.connect(admin).adminHardReset(admin.address),
-        { expected: 'totalDeposited=0, totalBorrowed=0, accYieldPerShare=0, globalTick=0' }
-    );
-
-    // Reset credit scores
-    await step('ADMIN', 'Reset credit scores for all known addresses (KredioLending)', 'KredioLending',
-        () => lending.connect(admin).adminResetUserScores(allKnownAddrs),
-        { expected: 'repaymentCount/liquidationCount/totalDepositedEver = 0 for all' }
-    );
-
-    //─────────────────────────────────────────────────────────────────────────
-    //  1B  KredioPASMarket
-    //─────────────────────────────────────────────────────────────────────────
-    await step('ADMIN', 'Force-close all positions in KredioPASMarket (return PAS collateral)', 'KredioPASMarket',
-        () => pasMarket.connect(admin).adminForceCloseAll(allKnownAddrs),
-        { expected: 'All PAS positions closed; PAS returned to borrowers; totalBorrowed → 0' }
-    );
-
-    const pmDepositors = [];
-    for (const addr of allKnownAddrs) {
-        const bal = await pasMarket.depositBalance(addr);
-        if (bal > 0n) pmDepositors.push(addr);
-    }
-    if (pmDepositors.length > 0) {
-        await step('ADMIN', `Bulk-withdraw ${pmDepositors.length} depositor(s) from KredioPASMarket`, 'KredioPASMarket',
-            () => pasMarket.connect(admin).adminBulkWithdrawDeposits(pmDepositors),
-            { expected: 'PM depositBalances zeroed; mUSDC returned' }
-        );
-    } else {
-        console.log('  [skip] No depositors with balance in KredioPASMarket');
-    }
-
-    await step('ADMIN', 'Hard-reset KredioPASMarket', 'KredioPASMarket',
-        () => pasMarket.connect(admin).adminHardReset(admin.address),
-        { expected: 'PM totalDeposited=0, totalBorrowed=0, accYieldPerShare=0' }
-    );
-
-    await step('ADMIN', 'Reset credit scores for all known addresses (KredioPASMarket)', 'KredioPASMarket',
-        () => pasMarket.connect(admin).adminResetUserScores(allKnownAddrs),
-        { expected: 'PM credit scores cleared' }
-    );
-
-    // Verify clean state
-    console.log('\n  Verifying clean state:');
-    const cleanL = await lending.totalDeposited();
-    const cleanPM = await pasMarket.totalDeposited();
-    const cleanYP = await yieldPool.totalPrincipal();
-    console.log(`  KredioLending.totalDeposited   = ${fmt6(cleanL)}  (expect 0)`);
-    console.log(`  KredioPASMarket.totalDeposited = ${fmt6(cleanPM)} (expect 0)`);
-    console.log(`  YieldPool.totalPrincipal       = ${fmt6(cleanYP)} (expect 0 after pull-back)`);
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  PHASE 2 - FUND ACCOUNTS
-    // ══════════════════════════════════════════════════════════════════════════
-    console.log('\n' + '─'.repeat(110));
-    console.log('  PHASE 2 - FUND ACCOUNTS (200 000 mUSDC + 1 000 PAS each)');
-    console.log('─'.repeat(110));
-
-    const TARGET_MUSDC = u6('200000');
-    const TARGET_PAS = u18('1000');
-
-    for (const [name, usr] of Object.entries(users)) {
-        const curMusdc = await musdc.balanceOf(usr.address);
-        const curPas = await provider.getBalance(usr.address);
-        console.log(`\n  ${name} (${usr.address.slice(0, 10)}...)  mUSDC=${fmt6(curMusdc)}  PAS=${fmt18(curPas)}`);
-
-        // Check current mUSDC and conditionally mint
-        if (curMusdc >= TARGET_MUSDC) {
-            console.log(`  [skip] ${name} already has ${fmt6(curMusdc)} mUSDC (>= 200,000)`);
-        } else {
-            const needed = TARGET_MUSDC - curMusdc;
-            await step('ADMIN', `Mint ${fmt6(needed)} mUSDC to ${name}`, 'MockUSDC',
-                () => musdc.connect(admin).mint(usr.address, needed),
-                { expected: `${name}.mUSDC = 200 000`, params: `amount=${fmt6(needed)}` }
-            );
-        }
-
-        // Top-up PAS from admin if user < 49000 PAS
-        if (curPas < u18('500')) {
-            const toSend = TARGET_PAS - curPas;
-            console.log(`  Sending ${fmt18(toSend)} PAS to ${name}`);
-            await step('ADMIN', `Send PAS to ${name}`, 'Native',
-                () => admin.sendTransaction({ to: usr.address, value: toSend }),
-                { expected: `${name}.PAS ≈ 50 000 PAS`, params: `value=${fmt18(toSend)} PAS` }
-            );
-        } else {
-            console.log(`  [skip] ${name} already has sufficient PAS (${fmt18(curPas)})`);
-        }
-    }
-
-    console.log('\n  Final account balances (post-funding):');
-    for (const [n, w] of Object.entries({ ADMIN: admin, ...users })) {
-        const mu = await musdc.balanceOf(w.address);
-        const pa = await provider.getBalance(w.address);
-        console.log(`  ${n.padEnd(6)} ${w.address.slice(0, 10)}... | mUSDC: ${fmt6(mu).padStart(18)} | PAS: ${fmt18(pa).padStart(12)}`);
-    }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  PHASE 3 - CONFIGURE RATES + SEED POOLS
-    // ══════════════════════════════════════════════════════════════════════════
-    console.log('\n' + '─'.repeat(110));
-    console.log('  PHASE 3 - CONFIGURE RATES & SEED POOLS');
-    console.log('─'.repeat(110));
-
-    // 3.1  Yield pool rate → 100 000 bps (1 000% APY – fast demo accumulation)
-    await step('ADMIN', 'Set yield pool rate to 100 000 bps (1 000% APY)', 'MockYieldPool',
-        () => yieldPool.connect(admin).setYieldRate(100000),
-        { expected: 'yieldRateBps = 100 000; yield accrues rapidly for demo' }
-    );
-
-    // 3.2  globalTick = 86400 on both markets (1 real second ≈ 1 simulated day)
-    await step('ADMIN', 'Set KredioLending globalTick = 86400 (1 s = 1 day interest)', 'KredioLending',
-        () => lending.connect(admin).adminSetGlobalTick(86400),
-        { expected: 'globalTick = 86400', params: 'tickMultiplier=86400' }
-    );
-    await step('ADMIN', 'Set KredioPASMarket globalTick = 86400', 'KredioPASMarket',
-        () => pasMarket.connect(admin).adminSetGlobalTick(86400),
-        { expected: 'globalTick = 86400', params: 'tickMultiplier=86400' }
-    );
-
-    // 3.3  Wire yield pool (re-confirm)
-    await step('ADMIN', 'Wire MockYieldPool to KredioLending', 'KredioLending',
-        () => lending.connect(admin).adminSetYieldPool(ADDR.YIELD_POOL),
-        { expected: 'yieldPool set; lending can now invest/pull/claim' }
-    );
-
-    // 3.3b  Extend PAS market staleness limit to 24 h so testnet oracle never expires mid-test
-    await step('ADMIN', 'Set KredioPASMarket risk params (stalenessLimit=86400, others unchanged)', 'KredioPASMarket',
-        () => pasMarket.connect(admin).setRiskParams(6500, 800, 86400, 1000),
-        { expected: 'stalenessLimit = 86400 s (24 h); ltvBps=6500, liqBonusBps=800, protocolFeeBps=1000' }
-    );
-
-    // 3.3c  Refresh oracle price (re-sets updatedAt so staleness check passes)
-    let currentOraclePrice = 502069300n;
-    try {
-        const rd = await oracle.latestRoundData();
-        currentOraclePrice = BigInt(rd[1].toString());
-        console.log(`  Current oracle price: ${currentOraclePrice} (already up to date)`);
-    } catch (e) {
-        console.log(`  Oracle is stale/crashed, refreshing with last known price: ${currentOraclePrice}`);
-    }
-    // Recover from crashed state first if needed (setPrice requires !crashed)
-    const oracleIsCrashed = await oracle.crashed().catch(() => false);
-    if (oracleIsCrashed) {
-        await step('ADMIN', 'Recover oracle from crashed state', 'MockPASOracle',
-            () => oracle.connect(admin).recover(),
-            { expected: 'oracle.crashed = false; updatedAt refreshed; staleness check passes' }
-        );
-        // After recovery, update our price to the recovered price
-        try { const rd = await oracle.latestRoundData(); currentOraclePrice = BigInt(rd[1].toString()); } catch (_) { }
-    } else {
-        // Not crashed: call setPrice to refresh updatedAt
-        await step('ADMIN', `Refresh oracle price to ${currentOraclePrice} (reset updatedAt)`, 'MockPASOracle',
-            () => oracle.connect(admin).setPrice(currentOraclePrice),
-            { expected: 'oracle.updatedAt = now; staleness check will pass for 86400 s' }
-        );
-    }
-    // Read refreshed price
-    try {
-        const rd2 = await oracle.latestRoundData();
-        oraclePrice = BigInt(rd2[1].toString());
-        console.log(`  Oracle refreshed. Price: ${oraclePrice} ($${(Number(oraclePrice) / 1e8).toFixed(4)} per PAS)`);
-    } catch (e) {
-        console.log(`  Using price: ${oraclePrice}`);
-    }
-
-    // 3.4  Blanket approvals (admin → both contracts)
-    await step('ADMIN', 'Approve MaxUint256 mUSDC to KredioLending', 'MockUSDC',
-        () => musdc.connect(admin).approve(ADDR.LENDING, ethers.MaxUint256),
-        { expected: 'Admin can deposit + fundReserve without re-approving' }
-    );
-    await step('ADMIN', 'Approve MaxUint256 mUSDC to KredioPASMarket', 'MockUSDC',
-        () => musdc.connect(admin).approve(ADDR.PAS_MARKET, ethers.MaxUint256),
-        { expected: 'Admin can deposit + liquidate without re-approving' }
-    );
-
-    // 3.5  Seed KredioLending with 500 000 mUSDC liquidity
-    const SEED_LENDING = u6('500000');
-    await step('ADMIN', 'Deposit 500 000 mUSDC into KredioLending (admin liquidity base)', 'KredioLending',
-        () => lending.connect(admin).deposit(SEED_LENDING),
-        { expected: 'KredioLending.totalDeposited = 500 000; admin is a lender' }
-    );
-
-    // 3.6  Seed KredioPASMarket with 300 000 mUSDC liquidity
-    const SEED_MARKET = u6('300000');
-    await step('ADMIN', 'Deposit 300 000 mUSDC into KredioPASMarket (admin liquidity base)', 'KredioPASMarket',
-        () => pasMarket.connect(admin).deposit(SEED_MARKET),
-        { expected: 'KredioPASMarket.totalDeposited = 300 000' }
-    );
-
-    console.log('\n  Pool state after seeding:');
-    const seededL = await lending.totalDeposited();
-    const seededPM = await pasMarket.totalDeposited();
-    console.log(`  KredioLending.totalDeposited   = ${fmt6(seededL)}`);
-    console.log(`  KredioPASMarket.totalDeposited = ${fmt6(seededPM)}`);
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  PHASE 4 - TEST SEQUENCE
-    // ══════════════════════════════════════════════════════════════════════════
-    console.log('\n' + '─'.repeat(110));
-    console.log('  PHASE 4 - TEST SEQUENCE');
-    console.log('─'.repeat(110));
-
-    // ── T1  USER1 lends 100 000 mUSDC to KredioLending ────────────────────────
-    console.log('\n  ── T1: USER1 → Lend 100 000 mUSDC into KredioLending ──');
-    const T1_AMOUNT = u6('100000');
-
-    await step('USER1', 'Approve 50 000 mUSDC to KredioLending', 'MockUSDC',
-        () => musdc.connect(users.USER1).approve(ADDR.LENDING, T1_AMOUNT),
-        { expected: 'Allowance set', params: 'MAX or exact amount' }
-    );
-    await step('USER1', 'Deposit 50 000 mUSDC into KredioLending', 'KredioLending',
-        () => lending.connect(users.USER1).deposit(T1_AMOUNT),
-        {
-            expected: 'depositBalance[USER1] += 50 000; KredioLending.totalDeposited += 50 000',
-            beforeFn: async () => ({ depositBalance: (await lending.depositBalance(users.USER1.address)).toString(), totalDeposited: (await lending.totalDeposited()).toString() }),
-            afterFn: async () => ({ depositBalance: (await lending.depositBalance(users.USER1.address)).toString(), totalDeposited: (await lending.totalDeposited()).toString() }),
-        }
-    );
-
-    await viewLog('USER1 deposit balance', () => lending.depositBalance(users.USER1.address).then(fmt6));
-
-    // ── T2  USER3 lends 150 000 mUSDC to KredioPASMarket ──────────────────────
-    console.log('\n  ── T2: USER3 → Lend 150 000 mUSDC into KredioPASMarket ──');
-    const T2_AMOUNT = u6('150000');
-
-    await step('USER3', 'Approve 80 000 mUSDC to KredioPASMarket', 'MockUSDC',
-        () => musdc.connect(users.USER3).approve(ADDR.PAS_MARKET, T2_AMOUNT),
-        { expected: 'Allowance set', params: 'MAX or exact amount' }
-    );
-    await step('USER3', 'Deposit 80 000 mUSDC into KredioPASMarket', 'KredioPASMarket',
-        () => pasMarket.connect(users.USER3).deposit(T2_AMOUNT),
-        {
-            expected: 'PM depositBalance[USER3] += 80 000; PM totalDeposited += 80 000',
-            beforeFn: async () => ({ depositBalance: (await pasMarket.depositBalance(users.USER3.address)).toString(), totalDeposited: (await pasMarket.totalDeposited()).toString() }),
-            afterFn: async () => ({ depositBalance: (await pasMarket.depositBalance(users.USER3.address)).toString(), totalDeposited: (await pasMarket.totalDeposited()).toString() }),
-        }
-    );
-
-    // ── T3  USER2 deposits mUSDC collateral + borrows from KredioLending ──────
-    console.log('\n  ── T3: USER2 → Deposit mUSDC collateral + Borrow from KredioLending ──');
-
-    // Read score for USER2 (fresh address = ANON tier → high collateral ratio)
-    let u2CollateralRatioBps = 20000n; // default 200%
-    let u2InterestBps = 2000n;
-    let u2Score = 0n;
-    let u2Tier = 0;
-    try {
-        const scoreResult = await lending.getScore(users.USER2.address);
-        u2Score = scoreResult.score;
-        u2Tier = scoreResult.tier;
-        u2CollateralRatioBps = BigInt(scoreResult.collateralRatioBps);
-        u2InterestBps = BigInt(scoreResult.interestRateBps);
-        console.log(`  USER2 Score=${u2Score} Tier=${u2Tier} collateralRatioBps=${u2CollateralRatioBps} interestBps=${u2InterestBps}`);
-    } catch (e) {
-        console.log(`  [warn] getScore failed (${e.message?.slice(0, 80)}); using defaults`);
-    }
-
-    
-    // ── Pre-Borrow: Invest idle capital and verify intelligent yield ────────
-    console.log('\n  ── Pre-Borrow Check: ADMIN → Invest 200 000 mUSDC idle capital into yield pool ──');
-    let lTotalDep = await lending.totalDeposited();
-    let lTotalBor = await lending.totalBorrowed();
-    let lIdle = lTotalDep > lTotalBor ? lTotalDep - lTotalBor : 0n;
-    
-    // Use 400k invest to be more aggressive
-    const INVEST_AMT = u6('400000');
-    let minBuffer = (lTotalDep * 2000n) / 10000n; 
-    let canInvest = lIdle > INVEST_AMT + minBuffer;
-
-    if (canInvest) {
-        await step('ADMIN', `Invest ${fmt6(INVEST_AMT)} mUSDC from KredioLending into yield pool`, 'KredioLending',
-            () => lending.connect(admin).adminInvest(INVEST_AMT),
-            {
-                expected: 'Yield starts accruing on underutilized capital',
-                params: `amount=${fmt6(INVEST_AMT)}`,
-                beforeFn: async () => ({ investedAmount: (await lending.investedAmount()).toString(), yieldPrincipal: (await yieldPool.totalPrincipal()).toString() }),
-                afterFn: async () => ({ investedAmount: (await lending.investedAmount()).toString(), yieldPrincipal: (await yieldPool.totalPrincipal()).toString() }),
-            }
-        );
-    } else {
-        console.log(`  [skip] Not enough idle buffer to safely invest 400k`);
-    }
-
-    console.log('\n  ── WAIT 5 seconds (1 sec = 1 day) to generate demonstrable intelligent yield ──');
-    await sleep(5000); // 5 days 
-    const externalYieldGenerated = await lending.pendingStrategyYield();
-    console.log(`  [Intelligent Yield Check]: Pending yield generated on idle capital = ${fmt6(externalYieldGenerated)} mUSDC`);
-
-
-    const T3_COLLATERAL = u6('100000');
-    const T3_maxBorrow = (T3_COLLATERAL * 10000n) / u2CollateralRatioBps;
-    const T3_BORROW = (T3_maxBorrow * 8000n) / 10000n; // 80% of max for safety, around 40k
-    console.log(`  collateralRatioBps=${u2CollateralRatioBps}, maxBorrow=${fmt6(T3_maxBorrow)}, borrowing 80%=${fmt6(T3_BORROW)}`);
-
-    await step('USER2', 'Approve 20 000 mUSDC to KredioLending (collateral)', 'MockUSDC',
-        () => musdc.connect(users.USER2).approve(ADDR.LENDING, T3_COLLATERAL),
-        { expected: 'Allowance set', params: 'MAX or exact amount' }
-    );
-    await step('USER2', 'Deposit 20 000 mUSDC as USDC collateral into KredioLending', 'KredioLending',
-        () => lending.connect(users.USER2).depositCollateral(T3_COLLATERAL),
-        {
-            expected: 'collateralBalance[USER2] += 20 000',
-            beforeFn: async () => ({ collateralBalance: (await lending.collateralBalance(users.USER2.address)).toString() }),
-            afterFn: async () => ({ collateralBalance: (await lending.collateralBalance(users.USER2.address)).toString() }),
-        }
-    );
-    await step('USER2', `Borrow ${fmt6(T3_BORROW)} mUSDC from KredioLending (credit-score gated)`, 'KredioLending',
-        () => lending.connect(users.USER2).borrow(T3_BORROW),
-        {
-            params: `borrowAmount=${fmt6(T3_BORROW)}`,
-            expected: `Position opened: debt=${fmt6(T3_BORROW)}, collateral=100 000; totalBorrowed += ${fmt6(T3_BORROW)}`,
-            beforeFn: async () => ({ totalBorrowed: (await lending.totalBorrowed()).toString(), mUSDCBal: (await musdc.balanceOf(users.USER2.address)).toString() }),
-            afterFn: async () => ({ totalBorrowed: (await lending.totalBorrowed()).toString(), mUSDCBal: (await musdc.balanceOf(users.USER2.address)).toString() }),
-        }
-    );
-
-    // ── T4  USER4 deposits PAS + borrows from KredioPASMarket ────────────────
-    console.log('\n  ── T4: USER4 → Deposit PAS collateral + Borrow from KredioPASMarket ──');
-    // oracle price: 8 decimals (e.g. 502069300 = $5.02069300)
-    // _toUSDCValue = (pasWei * price) / 1e20  →  gives mUSDC (6 dec)
-    const oraclePriceN = BigInt(oraclePrice.toString());
-    const ltvBps = await pasMarket.ltvBps();
-    const T4_PAS = u18('800');
-    const T4_collValue = (T4_PAS * oraclePriceN) / (10n ** 20n);
-    const T4_maxBorrow = (T4_collValue * ltvBps) / 10000n;
-    const T4_BORROW = (T4_maxBorrow * 7000n) / 10000n; // 70% of max
-    console.log(`  300 PAS → collValueUSDC=${fmt6(T4_collValue)}  ltvBps=${ltvBps}  maxBorrow=${fmt6(T4_maxBorrow)}  borrowing70%=${fmt6(T4_BORROW)}`);
-
-    await step('USER4', 'depositCollateral - lock 300 PAS in KredioPASMarket', 'KredioPASMarket',
-        () => pasMarket.connect(users.USER4).depositCollateral({ value: T4_PAS }),
-        {
-            expected: 'collateralBalance[USER4] += 300 PAS (wei)',
-            beforeFn: async () => ({ collateralBalance: (await pasMarket.collateralBalance(users.USER4.address)).toString() }),
-            afterFn: async () => ({ collateralBalance: (await pasMarket.collateralBalance(users.USER4.address)).toString() }),
-        }
-    );
-    await step('USER4', `Borrow ${fmt6(T4_BORROW)} mUSDC from KredioPASMarket (PAS-collateral gated)`, 'KredioPASMarket',
-        () => pasMarket.connect(users.USER4).borrow(T4_BORROW),
-        {
-            expected: `Position opened; USER4 receives ${fmt6(T4_BORROW)} mUSDC; PM totalBorrowed += ${fmt6(T4_BORROW)}`,
-            beforeFn: async () => ({ totalBorrowed: (await pasMarket.totalBorrowed()).toString(), mUSDCBal: (await musdc.balanceOf(users.USER4.address)).toString() }),
-            afterFn: async () => ({ totalBorrowed: (await pasMarket.totalBorrowed()).toString(), mUSDCBal: (await musdc.balanceOf(users.USER4.address)).toString() }),
-        }
-    );
-
-    // ── T5  USER5 deposits PAS + borrows near max (liquidation target) ────────
-    console.log('\n  ── T5: USER5 → Deposit 400 PAS + Borrow 95% of max (liquidation target) ──');
-    const T5_PAS = u18('900');
-    const T5_collValue = (T5_PAS * oraclePriceN) / (10n ** 20n);
-    const T5_maxBorrow = (T5_collValue * ltvBps) / 10000n;
-    const T5_BORROW = (T5_maxBorrow * 9500n) / 10000n; // 95% - near-instant liquidation risk
-    console.log(`  400 PAS → collValueUSDC=${fmt6(T5_collValue)}  maxBorrow=${fmt6(T5_maxBorrow)}  borrowing95%=${fmt6(T5_BORROW)}`);
-
-    await step('USER5', 'depositCollateral - lock 400 PAS in KredioPASMarket', 'KredioPASMarket',
-        () => pasMarket.connect(users.USER5).depositCollateral({ value: T5_PAS }),
-        {
-            expected: 'collateralBalance[USER5] += 400 PAS',
-            beforeFn: async () => ({ collateralBalance: (await pasMarket.collateralBalance(users.USER5.address)).toString() }),
-            afterFn: async () => ({ collateralBalance: (await pasMarket.collateralBalance(users.USER5.address)).toString() }),
-        }
-    );
-    await step('USER5', `Borrow ${fmt6(T5_BORROW)} mUSDC at 95% LTV (near liquidation)`, 'KredioPASMarket',
-        () => pasMarket.connect(users.USER5).borrow(T5_BORROW),
-        {
-            expected: 'Position opened at 95% LTV; interest accrual will breach health threshold',
-            beforeFn: async () => ({ totalBorrowed: (await pasMarket.totalBorrowed()).toString() }),
-            afterFn: async () => ({ totalBorrowed: (await pasMarket.totalBorrowed()).toString() }),
-        }
-    );
-
-    // (T6, T7, T8 were shifted to occur before borrowing)
-    
-    // ── T6/7 Wait 5 sec for interest (1 sec = 1 day)
-    console.log('\n  ── WAIT 5 seconds (5 days simulated interest) ──');
-    await sleep(5000);
-
-    const u2Interest = await lending.accruedInterest(users.USER2.address);
-    const u4Interest = await pasMarket.accruedInterest(users.USER4.address);
-    const u5Interest = await pasMarket.accruedInterest(users.USER5.address);
-    console.log(`  USER2 accrued interest (Lending)  : ${fmt6(u2Interest)} mUSDC`);
-    console.log(`  USER4 accrued interest (PASMarket): ${fmt6(u4Interest)} mUSDC`);
-    console.log(`  USER5 accrued interest (PASMarket): ${fmt6(u5Interest)} mUSDC`);
-
-    // ── T9  adminTickPool - capitalise interest, distribute to lenders ────────
-    console.log('\n  ── T9: ADMIN → Tick both pools (capitalise interest → distribute to lenders) ──');
-
-    await step('ADMIN', 'adminTickPool for USER2 in KredioLending', 'KredioLending',
-        () => lending.connect(admin).adminTickPool([users.USER2.address]),
-        {
-            expected: 'USER2 interest capitalised into debt; accYieldPerShare++ for all lenders',
-            beforeFn: async () => ({ accruedInterest: (await lending.accruedInterest(users.USER2.address)).toString(), pendingUser1: (await lending.pendingYield(users.USER1.address)).toString() }),
-            afterFn: async () => ({ debtFull: JSON.stringify(bigintSafe(await lending.getPositionFull(users.USER2.address))), pendingUser1: (await lending.pendingYield(users.USER1.address)).toString() }),
-        }
-    );
-
-    await step('ADMIN', 'adminTickPool for USER4 + USER5 in KredioPASMarket', 'KredioPASMarket',
-        () => pasMarket.connect(admin).adminTickPool([users.USER4.address, users.USER5.address]),
-        {
-            expected: 'USER4/USER5 interest capitalised; accYieldPerShare++ for PM lenders',
-            beforeFn: async () => ({ u3Pending: (await pasMarket.pendingYield(users.USER3.address)).toString() }),
-            afterFn: async () => ({ u3Pending: (await pasMarket.pendingYield(users.USER3.address)).toString(), adminPending: (await pasMarket.pendingYield(admin.address)).toString() }),
-        }
-    );
-
-    // Display pending yields
-    const u1Pending = await lending.pendingYield(users.USER1.address);
-    const adminLPend = await lending.pendingYield(admin.address);
-    const u3PMPending = await pasMarket.pendingYield(users.USER3.address);
-    const admPMPending = await pasMarket.pendingYield(admin.address);
-    console.log(`  USER1 pending yield (Lending)    : ${fmt6(u1Pending)} mUSDC`);
-    console.log(`  ADMIN pending yield (Lending)    : ${fmt6(adminLPend)} mUSDC`);
-    console.log(`  USER3 pending yield (PASMarket)  : ${fmt6(u3PMPending)} mUSDC`);
-    console.log(`  ADMIN pending yield (PASMarket)  : ${fmt6(admPMPending)} mUSDC`);
-
-    // ── T10  Wait 60 more seconds (more yield, then harvest) ─────────────────
-    console.log('\n  ── T10: WAIT 60 more seconds (more yield pool accrual) ──');
-    console.log('  Waiting 60 seconds...');
-    await sleep(60000);
-
-    const pendingExtYield = await lending.pendingStrategyYield();
-    console.log(`  Pending external yield in MockYieldPool: ${fmt6(pendingExtYield)} mUSDC`);
-
-    // ── T11  Force-liquidate USER5 ────────────────────────────────────────────
-    console.log('\n  ── T11: ADMIN → Force-liquidate USER5 in KredioPASMarket ──');
-
-    // Read fresh position (includes interest capitalised by tick + any additional accrual)
-    const u5Pos = await pasMarket.getPositionFull(users.USER5.address);
-    const u5TotalOwed = u5Pos.totalOwed;
-    console.log(`  USER5 position: active=${u5Pos.active}  debt=${fmt6(u5Pos.debtUSDC)}  accrued=${fmt6(u5Pos.accrued)}  totalOwed=${fmt6(u5TotalOwed)}`);
-
-    if (u5Pos.active) {
-        // Admin already has MaxUint256 approved to PAS_MARKET from Phase 3
-        await step('ADMIN', `adminLiquidate USER5 (totalOwed≈${fmt6(u5TotalOwed)} mUSDC, seize PAS + bonus)`, 'KredioPASMarket',
-            () => pasMarket.connect(admin).adminLiquidate(users.USER5.address),
-            {
-                expected: `USER5 position deleted; admin pays ${fmt6(u5TotalOwed)} mUSDC; admin receives ~400 PAS (with bonus); interest distributed to PM lenders`,
-                beforeFn: async () => ({ active: u5Pos.active.toString(), lenderYieldBefore: (await pasMarket.pendingYield(users.USER3.address)).toString(), adminPASBefore: (await provider.getBalance(admin.address)).toString() }),
-                afterFn: async () => ({ active: (await pasMarket.getPositionFull(users.USER5.address)).active.toString(), lenderYieldAfter: (await pasMarket.pendingYield(users.USER3.address)).toString(), adminPASAfter: (await provider.getBalance(admin.address)).toString() }),
-            }
-        );
-    } else {
-        console.log('  [skip] USER5 has no active position (already closed or not opened)');
-    }
-
-    // ── T12  Claim external yield from MockYieldPool → inject to lenders ──────
-    console.log('\n  ── T12: ADMIN → Claim external yield from MockYieldPool and inject into KredioLending ──');
-    const pendingExtYield2 = await lending.pendingStrategyYield();
-    console.log(`  Pending strategy yield now: ${fmt6(pendingExtYield2)} mUSDC`);
-
-    if (pendingExtYield2 > 0n) {
-        await step('ADMIN', `adminClaimAndInjectYield - mint ${fmt6(pendingExtYield2)} mUSDC yield → distribute to lenders`, 'KredioLending',
-            () => lending.connect(admin).adminClaimAndInjectYield(),
-            {
-                expected: 'MockYieldPool mints fresh mUSDC to KredioLending; accYieldPerShare增加; USER1+ADMIN earn pro-rata yield',
-                beforeFn: async () => ({ pendingUser1: (await lending.pendingYield(users.USER1.address)).toString(), pendingAdmin: (await lending.pendingYield(admin.address)).toString(), totalEarned: (await lending.strategyStatus()).totalEarned.toString() }),
-                afterFn: async () => ({ pendingUser1: (await lending.pendingYield(users.USER1.address)).toString(), pendingAdmin: (await lending.pendingYield(admin.address)).toString() }),
-            }
-        );
-    } else {
-        console.log('  [warn] No pending yield to claim yet');
-        // Force tick additional interest and re-check
-        await step('ADMIN', 'Force-tick lending pool again for additional interest', 'KredioLending',
-            () => lending.connect(admin).adminTickPool([users.USER2.address]),
-            { expected: 'Additional interest distributed to lenders' }
-        );
-    }
-
-    // ── T13  USER1 harvests yield from KredioLending ──────────────────────────
-    console.log('\n  ── T13: USER1 → Harvest yield from KredioLending ──');
-    const u1PendingBefore = await lending.pendingYield(users.USER1.address);
-    const u1MusdcBefore = await musdc.balanceOf(users.USER1.address);
-    console.log(`  USER1 pending yield: ${fmt6(u1PendingBefore)} mUSDC`);
-
-    console.log(`  [Verification] USER1 Harvesting ${fmt6(u1PendingBefore)} mUSDC. This includes base interest + intelligent yield share.`);
-    await step('USER1', `Harvest ${fmt6(u1PendingBefore)} mUSDC yield from KredioLending`, 'KredioLending',
-        () => lending.connect(users.USER1).pendingYieldAndHarvest(users.USER1.address),
-        {
-            params: `harvestAmount=${fmt6(u1PendingBefore)}`,
-            expected: `USER1.mUSDC += ${fmt6(u1PendingBefore)}; pendingYield[USER1] → 0`,
-            beforeFn: async () => ({ mUSDCBal: u1MusdcBefore.toString(), pendingYield: u1PendingBefore.toString() }),
-            afterFn: async () => ({ mUSDCBal: (await musdc.balanceOf(users.USER1.address)).toString(), pendingYield: (await lending.pendingYield(users.USER1.address)).toString() }),
-        }
-    );
-
-    // ── T14  USER3 harvests yield from KredioPASMarket ───────────────────────
-    console.log('\n  ── T14: USER3 → Harvest yield from KredioPASMarket ──');
-    const u3PendingBefore = await pasMarket.pendingYield(users.USER3.address);
-    const u3MusdcBefore = await musdc.balanceOf(users.USER3.address);
-    console.log(`  USER3 pending yield: ${fmt6(u3PendingBefore)} mUSDC`);
-
-    console.log(`  [Verification] USER3 Harvesting ${fmt6(u3PendingBefore)} mUSDC, consisting entirely of KredioPASMarket borrower interests.`);
-    await step('USER3', `Harvest ${fmt6(u3PendingBefore)} mUSDC yield from KredioPASMarket`, 'KredioPASMarket',
-        () => pasMarket.connect(users.USER3).pendingYieldAndHarvest(users.USER3.address),
-        {
-            params: `harvestAmount=${fmt6(u3PendingBefore)}`,
-            expected: `USER3.mUSDC += ${fmt6(u3PendingBefore)}; pendingYield[USER3] → 0`,
-            beforeFn: async () => ({ mUSDCBal: u3MusdcBefore.toString(), pendingYield: u3PendingBefore.toString() }),
-            afterFn: async () => ({ mUSDCBal: (await musdc.balanceOf(users.USER3.address)).toString(), pendingYield: (await pasMarket.pendingYield(users.USER3.address)).toString() }),
-        }
-    );
-
-    // ── T15  USER2 repays KredioLending ───────────────────────────────────────
-    console.log('\n  ── T15: USER2 → Repay KredioLending loan ──');
-    const u2PosFull = await lending.getPositionFull(users.USER2.address);
-    console.log(`  USER2 position: active=${u2PosFull.active}  debt=${fmt6(u2PosFull.debt)}  accrued=${fmt6(u2PosFull.accrued)}  totalOwed=${fmt6(u2PosFull.totalOwed)}`);
-
-    if (u2PosFull.active) {
-        const repayAmt = u2PosFull.totalOwed + u6('5000'); // +5000 mUSDC buffer for tick accrual between approve and repay
-        await step('USER2', `Approve ${fmt6(repayAmt)} mUSDC to KredioLending for repayment`, 'MockUSDC',
-            () => musdc.connect(users.USER2).approve(ADDR.LENDING, repayAmt),
-            { expected: 'Allowance ≥ totalOwed' }
-        );
-        const interestPaid = u2PosFull.totalOwed - u2PosFull.debt;
-        console.log(`  [Verification] USER2 Repaying: Principal=${fmt6(u2PosFull.debt)} mUSDC, Interest Generated=${fmt6(interestPaid)} mUSDC`);
-        await step('USER2', `repay() - pay ${fmt6(u2PosFull.totalOwed)} mUSDC (principal + interest)`, 'KredioLending',
-            () => lending.connect(users.USER2).repay(),
-            {
-                params: `principal=${fmt6(u2PosFull.debt)}, interest=${fmt6(interestPaid)}`,
-                expected: 'Position deleted; collateral 100 000 mUSDC returned to USER2; interest distributed to lenders; repaymentCount[USER2]++',
-                beforeFn: async () => ({ active: u2PosFull.active.toString(), totalBorrowed: (await lending.totalBorrowed()).toString(), mUSDCBal: (await musdc.balanceOf(users.USER2.address)).toString() }),
-                afterFn: async () => ({ active: (await lending.getPositionFull(users.USER2.address)).active.toString(), totalBorrowed: (await lending.totalBorrowed()).toString(), mUSDCBal: (await musdc.balanceOf(users.USER2.address)).toString() }),
-            }
-        );
-    } else {
-        console.log('  [skip] USER2 has no active position');
-    }
-
-    // ── T16  USER4 repays KredioPASMarket + withdraws PAS collateral ──────────
-    console.log('\n  ── T16: USER4 → Repay PAS market loan + Withdraw PAS collateral ──');
-    const u4PosFull = await pasMarket.getPositionFull(users.USER4.address);
-    console.log(`  USER4 position: active=${u4PosFull.active}  debtUSDC=${fmt6(u4PosFull.debtUSDC)}  accrued=${fmt6(u4PosFull.accrued)}  totalOwed=${fmt6(u4PosFull.totalOwed)}`);
-
-    if (u4PosFull.active) {
-        const u4RepayAmt = u4PosFull.totalOwed + u6('50'); // +50 mUSDC buffer for tick accrual between approve and repay
-        await step('USER4', `Approve ${fmt6(u4RepayAmt)} mUSDC to KredioPASMarket`, 'MockUSDC',
-            () => musdc.connect(users.USER4).approve(ADDR.PAS_MARKET, u4RepayAmt),
-            { expected: 'Allowance set', params: 'MAX or exact amount' }
-        );
-        const u4InterestPaid = u4PosFull.totalOwed - u4PosFull.debtUSDC;
-        console.log(`  [Verification] USER4 Repaying: Principal=${fmt6(u4PosFull.debtUSDC)} mUSDC, Interest Generated=${fmt6(u4InterestPaid)} mUSDC`);
-        await step('USER4', `repay() - pay ${fmt6(u4PosFull.totalOwed)} mUSDC (principal + interest)`, 'KredioPASMarket',
-            () => pasMarket.connect(users.USER4).repay(),
-            {
-                params: `principal=${fmt6(u4PosFull.debtUSDC)}, interest=${fmt6(u4InterestPaid)}`,
-                expected: 'Position inactive; totalBorrowed decreases; interest to PM lenders; repaymentCount[USER4]++',
-                beforeFn: async () => ({ totalBorrowed: (await pasMarket.totalBorrowed()).toString(), mUSDCBal: (await musdc.balanceOf(users.USER4.address)).toString() }),
-                afterFn: async () => ({ totalBorrowed: (await pasMarket.totalBorrowed()).toString(), mUSDCBal: (await musdc.balanceOf(users.USER4.address)).toString() }),
-            }
-        );
-        await step('USER4', 'withdrawCollateral() - retrieve 300 PAS from KredioPASMarket', 'KredioPASMarket',
-            () => pasMarket.connect(users.USER4).withdrawCollateral(),
-            {
-                expected: 'USER4 receives 300 PAS; collateralBalance[USER4] → 0',
-                beforeFn: async () => ({ pasBal: (await provider.getBalance(users.USER4.address)).toString() }),
-                afterFn: async () => ({ pasBal: (await provider.getBalance(users.USER4.address)).toString() }),
-            }
-        );
-    } else {
-        console.log('  [skip] USER4 has no active position');
-    }
-
-    // ── T17  USER1 withdraws deposit from KredioLending ──────────────────────
-    console.log('\n  ── T17: USER1 → Withdraw deposit from KredioLending ──');
-    const u1DepBal = await lending.depositBalance(users.USER1.address);
-    console.log(`  USER1 depositBalance: ${fmt6(u1DepBal)} mUSDC`);
-
-    if (u1DepBal > 0n) {
-        await step('USER1', `withdraw(${fmt6(u1DepBal)}) - full withdrawal from KredioLending`, 'KredioLending',
-            () => lending.connect(users.USER1).withdraw(u1DepBal),
-            {
-                expected: 'USER1 gets deposit back (auto-pulls from yield pool if needed) + any remaining yield; totalDeposited decreases',
-                beforeFn: async () => ({ depositBalance: u1DepBal.toString(), lendingUSDC: (await musdc.balanceOf(ADDR.LENDING)).toString(), user1USDC: (await musdc.balanceOf(users.USER1.address)).toString() }),
-                afterFn: async () => ({ depositBalance: (await lending.depositBalance(users.USER1.address)).toString(), lendingUSDC: (await musdc.balanceOf(ADDR.LENDING)).toString(), user1USDC: (await musdc.balanceOf(users.USER1.address)).toString() }),
-            }
-        );
-    } else {
-        console.log('  [skip] USER1 has no deposit balance');
-    }
-
-    // ── T18  USER3 withdraws deposit from KredioPASMarket ────────────────────
-    console.log('\n  ── T18: USER3 → Withdraw deposit from KredioPASMarket ──');
-    const u3DepBal = await pasMarket.depositBalance(users.USER3.address);
-    console.log(`  USER3 PM depositBalance: ${fmt6(u3DepBal)} mUSDC`);
-
-    if (u3DepBal > 0n) {
-        await step('USER3', `withdraw(${fmt6(u3DepBal)}) - full withdrawal from KredioPASMarket`, 'KredioPASMarket',
-            () => pasMarket.connect(users.USER3).withdraw(u3DepBal),
-            {
-                expected: 'USER3 gets deposit back; PM totalDeposited decreases',
-                beforeFn: async () => ({ depositBalance: u3DepBal.toString(), user3USDC: (await musdc.balanceOf(users.USER3.address)).toString() }),
-                afterFn: async () => ({ depositBalance: (await pasMarket.depositBalance(users.USER3.address)).toString(), user3USDC: (await musdc.balanceOf(users.USER3.address)).toString() }),
-            }
-        );
-    } else {
-        console.log('  [skip] USER3 has no PM deposit balance');
-    }
-
-    // ── T19  USER6: check score after test (fresh → should still be ANON) ────
-    console.log('\n  ── T19: USER6 → Read credit score (unused in test; should show ANON) ──');
-    try {
-        const u6Score = await lending.getScore(users.USER6.address);
-        console.log(`  USER6 Lending score: ${u6Score.score}  tier: ${u6Score.tier}  collatRatio: ${u6Score.collateralRatioBps}  interestBps: ${u6Score.interestRateBps}`);
-        const u6PmScore = await pasMarket.getPositionFull(users.USER6.address);
-        console.log(`  USER6 PM position active: ${u6PmScore.active}`);
-    } catch (e) {
-        console.log(`  [warn] Score read failed: ${e.message?.slice(0, 80)}`);
-    }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  PHASE 5 - FINAL STATE + REPORT
-    // ══════════════════════════════════════════════════════════════════════════
-    console.log('\n' + '─'.repeat(110));
-    console.log('  PHASE 5 - FINAL STATE SNAPSHOT');
-    console.log('─'.repeat(110));
-
-    const finalL = {
+    throw new Error(`tx ${txHash} not mined within ${Math.floor(timeoutMs / 1000)}s`);
+}
+
+async function hasCode(address) {
+    const code = await provider.getCode(address);
+    return !!code && code !== '0x';
+}
+
+async function resolveYieldPoolAddress() {
+    if (await hasCode(ADDR.YIELD_POOL)) return ADDR.YIELD_POOL;
+    const status = await lending.strategyStatus();
+    const fromStrategy = status.pool || status[0];
+    if (fromStrategy && await hasCode(fromStrategy)) return fromStrategy;
+    throw new Error(`No deployed yield pool found. configured=${ADDR.YIELD_POOL}, strategyStatus=${fromStrategy}`);
+}
+
+async function poolSnap() {
+    const l = {
         totalDeposited: await lending.totalDeposited(),
         totalBorrowed: await lending.totalBorrowed(),
         investedAmount: await lending.investedAmount(),
         protocolFees: await lending.protocolFees(),
-        utilization: await lending.utilizationRate(),
+        utilizationRate: await lending.utilizationRate(),
         globalTick: await lending.globalTick(),
+        usdcBalance: await musdc.balanceOf(ADDR.LENDING),
     };
-    const finalPM = {
+    const p = {
         totalDeposited: await pasMarket.totalDeposited(),
         totalBorrowed: await pasMarket.totalBorrowed(),
         protocolFees: await pasMarket.protocolFees(),
-        utilization: await pasMarket.utilizationRate(),
+        utilizationRate: await pasMarket.utilizationRate(),
+        globalTick: await pasMarket.globalTick(),
+        usdcBalance: await musdc.balanceOf(ADDR.PAS_MARKET),
     };
-    const finalYP = {
+    const y = {
         principal: await yieldPool.totalPrincipal(),
-        pendingYield: await yieldPool.pendingYield(ADDR.LENDING),
-        rateBps: await yieldPool.yieldRateBps(),
+        pendingForLending: await yieldPool.pendingYield(ADDR.LENDING),
+        yieldRateBps: await yieldPool.yieldRateBps(),
+    };
+    return { lending: bigintSafe(l), pasMarket: bigintSafe(p), yieldPool: bigintSafe(y) };
+}
+
+function normalizeStepStatus(step) {
+    // Expected failure cases are counted as successful outcomes.
+    return step.status === 'PASS' || step.status === 'EXPECTED_FAIL';
+}
+
+const REPORT = [];
+let stepNum = 0;
+
+/**
+ * Execute transaction step with expected failure support + optional state verification.
+ */
+async function step(phase, actor, action, contractName, txFn, opts = {}) {
+    stepNum += 1;
+    const rec = {
+        step: stepNum,
+        phase,
+        actor,
+        action,
+        contract: contractName,
+        params: opts.params || '',
+        expected: opts.expected || '',
+        expectedFailure: !!opts.expectFailure,
+        status: 'PENDING',
+        txHash: null,
+        gasUsed: null,
+        error: null,
+        verification: null,
+        observedBefore: null,
+        observedAfter: null,
+        durationMs: 0,
     };
 
-    console.log('\n  Final KredioLending:');
-    console.log(`    totalDeposited  : ${fmt6(finalL.totalDeposited)} mUSDC`);
-    console.log(`    totalBorrowed   : ${fmt6(finalL.totalBorrowed)} mUSDC`);
-    console.log(`    investedAmount  : ${fmt6(finalL.investedAmount)} mUSDC`);
-    console.log(`    protocolFees    : ${fmt6(finalL.protocolFees)} mUSDC`);
-    console.log(`    utilization     : ${Number(finalL.utilization) / 100}%`);
+    const started = Date.now();
+    console.log(`\n  [Step ${rec.step}] (${phase}) ${actor}: ${action}`);
+    try {
+        await sleep(opts.preDelayMs ?? 3000);
 
-    console.log('\n  Final KredioPASMarket:');
-    console.log(`    totalDeposited  : ${fmt6(finalPM.totalDeposited)} mUSDC`);
-    console.log(`    totalBorrowed   : ${fmt6(finalPM.totalBorrowed)} mUSDC`);
-    console.log(`    protocolFees    : ${fmt6(finalPM.protocolFees)} mUSDC`);
-    console.log(`    utilization     : ${Number(finalPM.utilization) / 100}%`);
+        if (opts.beforeFn) rec.observedBefore = bigintSafe(await opts.beforeFn());
 
-    console.log('\n  Final MockYieldPool:');
-    console.log(`    totalPrincipal  : ${fmt6(finalYP.principal)} mUSDC`);
-    console.log(`    pendingYield    : ${fmt6(finalYP.pendingYield)} mUSDC (unclaimed)`);
-    console.log(`    yieldRateBps    : ${finalYP.rateBps}`);
+        let tx = null;
+        let receipt = null;
+        let lastErr = null;
+        const retries = opts.retries ?? 3;
 
-    console.log('\n  Final Account Balances:');
-    const finalBals = {};
-    for (const [n, w] of Object.entries({ ADMIN: admin, ...users })) {
-        const mu = await musdc.balanceOf(w.address);
-        const pa = await provider.getBalance(w.address);
-        finalBals[n] = { address: w.address, mUSDC: mu.toString(), PAS: pa.toString() };
-        console.log(`    ${n.padEnd(6)} | mUSDC: ${fmt6(mu).padStart(18)} | PAS: ${fmt18(pa).padStart(12)}`);
+        for (let i = 1; i <= retries; i++) {
+            try {
+                tx = await withTimeout(txFn(), opts.sendTimeoutMs ?? 45000, 'tx send');
+                rec.txHash = tx.hash;
+                console.log(`     ↳ submitted: ${tx.hash}`);
+                receipt = await waitForReceiptWithTimeout(tx.hash, opts.waitTimeoutMs ?? 180000);
+                break;
+            } catch (err) {
+                lastErr = err;
+                if (!isRetryableTxError(err) || i === retries) throw err;
+                console.log(`     [retry] transient tx error (${i}/${retries}): ${(err.shortMessage || err.message || String(err)).slice(0, 140)}`);
+                await sleep(1500 * i);
+            }
+        }
+
+        if (!receipt && lastErr) throw lastErr;
+        rec.txHash = receipt.hash;
+        rec.gasUsed = receipt.gasUsed?.toString?.() || '0';
+
+        if (opts.afterFn) rec.observedAfter = bigintSafe(await opts.afterFn());
+
+        if (opts.expectFailure) {
+            rec.status = 'UNEXPECTED_SUCCESS';
+            rec.error = 'Transaction succeeded but failure was expected';
+            console.log('     ✗ Unexpected success (expected failure)');
+        } else if (opts.verifyFn) {
+            const verify = await opts.verifyFn();
+            rec.verification = verify?.message || '';
+            if (verify?.ok) {
+                rec.status = 'PASS';
+                console.log(`     ✓ tx: ${receipt.hash}   gas: ${receipt.gasUsed}`);
+                if (verify?.message) console.log(`     ✓ verify: ${verify.message}`);
+            } else {
+                rec.status = 'VERIFY_FAIL';
+                rec.error = verify?.message || 'Post-state verification failed';
+                console.log(`     ✗ verify failed: ${rec.error}`);
+            }
+        } else {
+            rec.status = 'PASS';
+            console.log(`     ✓ tx: ${receipt.hash}   gas: ${receipt.gasUsed}`);
+        }
+    } catch (err) {
+        rec.error = (err.shortMessage || err.message || String(err)).slice(0, 350);
+        if (opts.expectFailure) {
+            rec.status = 'EXPECTED_FAIL';
+            console.log(`     ✓ expected fail: ${rec.error}`);
+        } else {
+            rec.status = 'FAIL';
+            console.log(`     ✗ failed: ${rec.error}`);
+        }
+    } finally {
+        rec.durationMs = Date.now() - started;
+        REPORT.push(rec);
     }
 
-    // Positions still active?
-    console.log('\n  Residual open positions:');
-    for (const [n, w] of Object.entries(users)) {
-        try {
-            const lp = await lending.getPositionFull(w.address);
-            if (lp.active) console.log(`    [OPEN] ${n} KredioLending: debt=${fmt6(lp.debt)} collat=${fmt6(lp.collateral)}`);
-            const pp = await pasMarket.getPositionFull(w.address);
-            if (pp.active) console.log(`    [OPEN] ${n} KredioPASMarket: debt=${fmt6(pp.debtUSDC)} collat=${fmt18(pp.collateralPAS)} PAS`);
-        } catch (e) { /* ignore */ }
+    return rec;
+}
+
+async function check(phase, actor, action, checkFn, expected = '') {
+    stepNum += 1;
+    const rec = {
+        step: stepNum,
+        phase,
+        actor,
+        action,
+        contract: 'READ_ONLY_CHECK',
+        params: '',
+        expected,
+        expectedFailure: false,
+        status: 'PENDING',
+        txHash: null,
+        gasUsed: null,
+        error: null,
+        verification: null,
+        observedBefore: null,
+        observedAfter: null,
+        durationMs: 0,
+    };
+
+    const started = Date.now();
+    console.log(`\n  [Step ${rec.step}] (${phase}) ${actor}: ${action}`);
+    try {
+        const out = await checkFn();
+        rec.verification = out?.message || '';
+        rec.observedAfter = bigintSafe(out?.details || null);
+        rec.status = out?.ok ? 'PASS' : 'VERIFY_FAIL';
+        if (out?.ok) {
+            console.log(`     ✓ check: ${out?.message || 'ok'}`);
+        } else {
+            rec.error = out?.message || 'check failed';
+            console.log(`     ✗ check failed: ${rec.error}`);
+        }
+    } catch (err) {
+        rec.status = 'FAIL';
+        rec.error = (err.shortMessage || err.message || String(err)).slice(0, 350);
+        console.log(`     ✗ failed: ${rec.error}`);
+    } finally {
+        rec.durationMs = Date.now() - started;
+        REPORT.push(rec);
     }
 
-    // ─────────────────────────────────────────────────────────────
-    //  REPORT TABLE
-    // ─────────────────────────────────────────────────────────────
-    const W = 120;
-    console.log('\n' + '═'.repeat(W));
-    console.log('  STRUCTURED TEST REPORT');
-    console.log('═'.repeat(W));
-    console.log(
-        'Step'.padEnd(5),
-        'Actor'.padEnd(7),
-        'Status '.padEnd(8),
-        'Contract'.padEnd(17),
-        'Action'.padEnd(50),
-        'TX Hash / Error'
-    );
-    console.log('─'.repeat(W));
+    return rec;
+}
+
+function statusIcon(s) {
+    if (s === 'PASS' || s === 'EXPECTED_FAIL') return 'OK';
+    if (s === 'UNEXPECTED_SUCCESS') return 'BAD';
+    if (s === 'VERIFY_FAIL') return 'BAD';
+    return 'BAD';
+}
+
+function shortAddr(a) {
+    return `${a.slice(0, 8)}...${a.slice(-6)}`;
+}
+
+async function main() {
+    const startedAt = Date.now();
+    const bar = '='.repeat(110);
+    const usersInOrder = [
+        users.USER1,
+        users.USER2,
+        users.USER3,
+        users.USER4,
+        users.USER5,
+        users.USER6,
+    ];
+
+    console.log(`\n${bar}`);
+    console.log('  KREDIO PRODUCT WORKING SIMULATION');
+    console.log(`  Run started: ${new Date().toISOString()}`);
+    console.log(`${bar}\n`);
+
+    ADDR.YIELD_POOL = await resolveYieldPoolAddress();
+    yieldPool = new ethers.Contract(ADDR.YIELD_POOL, YIELD_POOL_ABI, provider);
+
+    const envKnownAddrs = collectEnvWalletAddresses();
+    const allKnownAddrs = [...new Set([admin.address, ...envKnownAddrs, ...usersInOrder.map(w => w.address)])];
+
+    console.log('Using backend env values:');
+    console.log(`  RPC       : ${RPC}`);
+    console.log(`  ADMIN     : ${admin.address}`);
+    console.log(`  USER1..6  : ${usersInOrder.map(w => shortAddr(w.address)).join(', ')}`);
+    console.log('Contracts:');
+    Object.entries(ADDR).forEach(([k, v]) => console.log(`  ${k.padEnd(10)}: ${v}`));
+
+    // -------------------------------------------------------------------------
+    // PHASE 0 - Baseline snapshot
+    // -------------------------------------------------------------------------
+    const p0 = await poolSnap();
+    let normalOraclePrice = 0n;
+    try {
+        const rd = await oracle.latestRoundData();
+        normalOraclePrice = BigInt(rd[1].toString());
+    } catch (_) {
+        normalOraclePrice = 502069300n;
+    }
+
+    // -------------------------------------------------------------------------
+    // PHASE 1 - Clean reset + funding targets
+    // -------------------------------------------------------------------------
+    await step('PHASE 1', 'ADMIN', 'Reset globalTick=0 on Lending', 'KredioLending', () => lending.connect(admin).adminSetGlobalTick(0), {
+        expected: 'Lending tick reset',
+    });
+    await step('PHASE 1', 'ADMIN', 'Reset globalTick=0 on PASMarket', 'KredioPASMarket', () => pasMarket.connect(admin).adminSetGlobalTick(0), {
+        expected: 'PASMarket tick reset',
+    });
+    await step('PHASE 1', 'ADMIN', `adminCleanContract on Lending (${allKnownAddrs.length} users)`, 'KredioLending',
+        () => lending.connect(admin).adminCleanContract(admin.address, allKnownAddrs, allKnownAddrs), {
+        expected: 'Lending clean state',
+    });
+    await step('PHASE 1', 'ADMIN', `adminCleanContract on PASMarket (${allKnownAddrs.length} users)`, 'KredioPASMarket',
+        () => pasMarket.connect(admin).adminCleanContract(admin.address, allKnownAddrs, allKnownAddrs), {
+        expected: 'PAS clean state',
+    });
+
+    await check('PHASE 1', 'ADMIN', 'Verify clean deposits are zero', async () => {
+        const ld = await lending.totalDeposited();
+        const pd = await pasMarket.totalDeposited();
+        const ok = ld === 0n && pd === 0n;
+        return {
+            ok,
+            message: ok ? 'Both markets clean' : `Not clean: lending=${fmt6(ld)}, pas=${fmt6(pd)}`,
+            details: { lendingTotalDeposited: ld.toString(), pasTotalDeposited: pd.toString() },
+        };
+    }, 'Both market totalDeposited should be zero after clean');
+
+    const TARGET_MUSDC = u6('200000');
+    const TARGET_PAS = u18('500');
+
+    for (const [name, usr] of Object.entries(users)) {
+        const mu = await musdc.balanceOf(usr.address);
+        const pa = await provider.getBalance(usr.address);
+
+        if (mu < TARGET_MUSDC) {
+            const need = TARGET_MUSDC - mu;
+            await step('PHASE 1', 'ADMIN', `Top-up ${name} with ${fmt6(need)} mUSDC`, 'MockUSDC',
+                () => musdc.connect(admin).mint(usr.address, need),
+                { expected: `${name} mUSDC >= ${fmt6(TARGET_MUSDC)}` });
+        }
+
+        if (pa < TARGET_PAS) {
+            const needPas = TARGET_PAS - pa;
+            await step('PHASE 1', 'ADMIN', `Top-up ${name} with ${fmt18(needPas)} PAS`, 'Native',
+                () => admin.sendTransaction({ to: usr.address, value: needPas }),
+                { expected: `${name} PAS >= ${fmt18(TARGET_PAS)}` });
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // PHASE 2 - Market configuration + liquidity seeding
+    // -------------------------------------------------------------------------
+    await step('PHASE 2', 'ADMIN', 'Set lending tick multiplier = 86400', 'KredioLending',
+        () => lending.connect(admin).adminSetGlobalTick(86400),
+        { expected: '1 second -> 1 day interest simulation' });
+
+    await step('PHASE 2', 'ADMIN', 'Set PAS market tick multiplier = 86400', 'KredioPASMarket',
+        () => pasMarket.connect(admin).adminSetGlobalTick(86400),
+        { expected: '1 second -> 1 day interest simulation' });
+
+    await step('PHASE 2', 'ADMIN', 'Wire yield pool to lending', 'KredioLending',
+        () => lending.connect(admin).adminSetYieldPool(ADDR.YIELD_POOL),
+        { expected: 'Lending strategyStatus.pool points to deployed yield pool' });
+
+    await step('PHASE 2', 'ADMIN', 'Set PAS risk params (ltv=6500, bonus=800, stale=86400, fee=1000)', 'KredioPASMarket',
+        () => pasMarket.connect(admin).setRiskParams(6500, 800, 86400, 1000),
+        { expected: 'Stable testing risk profile' });
+
+    await step('PHASE 2', 'ADMIN', 'Set yield pool rate to 100000 bps', 'MockYieldPool',
+        () => yieldPool.connect(admin).setYieldRate(100000),
+        { expected: 'Fast visible external yield accrual' });
+
+    const crashed = await oracle.crashed().catch(() => false);
+    if (crashed) {
+        await step('PHASE 2', 'ADMIN', 'Recover oracle from crashed state', 'MockPASOracle',
+            () => oracle.connect(admin).recover(),
+            { expected: 'oracle.crashed=false and updatedAt refreshed' });
+    }
+    await step('PHASE 2', 'ADMIN', `Refresh oracle with normal price ${normalOraclePrice}`, 'MockPASOracle',
+        () => oracle.connect(admin).setPrice(normalOraclePrice),
+        { expected: 'Fresh normal oracle baseline before borrow simulation' });
+
+    await step('PHASE 2', 'ADMIN', 'Approve max mUSDC -> Lending', 'MockUSDC',
+        () => musdc.connect(admin).approve(ADDR.LENDING, ethers.MaxUint256),
+        { expected: 'Admin can seed liquidity and support strategy ops' });
+    await step('PHASE 2', 'ADMIN', 'Approve max mUSDC -> PASMarket', 'MockUSDC',
+        () => musdc.connect(admin).approve(ADDR.PAS_MARKET, ethers.MaxUint256),
+        { expected: 'Admin can seed PAS market + liquidations' });
+
+    await step('PHASE 2', 'ADMIN', 'Seed Lending with 700000 mUSDC', 'KredioLending',
+        () => lending.connect(admin).deposit(u6('700000')),
+        { expected: 'Initial deep liquidity for simulation' });
+
+    await step('PHASE 2', 'ADMIN', 'Seed PASMarket with 350000 mUSDC', 'KredioPASMarket',
+        () => pasMarket.connect(admin).deposit(u6('350000')),
+        { expected: 'Initial PAS market liquidity' });
+
+    // -------------------------------------------------------------------------
+    // PHASE 3 - Product simulation
+    // -------------------------------------------------------------------------
+    // USER1 + USER2 deposit (required sequence)
+    const U1_DEP = u6('120000');
+    const U2_DEP = u6('90000');
+
+    await step('PHASE 3', 'USER1', `Approve ${fmt6(U1_DEP)} mUSDC to Lending`, 'MockUSDC',
+        () => musdc.connect(users.USER1).approve(ADDR.LENDING, U1_DEP),
+        { expected: 'USER1 allowance set' });
+
+    await step('PHASE 3', 'USER1', `Deposit ${fmt6(U1_DEP)} mUSDC to Lending`, 'KredioLending',
+        () => lending.connect(users.USER1).deposit(U1_DEP),
+        {
+            expected: 'USER1 becomes depositor',
+            beforeFn: async () => ({ userDeposit: (await lending.depositBalance(users.USER1.address)).toString() }),
+            afterFn: async () => ({ userDeposit: (await lending.depositBalance(users.USER1.address)).toString() }),
+        });
+
+    await step('PHASE 3', 'USER2', `Approve ${fmt6(U2_DEP)} mUSDC to Lending`, 'MockUSDC',
+        () => musdc.connect(users.USER2).approve(ADDR.LENDING, U2_DEP),
+        { expected: 'USER2 allowance set' });
+
+    await step('PHASE 3', 'USER2', `Deposit ${fmt6(U2_DEP)} mUSDC to Lending`, 'KredioLending',
+        () => lending.connect(users.USER2).deposit(U2_DEP),
+        {
+            expected: 'USER2 becomes depositor',
+            beforeFn: async () => ({ userDeposit: (await lending.depositBalance(users.USER2.address)).toString() }),
+            afterFn: async () => ({ userDeposit: (await lending.depositBalance(users.USER2.address)).toString() }),
+        });
+
+    // Intelligent yield: invest idle capital, accrue yield, then stress liquidity.
+    const investTarget = u6('350000');
+    await step('PHASE 3', 'ADMIN', `Invest idle ${fmt6(investTarget)} mUSDC into strategy`, 'KredioLending',
+        () => lending.connect(admin).adminInvest(investTarget),
+        {
+            expected: 'investedAmount increases and strategy accrues yield',
+            beforeFn: async () => ({ investedAmount: (await lending.investedAmount()).toString(), strategyPending: (await lending.pendingStrategyYield()).toString() }),
+            afterFn: async () => ({ investedAmount: (await lending.investedAmount()).toString(), strategyPending: (await lending.pendingStrategyYield()).toString() }),
+        });
+
+    console.log('\n  Waiting 8 seconds for strategy yield accrual...');
+    await sleep(8000);
+
+    await check('PHASE 3', 'ADMIN', 'Check strategy pending yield > 0 after invest', async () => {
+        const p = await lending.pendingStrategyYield();
+        return {
+            ok: p > 0n,
+            message: `pendingStrategyYield=${fmt6(p)} mUSDC`,
+            details: { pendingStrategyYield: p.toString() },
+        };
+    }, 'Strategy pending yield should increase after invest + time');
+
+    // USER3 borrow + repay on Lending.
+    const u3Balance = await musdc.balanceOf(users.USER3.address);
+    const u3Coll = minBI(u6('70000'), (u3Balance * 55n) / 100n);
+
+    await step('PHASE 3', 'USER3', `Approve ${fmt6(u3Coll)} mUSDC collateral to Lending`, 'MockUSDC',
+        () => musdc.connect(users.USER3).approve(ADDR.LENDING, u3Coll),
+        { expected: 'USER3 collateral allowance ready' });
+
+    await step('PHASE 3', 'USER3', `Deposit ${fmt6(u3Coll)} mUSDC collateral to Lending`, 'KredioLending',
+        () => lending.connect(users.USER3).depositCollateral(u3Coll),
+        { expected: 'USER3 collateral set for borrowing' });
+
+    const u3Score = await lending.getScore(users.USER3.address);
+    const u3Ratio = BigInt(u3Score.collateralRatioBps || 20000);
+    const u3MaxBorrow = (u3Coll * 10000n) / u3Ratio;
+    const lAvailBeforeBorrow = maxBI((await lending.totalDeposited()) - (await lending.totalBorrowed()), 0n);
+    const u3BorrowAmt = minBI((u3MaxBorrow * 8000n) / 10000n, (lAvailBeforeBorrow * 45n) / 100n);
+
+    await step('PHASE 3', 'USER3', `Borrow ${fmt6(u3BorrowAmt)} mUSDC from Lending`, 'KredioLending',
+        () => lending.connect(users.USER3).borrow(u3BorrowAmt),
+        {
+            expected: 'USER3 debt opens and pool utilization increases',
+            beforeFn: async () => ({ totalBorrowed: (await lending.totalBorrowed()).toString(), investedAmount: (await lending.investedAmount()).toString() }),
+            afterFn: async () => ({ totalBorrowed: (await lending.totalBorrowed()).toString(), investedAmount: (await lending.investedAmount()).toString() }),
+        });
+
+    // Stress response: if liquid balance gets tight while invested remains high, pull back.
+    const lendingUsdcBal = await musdc.balanceOf(ADDR.LENDING);
+    const lendingInvested = await lending.investedAmount();
+    const desiredBuffer = u6('120000');
+    if (lendingUsdcBal < desiredBuffer && lendingInvested > 0n) {
+        const need = minBI(desiredBuffer - lendingUsdcBal, lendingInvested);
+        await step('PHASE 3', 'ADMIN', `Pull back ${fmt6(need)} mUSDC from strategy due low liquid buffer`, 'KredioLending',
+            () => lending.connect(admin).adminPullBack(need),
+            {
+                expected: 'Liquidity restored when pool is stressed/undercollateralized',
+                beforeFn: async () => ({ contractUsdc: (await musdc.balanceOf(ADDR.LENDING)).toString(), investedAmount: (await lending.investedAmount()).toString() }),
+                afterFn: async () => ({ contractUsdc: (await musdc.balanceOf(ADDR.LENDING)).toString(), investedAmount: (await lending.investedAmount()).toString() }),
+            });
+    }
+
+    console.log('\n  Waiting 7 seconds for borrower interest accrual...');
+    await sleep(7000);
+
+    await step('PHASE 3', 'ADMIN', 'Tick Lending pool for USER3 debt capitalization', 'KredioLending',
+        () => lending.connect(admin).adminTickPool([users.USER3.address]),
+        { expected: 'Borrow interest converted into lender yield' });
+
+    const u3Pos = await lending.getPositionFull(users.USER3.address);
+    const u3RepayApprove = u3Pos.totalOwed + u6('1000');
+
+    await step('PHASE 3', 'USER3', `Approve ${fmt6(u3RepayApprove)} mUSDC for Lending repay`, 'MockUSDC',
+        () => musdc.connect(users.USER3).approve(ADDR.LENDING, u3RepayApprove),
+        { expected: 'Repay allowance set' });
+
+    await step('PHASE 3', 'USER3', `Repay Lending debt (owed ${fmt6(u3Pos.totalOwed)} mUSDC)`, 'KredioLending',
+        () => lending.connect(users.USER3).repay(),
+        {
+            expected: 'USER3 lending debt closed and collateral returned',
+            verifyFn: async () => {
+                const p = await lending.getPositionFull(users.USER3.address);
+                return { ok: !p.active, message: `USER3 active=${p.active}` };
+            },
+        });
+
+    // USER4 borrow + repay on PAS market.
+    const pasLtv = await pasMarket.ltvBps();
+    const u4PasColl1 = u18('40');
+    const coll1Value = (u4PasColl1 * normalOraclePrice) / (10n ** 20n);
+    const maxBorrow1 = (coll1Value * pasLtv) / 10000n;
+    const pasAvail1 = maxBI((await pasMarket.totalDeposited()) - (await pasMarket.totalBorrowed()), 0n);
+    const u4Borrow1 = minBI((maxBorrow1 * 7000n) / 10000n, (pasAvail1 * 25n) / 100n);
+
+    await step('PHASE 3', 'USER4', 'Deposit 40 PAS collateral into PASMarket', 'KredioPASMarket',
+        () => pasMarket.connect(users.USER4).depositCollateral({ value: u4PasColl1 }),
+        { expected: 'USER4 PAS collateral active' });
+
+    await step('PHASE 3', 'USER4', `Borrow ${fmt6(u4Borrow1)} mUSDC from PASMarket`, 'KredioPASMarket',
+        () => pasMarket.connect(users.USER4).borrow(u4Borrow1),
+        { expected: 'USER4 PAS debt opens' });
+
+    console.log('\n  Waiting 5 seconds for PAS borrow interest accrual...');
+    await sleep(5000);
+
+    await step('PHASE 3', 'ADMIN', 'Tick PASMarket for USER4 debt capitalization', 'KredioPASMarket',
+        () => pasMarket.connect(admin).adminTickPool([users.USER4.address]),
+        { expected: 'PAS debt interest capitalized' });
+
+    const u4PosRepay = await pasMarket.getPositionFull(users.USER4.address);
+    const u4RepayApprove = u4PosRepay.totalOwed + u6('200');
+
+    await step('PHASE 3', 'USER4', `Approve ${fmt6(u4RepayApprove)} mUSDC for PAS repay`, 'MockUSDC',
+        () => musdc.connect(users.USER4).approve(ADDR.PAS_MARKET, u4RepayApprove),
+        { expected: 'Repay allowance set' });
+
+    await step('PHASE 3', 'USER4', `Repay PAS debt (owed ${fmt6(u4PosRepay.totalOwed)} mUSDC)`, 'KredioPASMarket',
+        () => pasMarket.connect(users.USER4).repay(),
+        {
+            expected: 'USER4 PAS position closed after repayment',
+            verifyFn: async () => {
+                const p = await pasMarket.getPositionFull(users.USER4.address);
+                return { ok: !p.active, message: `USER4 active=${p.active}` };
+            },
+        });
+
+    await step('PHASE 3', 'USER4', 'Withdraw PAS collateral after full repay', 'KredioPASMarket',
+        () => pasMarket.connect(users.USER4).withdrawCollateral(),
+        { expected: 'Collateral withdrawal succeeds after debt close' });
+
+    // Open a new riskier USER4 position for forced liquidation simulation.
+    const u4PasColl2 = u18('30');
+    const coll2Value = (u4PasColl2 * normalOraclePrice) / (10n ** 20n);
+    const maxBorrow2 = (coll2Value * pasLtv) / 10000n;
+    const pasAvail2 = maxBI((await pasMarket.totalDeposited()) - (await pasMarket.totalBorrowed()), 0n);
+    const u4Borrow2 = minBI((maxBorrow2 * 9300n) / 10000n, (pasAvail2 * 18n) / 100n);
+
+    await step('PHASE 3', 'USER4', 'Deposit 30 PAS collateral for high-risk position', 'KredioPASMarket',
+        () => pasMarket.connect(users.USER4).depositCollateral({ value: u4PasColl2 }),
+        { expected: 'Risky collateral position opened' });
+
+    await step('PHASE 3', 'USER4', `Borrow ${fmt6(u4Borrow2)} mUSDC at high LTV`, 'KredioPASMarket',
+        () => pasMarket.connect(users.USER4).borrow(u4Borrow2),
+        { expected: 'Position vulnerable to oracle downside move' });
+
+    // Oracle crash and liquidation.
+    const crashPrice = maxBI(1n, normalOraclePrice / 12n);
+    await step('PHASE 3', 'ADMIN', `Crash oracle price to ${crashPrice} for liquidation test`, 'MockPASOracle',
+        () => oracle.connect(admin).setPrice(crashPrice),
+        { expected: 'Collateral value drops sharply, risky position becomes liquidatable' });
+
+    await step('PHASE 3', 'ADMIN', 'Liquidate USER4 risky PAS position', 'KredioPASMarket',
+        () => pasMarket.connect(admin).adminLiquidate(users.USER4.address),
+        {
+            expected: 'Liquidation succeeds and closes USER4 risky PAS debt',
+            verifyFn: async () => {
+                const p = await pasMarket.getPositionFull(users.USER4.address);
+                return { ok: !p.active, message: `USER4 active=${p.active}` };
+            },
+        });
+
+    await step('PHASE 3', 'USER4', 'Expected failure: withdrawCollateral after liquidation', 'KredioPASMarket',
+        () => pasMarket.connect(users.USER4).withdrawCollateral(),
+        {
+            expected: 'No collateral left to withdraw after liquidation',
+            expectFailure: true,
+        });
+
+    await step('PHASE 3', 'ADMIN', `Recover oracle to normal price ${normalOraclePrice}`, 'MockPASOracle',
+        () => oracle.connect(admin).setPrice(normalOraclePrice),
+        { expected: 'Restore normal pricing after crash simulation' });
+
+    // Strategy claim + inject should improve depositor pending yield.
+    const u1PendingBeforeInject = await lending.pendingYield(users.USER1.address);
+    const u2PendingBeforeInject = await lending.pendingYield(users.USER2.address);
+
+    await step('PHASE 3', 'ADMIN', 'Claim strategy yield and inject to lending pool', 'KredioLending',
+        () => lending.connect(admin).adminClaimAndInjectYield(),
+        {
+            expected: 'External strategy yield distributed to lenders',
+            verifyFn: async () => {
+                const a = await lending.pendingYield(users.USER1.address);
+                const b = await lending.pendingYield(users.USER2.address);
+                const ok = a >= u1PendingBeforeInject && b >= u2PendingBeforeInject;
+                return {
+                    ok,
+                    message: `U1 pending: ${fmt6(u1PendingBeforeInject)} -> ${fmt6(a)}, U2 pending: ${fmt6(u2PendingBeforeInject)} -> ${fmt6(b)}`,
+                };
+            },
+        });
+
+    // USER1 + USER2 harvest + withdraw (required sequence)
+    const u1PendingHarvest = await lending.pendingYield(users.USER1.address);
+    await step('PHASE 3', 'USER1', `Harvest Lending yield (${fmt6(u1PendingHarvest)} mUSDC pending)`, 'KredioLending',
+        () => lending.connect(users.USER1).pendingYieldAndHarvest(users.USER1.address),
+        {
+            expected: 'USER1 pending yield becomes near zero',
+            verifyFn: async () => {
+                const p = await lending.pendingYield(users.USER1.address);
+                return { ok: p <= u6('1'), message: `remaining pending=${fmt6(p)} mUSDC` };
+            },
+        });
+
+    const u2PendingHarvest = await lending.pendingYield(users.USER2.address);
+    await step('PHASE 3', 'USER2', `Harvest Lending yield (${fmt6(u2PendingHarvest)} mUSDC pending)`, 'KredioLending',
+        () => lending.connect(users.USER2).pendingYieldAndHarvest(users.USER2.address),
+        {
+            expected: 'USER2 pending yield becomes near zero',
+            verifyFn: async () => {
+                const p = await lending.pendingYield(users.USER2.address);
+                return { ok: p <= u6('1'), message: `remaining pending=${fmt6(p)} mUSDC` };
+            },
+        });
+
+    const u1Dep = await lending.depositBalance(users.USER1.address);
+    const u2Dep = await lending.depositBalance(users.USER2.address);
+
+    await step('PHASE 3', 'USER1', `Withdraw full lending deposit (${fmt6(u1Dep)} mUSDC)`, 'KredioLending',
+        () => lending.connect(users.USER1).withdraw(u1Dep),
+        {
+            expected: 'USER1 principal withdrawn',
+            verifyFn: async () => {
+                const d = await lending.depositBalance(users.USER1.address);
+                return { ok: d === 0n, message: `remaining deposit=${fmt6(d)} mUSDC` };
+            },
+        });
+
+    await step('PHASE 3', 'USER2', `Withdraw full lending deposit (${fmt6(u2Dep)} mUSDC)`, 'KredioLending',
+        () => lending.connect(users.USER2).withdraw(u2Dep),
+        {
+            expected: 'USER2 principal withdrawn',
+            verifyFn: async () => {
+                const d = await lending.depositBalance(users.USER2.address);
+                return { ok: d === 0n, message: `remaining deposit=${fmt6(d)} mUSDC` };
+            },
+        });
+
+    // -------------------------------------------------------------------------
+    // PHASE 4 - Post simulation clean reset
+    // -------------------------------------------------------------------------
+    await step('PHASE 4', 'ADMIN', 'Set lending tick back to 0', 'KredioLending',
+        () => lending.connect(admin).adminSetGlobalTick(0),
+        { expected: 'Disable accelerated interest after simulation' });
+    await step('PHASE 4', 'ADMIN', 'Set PAS market tick back to 0', 'KredioPASMarket',
+        () => pasMarket.connect(admin).adminSetGlobalTick(0),
+        { expected: 'Disable accelerated interest after simulation' });
+    await step('PHASE 4', 'ADMIN', `Post-clean Lending (${allKnownAddrs.length} users)`, 'KredioLending',
+        () => lending.connect(admin).adminCleanContract(admin.address, allKnownAddrs, allKnownAddrs),
+        { expected: 'Fresh lending state for next run' });
+    await step('PHASE 4', 'ADMIN', `Post-clean PASMarket (${allKnownAddrs.length} users)`, 'KredioPASMarket',
+        () => pasMarket.connect(admin).adminCleanContract(admin.address, allKnownAddrs, allKnownAddrs),
+        { expected: 'Fresh PAS market state for next run' });
+
+    // -------------------------------------------------------------------------
+    // Final snapshots + report output
+    // -------------------------------------------------------------------------
+    const finalState = await poolSnap();
+    const finalBalances = {};
+    for (const [name, w] of Object.entries({ ADMIN: admin, ...users })) {
+        finalBalances[name] = {
+            address: w.address,
+            mUSDC: (await musdc.balanceOf(w.address)).toString(),
+            PAS: (await provider.getBalance(w.address)).toString(),
+        };
+    }
+
+    const passed = REPORT.filter(normalizeStepStatus).length;
+    const failed = REPORT.length - passed;
+    const elapsedSec = ((Date.now() - startedAt) / 1000).toFixed(1);
+
+    console.log(`\n${'='.repeat(120)}`);
+    console.log('  SIMULATION REPORT SUMMARY');
+    console.log(`${'='.repeat(120)}`);
+    console.log(`  Steps: ${REPORT.length}  |  Passed: ${passed}  |  Failed: ${failed}  |  Elapsed: ${elapsedSec}s`);
 
     for (const r of REPORT) {
-        const icon = r.status === 'PASS' ? '✓' : '✗';
-        const status = `${icon} ${r.status}`.padEnd(8);
-        const txRef = r.txHash
-            ? r.txHash.slice(0, 16) + '...'
-            : (r.error || '-').slice(0, 30);
-        console.log(
-            String(r.step).padEnd(5),
-            r.actor.padEnd(7),
-            status,
-            r.contract.padEnd(17),
-            r.action.slice(0, 50).padEnd(50),
-            txRef
-        );
+        const marker = statusIcon(r.status).padEnd(3);
+        const txRef = r.txHash ? `${r.txHash.slice(0, 14)}...` : '-';
+        const info = r.error || r.verification || '';
+        console.log(`  [${marker}] #${String(r.step).padStart(2, '0')} ${r.phase.padEnd(7)} ${r.actor.padEnd(6)} ${r.status.padEnd(17)} ${r.action.slice(0, 48).padEnd(48)} ${txRef} ${info.slice(0, 60)}`);
     }
-    console.log('─'.repeat(W));
-    const passed = REPORT.filter(r => r.status === 'PASS').length;
-    const failed = REPORT.filter(r => r.status === 'FAIL').length;
-    const elapsed = ((Date.now() - startTs) / 1000).toFixed(1);
-    console.log(`  TOTAL: ${REPORT.length}  |  PASS: ${passed}  |  FAIL: ${failed}  |  Elapsed: ${elapsed}s`);
-    console.log('═'.repeat(W));
 
-    // ─────────────────────────────────────────────────────────────
-    //  SAVE JSON REPORT
-    // ─────────────────────────────────────────────────────────────
-    const jsonReport = {
+    const json = {
         runAt: new Date().toISOString(),
-        elapsed_s: parseFloat(elapsed),
+        elapsed_s: Number(elapsedSec),
         chain: { rpc: RPC, chainId: CHAIN_ID },
         contracts: ADDR,
         accounts: Object.fromEntries(Object.entries({ ADMIN: admin, ...users }).map(([k, w]) => [k, w.address])),
-        phase0_state: bigintSafe(p0),
-        finalState: bigintSafe({ lending: finalL, pasMarket: finalPM, yieldPool: finalYP }),
-        finalBalances: finalBals,
+        simulationProfile: {
+            fundingTargets: { mUSDC: '200000', pas: '500' },
+            requiredFlow: 'USER1+USER2 deposit -> USER3+USER4 borrow/repay -> oracle crash liquidation -> USER1+USER2 harvest+withdraw',
+        },
+        phase0_state: p0,
+        final_state: finalState,
+        final_balances: finalBalances,
         steps: REPORT.map(r => ({
             step: r.step,
+            phase: r.phase,
             actor: r.actor,
             action: r.action,
             contract: r.contract,
+            params: r.params,
             expected: r.expected,
+            expectedFailure: r.expectedFailure,
             status: r.status,
             txHash: r.txHash,
             gasUsed: r.gasUsed,
             error: r.error,
+            verification: r.verification,
             observedBefore: r.observedBefore,
             observedAfter: r.observedAfter,
+            durationMs: r.durationMs,
         })),
-        summary: { total: REPORT.length, passed, failed },
+        summary: {
+            total: REPORT.length,
+            passed,
+            failed,
+            passRatePct: REPORT.length ? Number(((passed * 100) / REPORT.length).toFixed(2)) : 0,
+        },
     };
 
-    const reportPath = path.resolve(__dirname, '../test-report.json');
-    fs.writeFileSync(reportPath, JSON.stringify(jsonReport, null, 2));
-    console.log(`\n  Full JSON report saved → ${reportPath}`);
-    
-    // BUILD MARKDOWN REPORT
-    let md = `# Kredio Full Test Run Report\n\n`;
-    md += `- **Run Date:** ${new Date().toISOString()}\n`;
-    md += `- **Duration:** ${elapsed}s\n`;
-    md += `\n## Pre-Test Snapshots\n`;
-    md += `### KredioLending\n`;
-    md += `- Total Deposited: ${fmt6(BigInt(p0.lending.totalDeposited))} mUSDC\n`;
-    md += `- Total Borrowed: ${fmt6(BigInt(p0.lending.totalBorrowed))} mUSDC\n`;
-    md += `\n### Users Initial\n`;
-    for(const [n, w] of Object.entries(users)) {
-        md += `- ${n} (${w.address}): 200,000 mUSDC, 50,000 PAS\n`;
+    const jsonPath = path.resolve(__dirname, '../test-report.json');
+    fs.writeFileSync(jsonPath, JSON.stringify(json, null, 2));
+
+    let md = '';
+    md += '# Kredio Product Simulation Report\n\n';
+    md += `- Run Date: ${json.runAt}\n`;
+    md += `- Duration: ${elapsedSec}s\n`;
+    md += `- Chain: ${CHAIN_ID}\n`;
+    md += `- RPC: ${RPC}\n`;
+    md += `- Steps: ${REPORT.length} | Passed: ${passed} | Failed: ${failed}\n`;
+    md += '\n';
+
+    md += '## Scenario Objective\n\n';
+    md += '- Convert testing flow into product-style multi-user simulation\n';
+    md += '- Required user flow enforced: USER1/USER2 deposit, USER3/USER4 borrow+repay, USER1/USER2 harvest+withdraw\n';
+    md += '- Intelligent yield exercised under stressed liquidity and validated via depositor pending-yield progression\n';
+    md += '- Oracle crash simulation executed and liquidation verified\n';
+    md += '- Expected failures classified separately from true failures\n\n';
+
+    md += '## Initial Targets\n\n';
+    md += '| Metric | Target |\n';
+    md += '|---|---:|\n';
+    md += '| User mUSDC funding floor | 200,000 |\n';
+    md += '| User PAS funding floor | 500 |\n\n';
+
+    md += '## Contract Addresses\n\n';
+    md += '| Contract | Address |\n';
+    md += '|---|---|\n';
+    for (const [k, v] of Object.entries(ADDR)) {
+        md += `| ${k} | ${v} |\n`;
     }
-    
-    md += `\n## Active Execution Log\n\n`;
-    md += `| Step | Actor | Action | Params | Expected | Status | TxHash/Err |\n`;
-    md += `|---|---|---|---|---|---|---|\n`;
-    
-    for(const r of REPORT) {
-        let obsB = 'N/A';
-        let obsA = 'N/A';
-        if(r.observedBefore) obsB = JSON.stringify(r.observedBefore).replace(/"/g, '');
-        if(r.observedAfter) obsA = JSON.stringify(r.observedAfter).replace(/"/g, '');
-        let prm = r.params ? r.params : '-';
-        md += `| ${r.step} | ${r.actor} | ${r.action} | ${prm} | **Exp:** ${r.expected} <br> **Obs. Before:** ${obsB} <br> **Obs. After:** ${obsA} | ${r.status} | ${r.txHash ? '`'+r.txHash+'`' : (r.error || '-')} |\n`;
+    md += '\n';
+
+    md += '## Step-by-Step Execution\n\n';
+    md += '| # | Phase | Actor | Contract | Action | Expected | Status | Tx Hash | Gas | Notes |\n';
+    md += '|---:|---|---|---|---|---|---|---|---:|---|\n';
+    for (const r of REPORT) {
+        const tx = r.txHash ? `\`${r.txHash}\`` : '-';
+        const notes = (r.error || r.verification || '').replace(/\|/g, '/');
+        md += `| ${r.step} | ${r.phase} | ${r.actor} | ${r.contract} | ${r.action} | ${r.expected || '-'} | ${r.status} | ${tx} | ${r.gasUsed || '-'} | ${notes || '-'} |\n`;
     }
-    
-    md += `\n## Post-Test Snapshots\n`;
-    md += `### KredioLending (Final)\n`;
-    md += `- Total Deposited: ${fmt6(finalL.totalDeposited)} mUSDC\n`;
-    md += `- Total Borrowed: ${fmt6(finalL.totalBorrowed)} mUSDC\n`;
-    md += `- Protocol Fees: ${fmt6(finalL.protocolFees)} mUSDC\n`;
-    md += `\n### Mock Yield Pool (Final)\n`;
-    md += `- Total Principal: ${fmt6(finalYP.principal)} mUSDC\n`;
-    md += `- Pending Yield: ${fmt6(finalYP.pendingYield)} mUSDC\n`;
-    
+    md += '\n';
+
+    md += '## Post Simulation Snapshots\n\n';
+    md += '### Lending\n\n';
+    md += `- totalDeposited: ${fmt6(BigInt(finalState.lending.totalDeposited))} mUSDC\n`;
+    md += `- totalBorrowed: ${fmt6(BigInt(finalState.lending.totalBorrowed))} mUSDC\n`;
+    md += `- investedAmount: ${fmt6(BigInt(finalState.lending.investedAmount))} mUSDC\n`;
+    md += `- protocolFees: ${fmt6(BigInt(finalState.lending.protocolFees))} mUSDC\n`;
+    md += `- utilizationRate: ${(Number(finalState.lending.utilizationRate) / 100).toFixed(2)}%\n\n`;
+
+    md += '### PAS Market\n\n';
+    md += `- totalDeposited: ${fmt6(BigInt(finalState.pasMarket.totalDeposited))} mUSDC\n`;
+    md += `- totalBorrowed: ${fmt6(BigInt(finalState.pasMarket.totalBorrowed))} mUSDC\n`;
+    md += `- protocolFees: ${fmt6(BigInt(finalState.pasMarket.protocolFees))} mUSDC\n`;
+    md += `- utilizationRate: ${(Number(finalState.pasMarket.utilizationRate) / 100).toFixed(2)}%\n\n`;
+
+    md += '### Yield Pool\n\n';
+    md += `- totalPrincipal: ${fmt6(BigInt(finalState.yieldPool.principal))} mUSDC\n`;
+    md += `- pendingForLending: ${fmt6(BigInt(finalState.yieldPool.pendingForLending))} mUSDC\n`;
+    md += `- yieldRateBps: ${finalState.yieldPool.yieldRateBps}\n\n`;
+
+    md += '## Final User Balances\n\n';
+    md += '| Account | Address | mUSDC | PAS |\n';
+    md += '|---|---|---:|---:|\n';
+    for (const [name, bal] of Object.entries(finalBalances)) {
+        md += `| ${name} | ${bal.address} | ${fmt6(BigInt(bal.mUSDC))} | ${fmt18(BigInt(bal.PAS))} |\n`;
+    }
+    md += '\n';
+
+    md += '## Failure Classification\n\n';
+    md += '- PASS: Action executed and validation passed\n';
+    md += '- EXPECTED_FAIL: Revert/failure that was intentionally expected\n';
+    md += '- VERIFY_FAIL: Transaction mined but expected post-state was not reached\n';
+    md += '- FAIL: Unexpected execution failure\n';
+    md += '- UNEXPECTED_SUCCESS: Action was expected to fail but succeeded\n';
+
     const mdPath = path.resolve(__dirname, '../test-report.md');
     fs.writeFileSync(mdPath, md);
-    console.log(`  Markdown comprehensive report saved → ${mdPath}`);
-    console.log('  Run complete.\n');
+
+    console.log(`\n  JSON report: ${jsonPath}`);
+    console.log(`  Markdown report: ${mdPath}`);
+    console.log('  Simulation complete.\n');
 }
 
-main().catch(e => {
-    console.error('\n\nFATAL ERROR:', e);
+main().catch((e) => {
+    console.error('\nFATAL ERROR:', e);
     process.exit(1);
 });

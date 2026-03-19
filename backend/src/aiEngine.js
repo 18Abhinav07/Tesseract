@@ -53,8 +53,8 @@ function normalizeAddress(addr, label) {
     }
 }
 
-const LENDING_ADDR = normalizeAddress(process.env.LENDING_ADDR || '0x1eDaD1271FB9d1296939C6f4Fb762752b041C64E', 'LENDING_ADDR');
-const YIELD_POOL_ADDR = normalizeAddress(process.env.YIELD_POOL_ADDR || '0x1dB4Faad3081aAfe26eC0ef6886F04f28D944AAB', 'YIELD_POOL_ADDR');
+const LENDING_ADDR = normalizeAddress(process.env.LENDING_ADDR || '0x61c6b46f5094f2867Dce66497391d0fd41796CEa', 'LENDING_ADDR');
+const YIELD_POOL_ADDR = normalizeAddress(process.env.YIELD_POOL_ADDR || '0x12CEF08cb9D58357A170ee2fA70b3cE2c0419bd6', 'YIELD_POOL_ADDR');
 const KREDITAGENT_ADDR = normalizeAddress(process.env.KREDIT_AGENT_ADDRESS || '0x8c13e6ffdf27bb51304efff108c9b646d148e5f3', 'KREDIT_AGENT_ADDRESS');
 const ORACLE_ADDR = normalizeAddress(process.env.ORACLE || '0x1494432a8Af6fa8c03C0d7DD7720E298D85C55c7', 'ORACLE');
 const NEURAL_ADDR = process.env.NEURAL_SCORER_ADDRESS ? normalizeAddress(process.env.NEURAL_SCORER_ADDRESS, 'NEURAL_SCORER_ADDRESS') : null;

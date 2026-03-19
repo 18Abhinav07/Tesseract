@@ -289,11 +289,18 @@ export default function AdminPage() {
                 </InfoBox>
                 <ActionInput label="Receiver Address (gets swept USDC)" value={receiver} onChange={setReceiver} placeholder="0x..." />
                 <div className="flex flex-wrap gap-2 mt-2">
+                    <ActionButton label="Clean Lending Pool" variant="danger" loading={isBusy('cleanLending')} disabled={isBusy('cleanLending') || !safeReceiver || bulkAddrs.length === 0}
+                        onClick={() => run('cleanLending', () => actions.adminCleanLending(safeReceiver!, bulkAddrs, bulkAddrs))} />
+                    <ActionButton label="Clean PAS Pool" variant="danger" loading={isBusy('cleanPas')} disabled={isBusy('cleanPas') || !safeReceiver || bulkAddrs.length === 0}
+                        onClick={() => run('cleanPas', () => actions.adminCleanPas(safeReceiver!, bulkAddrs, bulkAddrs))} />
                     <ActionButton label="HARD RESET Lending Pool" variant="danger" loading={isBusy('hardResetLending')} disabled={isBusy('hardResetLending') || !safeReceiver}
                         onClick={() => run('hardResetLending', () => actions.adminHardResetLending(safeReceiver!))} />
                     <ActionButton label="HARD RESET PAS Pool" variant="danger" loading={isBusy('hardResetPas')} disabled={isBusy('hardResetPas') || !safeReceiver}
                         onClick={() => run('hardResetPas', () => actions.adminHardResetPas(safeReceiver!))} />
                 </div>
+                <p className="text-xs text-slate-500 mt-2">
+                    Clean uses the parsed bulk address list for both users and depositors.
+                </p>
             </Panel>
 
             {/* Fee sweeps */}

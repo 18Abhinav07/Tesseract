@@ -144,6 +144,7 @@ contract KredioLending is ReentrancyGuard {
     event UserScoreReset(address indexed user);
     event PoolTicked(uint256 totalInterestDistributed);
     event HardReset(address indexed to, uint256 usdcSwept);
+    event ContractCleaned(address indexed to, uint256 usdcSwept, uint256 usersProcessed, uint256 depositorsProcessed);
 
     // Strategy events
     event YieldPoolSet(address indexed pool);
@@ -597,6 +598,92 @@ contract KredioLending is ReentrancyGuard {
         uint256 bal = usdc.balanceOf(address(this));
         if (bal > 0) require(usdc.transfer(to, bal), "sweep fail");
         emit HardReset(to, bal);
+    }
+
+    /// @notice Comprehensive cleanup to return mutable contract state to a fresh-start baseline.
+    /// @dev Clears listed borrower/lender user state, unwinds strategy principal, zeros accounting,
+    ///      resets score inputs and strategy params, then sweeps remaining USDC to `to`.
+    function adminCleanContract(
+        address to,
+        address[] calldata users,
+        address[] calldata depositors
+    ) external onlyAdmin nonReentrant {
+        require(to != address(0), "zero addr");
+
+        globalTick = 0;
+
+        uint256 invested = investedAmount;
+        if (address(yieldPool) != address(0) && invested > 0) {
+            investedAmount = 0;
+            yieldPool.withdraw(address(this), invested);
+            emit FundsPulledBack(invested, 0);
+        }
+
+        for (uint256 i = 0; i < users.length; i++) {
+            address user = users[i];
+            Position storage p = positions[user];
+            uint256 collateralToReturn = 0;
+
+            if (p.active) {
+                if (p.debt <= totalBorrowed) totalBorrowed -= p.debt;
+                else totalBorrowed = 0;
+                collateralToReturn += p.collateral;
+                delete positions[user];
+            }
+
+            uint256 pendingCollateral = collateralBalance[user];
+            if (pendingCollateral > 0) {
+                collateralBalance[user] = 0;
+                collateralToReturn += pendingCollateral;
+            }
+
+            if (collateralToReturn > 0) {
+                require(usdc.transfer(user, collateralToReturn), "clean collateral fail");
+            }
+
+            repaymentCount[user] = 0;
+            liquidationCount[user] = 0;
+            firstSeenBlock[user] = 0;
+            totalDepositedEver[user] = 0;
+            demoRateMultiplier[user] = 0;
+            emit UserScoreReset(user);
+            emit CollateralWithdrawn(user, collateralToReturn);
+        }
+
+        for (uint256 i = 0; i < depositors.length; i++) {
+            address depositor = depositors[i];
+            uint256 amount = depositBalance[depositor];
+
+            if (amount > 0) {
+                depositBalance[depositor] = 0;
+                yieldDebt[depositor] = 0;
+                if (totalDeposited >= amount) totalDeposited -= amount;
+                else totalDeposited = 0;
+                require(usdc.transfer(depositor, amount), "clean withdraw fail");
+                emit Withdrawn(depositor, amount);
+            }
+
+            repaymentCount[depositor] = 0;
+            liquidationCount[depositor] = 0;
+            firstSeenBlock[depositor] = 0;
+            totalDepositedEver[depositor] = 0;
+            demoRateMultiplier[depositor] = 0;
+            emit UserScoreReset(depositor);
+        }
+
+        accYieldPerShare = 0;
+        protocolFees = 0;
+        totalBorrowed = 0;
+        totalDeposited = 0;
+        investedAmount = 0;
+        totalStrategyYieldEarned = 0;
+        investRatioBps = 5000;
+        minBufferBps = 2000;
+
+        uint256 bal = usdc.balanceOf(address(this));
+        if (bal > 0) require(usdc.transfer(to, bal), "clean sweep fail");
+
+        emit ContractCleaned(to, bal, users.length, depositors.length);
     }
 
     // ── TIER 2: Risk Management ────────────────────────────────────────────

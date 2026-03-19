@@ -14,7 +14,7 @@ import {
     bpsToPercent, fmtOraclePrice8, fmtCount, fmtTimestamp, fmtToken,
     useGlobalProtocolData, useUserPortfolio, useUserScore, tierLabel,
     formatHealthFactor, healthState, useLendingHistory, useStrategyData,
-    type LendHistoryEntry, type StrategySnapshot,
+    useBorrowHistory, type LendHistoryEntry, type BorrowHistoryEntry, type StrategySnapshot,
 } from '../../hooks/useProtocolData';
 import { DonutChart } from '../../components/modules/DonutChart';
 
@@ -582,6 +582,12 @@ const EVENT_META: Record<LendHistoryEntry['type'], { label: string; color: strin
     yield: { label: 'Yield Claimed', color: 'text-amber-300' },
 };
 
+const BORROW_EVENT_META: Record<BorrowHistoryEntry['type'], { label: string; color: string }> = {
+    borrow: { label: 'Borrowed', color: 'text-cyan-300' },
+    repay: { label: 'Repaid', color: 'text-emerald-300' },
+    liquidate: { label: 'Liquidated', color: 'text-rose-300' },
+};
+
 function UnifiedLendingActivity({
     lendingDeposit, lendingYield,
     pasDeposit, pasYield,
@@ -905,6 +911,104 @@ function UnifiedLendingActivity({
     );
 }
 
+function BorrowHistoryTable({
+    history,
+    loading,
+}: {
+    history: BorrowHistoryEntry[];
+    loading: boolean;
+}) {
+    const [page, setPage] = useState(1);
+    const ITEMS = 10;
+    const totalPages = Math.max(1, Math.ceil(history.length / ITEMS));
+    const paged = history.slice((page - 1) * ITEMS, page * ITEMS);
+
+    useEffect(() => {
+        setPage(1);
+    }, [history.length]);
+
+    return (
+        <div className="rounded-2xl border border-white/10 bg-black/30 backdrop-blur-xl overflow-hidden shadow-[0_0_0_1px_rgba(255,255,255,0.03)]">
+            <table className="w-full text-xs">
+                <thead>
+                    <tr className="border-b border-white/10">
+                        <th className="text-left px-5 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Type</th>
+                        <th className="text-left px-5 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Market</th>
+                        <th className="text-right px-5 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Amount (mUSDC)</th>
+                        <th className="text-right px-5 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400 hidden lg:table-cell">Details</th>
+                        <th className="text-right px-5 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400 hidden md:table-cell">Block</th>
+                        <th className="text-right px-5 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400 hidden md:table-cell">Tx</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {loading ? (
+                        <tr>
+                            <td colSpan={6} className="px-5 py-10 text-center">
+                                <div className="flex items-center justify-center gap-2 text-slate-500 text-sm">
+                                    <Spinner small /> Loading borrow history…
+                                </div>
+                            </td>
+                        </tr>
+                    ) : paged.length === 0 ? (
+                        <tr>
+                            <td colSpan={6} className="px-5 py-10 text-center text-slate-500 text-sm">
+                                No borrow, repay, or liquidation activity found for this wallet.
+                            </td>
+                        </tr>
+                    ) : paged.map((entry, idx) => {
+                        const meta = BORROW_EVENT_META[entry.type];
+                        const detailText = entry.type === 'liquidate'
+                            ? entry.market === 'PAS Market'
+                                ? `Seized ${fmt18(entry.collateralSeized, 4)} PAS`
+                                : (entry.liquidator ? `By ${entry.liquidator.slice(0, 6)}...${entry.liquidator.slice(-4)}` : 'Liquidation event')
+                            : '—';
+                        return (
+                            <tr key={`${entry.txHash}-${idx}`} className="border-b border-white/5 last:border-0 hover:bg-white/2 transition-colors">
+                                <td className={cn('px-5 py-4 font-medium text-sm', meta.color)}>{meta.label}</td>
+                                <td className="px-5 py-4 text-sm text-slate-400">{entry.market}</td>
+                                <td className="px-5 py-4 text-right text-sm font-medium text-slate-200">
+                                    {entry.amount > 0n ? fmt6(entry.amount, 6) : '—'}
+                                </td>
+                                <td className="px-5 py-4 text-right text-xs text-slate-500 hidden lg:table-cell">{detailText}</td>
+                                <td className="px-5 py-4 text-right text-sm text-slate-500 hidden md:table-cell">{entry.blockNumber.toString()}</td>
+                                <td className="px-5 py-4 text-right hidden md:table-cell">
+                                    {entry.txHash ? (
+                                        <a href={`https://blockscout-testnet.polkadot.io/tx/${entry.txHash}`} target="_blank" rel="noopener noreferrer" className="text-sm text-cyan-400 hover:text-cyan-300 transition-colors">
+                                            {entry.txHash.slice(0, 8)}…
+                                        </a>
+                                    ) : '—'}
+                                </td>
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
+
+            {totalPages > 1 && (
+                <div className="flex items-center justify-between border-t border-white/5 px-4 py-3">
+                    <span className="text-xs text-slate-500">Page {page} / {totalPages}</span>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            disabled={page === 1}
+                            className="px-3 py-1.5 rounded bg-white/5 hover:bg-white/10 text-xs font-semibold text-white disabled:opacity-30 transition-colors"
+                        >
+                            Prev
+                        </button>
+                        <button
+                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                            disabled={page === totalPages}
+                            className="px-3 py-1.5 rounded bg-white/5 hover:bg-white/10 text-xs font-semibold text-white disabled:opacity-30 transition-colors"
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 
 // ── Rich Analytics Row ────────────────────────────────────────────────────
 
@@ -1009,9 +1113,10 @@ export default function DashboardPage() {
     const { score, refresh: refreshScore } = useUserScore();
     const portfolio = useUserPortfolio();
     const { history: lendHistory, loading: historyLoading, refresh: refreshHistory } = useLendingHistory();
+    const { history: borrowHistory, loading: borrowHistoryLoading, refresh: refreshBorrowHistory } = useBorrowHistory();
     const { strategy, refresh: refreshStrategy } = useStrategyData();
 
-    const [activeTab, setActiveTab] = useState<'positions' | 'activity'>('positions');
+    const [activeTab, setActiveTab] = useState<'positions' | 'activity' | 'borrowHistory'>('positions');
     const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
     const actionInFlightRef = useRef(false);
     const setActionFlight = useCallback((v: boolean) => { actionInFlightRef.current = v; }, []);
@@ -1026,16 +1131,18 @@ export default function DashboardPage() {
     // Full manual refresh (button). useGlobalProtocolData + useUserPortfolio already have
     // their own 30s timers so we only need to kick score + history here for the background tick.
     const handleRefresh = useCallback(() => {
-        portfolio.refresh(); refreshGlobal(); refreshScore(); refreshHistory(); refreshStrategy();
+        portfolio.refresh(); refreshGlobal(); refreshScore(); refreshHistory(); refreshBorrowHistory(); refreshStrategy();
         lastRefreshRef.current = Date.now(); setSecondsAgo(0);
-    }, [portfolio, refreshGlobal, refreshScore, refreshHistory, refreshStrategy]);
+    }, [portfolio, refreshGlobal, refreshScore, refreshHistory, refreshBorrowHistory, refreshStrategy]);
 
     // Background tick: only refresh score + history (global + portfolio self-refresh).
     // Using a stable ref so the interval is created once and never recreated on re-renders.
     const refreshScoreRef = useRef(refreshScore);
     const refreshHistoryRef = useRef(refreshHistory);
+    const refreshBorrowHistoryRef = useRef(refreshBorrowHistory);
     useEffect(() => { refreshScoreRef.current = refreshScore; }, [refreshScore]);
     useEffect(() => { refreshHistoryRef.current = refreshHistory; }, [refreshHistory]);
+    useEffect(() => { refreshBorrowHistoryRef.current = refreshBorrowHistory; }, [refreshBorrowHistory]);
     useEffect(() => {
         if (!portfolio.loading && !globalLoading) setHasLoadedOnce(true);
     }, [portfolio.loading, globalLoading]);
@@ -1045,6 +1152,7 @@ export default function DashboardPage() {
             if (!actionInFlightRef.current) {
                 refreshScoreRef.current();
                 refreshHistoryRef.current();
+                refreshBorrowHistoryRef.current();
                 lastRefreshRef.current = Date.now();
             }
         }, 30_000);
@@ -1149,6 +1257,7 @@ export default function DashboardPage() {
                             <div className="rounded-xl border border-white/10 bg-black/30 p-1 w-fit flex gap-1">
                                 <button onClick={() => setActiveTab('positions')} className={cn("px-5 py-2 rounded-lg text-sm font-medium transition-colors", activeTab === 'positions' ? "bg-white text-black" : "text-slate-300 hover:bg-white/10 hover:text-white")}>Positions</button>
                                 <button onClick={() => setActiveTab('activity')} className={cn("px-5 py-2 rounded-lg text-sm font-medium transition-colors", activeTab === 'activity' ? "bg-white text-black" : "text-slate-300 hover:bg-white/10 hover:text-white")}>Activity</button>
+                                <button onClick={() => setActiveTab('borrowHistory')} className={cn("px-5 py-2 rounded-lg text-sm font-medium transition-colors", activeTab === 'borrowHistory' ? "bg-white text-black" : "text-slate-300 hover:bg-white/10 hover:text-white")}>Borrow History</button>
                             </div>
 
                             {activeTab === 'positions' && (
@@ -1229,6 +1338,15 @@ export default function DashboardPage() {
                                         onBusy={setActionFlight}
                                         onRefresh={handleRefresh}
                                     />
+                                </div>
+                            )}
+
+                            {activeTab === 'borrowHistory' && (
+                                <div className="flex flex-col gap-6 pt-2 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                    <h2 className="text-base font-semibold text-white px-1 flex items-center gap-3">
+                                        Borrowing History <span className="h-px flex-1 bg-linear-to-r from-white/10 to-transparent" />
+                                    </h2>
+                                    <BorrowHistoryTable history={borrowHistory} loading={borrowHistoryLoading} />
                                 </div>
                             )}
 

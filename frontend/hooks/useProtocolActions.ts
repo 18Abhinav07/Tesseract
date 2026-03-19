@@ -281,6 +281,18 @@ export function useProtocolActions() {
             functionName: 'adminHardReset',
             args: [to],
         })),
+        adminCleanLending: (to: `0x${string}`, users: `0x${string}`[], depositors: `0x${string}`[]) => tx('Clean Lending pool', 'lending', () => walletClient!.writeContract({
+            address: config.lending,
+            abi: ABIS.KREDIO_LENDING,
+            functionName: 'adminCleanContract',
+            args: [to, users, depositors],
+        })),
+        adminCleanPas: (to: `0x${string}`, users: `0x${string}`[], depositors: `0x${string}`[]) => tx('Clean PAS pool', 'pas', () => walletClient!.writeContract({
+            address: config.pasMarket,
+            abi: ABIS.KREDIO_PAS_MARKET,
+            functionName: 'adminCleanContract',
+            args: [to, users, depositors],
+        })),
 
         sweepPasFees: (to: `0x${string}`) => tx('Sweep PAS market fees', 'pas', () => walletClient!.writeContract({
             address: config.pasMarket,

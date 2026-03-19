@@ -138,7 +138,7 @@ Keeps three non-core contracts active with periodic background transactions. Con
 | Contract | Address | Activity | Interval |
 |----------|---------|----------|---------|
 | `GovernanceCache` | `0xe4DE7eadE2c0A65BdA6863Ad7bA22416c77F3e55` | `setGovernanceData()` - writes governance vote counts | Every 60 blocks |
-| `KredioAccountRegistry` | `0xBf7ac0e6f0024ED0F2Cf2efb3669E7c389258BFf` | `attestedUnlink()` + `attestedLink()` cycle - emits `AccountLinked` / `AccountUnlinked` | Every 300 blocks |
+| `KredioAccountRegistry` | `0xe3603f70ACeBe6A7f3975cf3Edbd12EfeA78aDeA` | `attestedUnlink()` + `attestedLink()` cycle - emits `AccountLinked` / `AccountUnlinked` | Every 300 blocks |
 | `KredioSwap` | `0xaF1d183F4550500Beb517A3249780290A88E6e39` | `quoteSwap()` + `reserveBalance()` view calls - logged locally | Every 50 blocks |
 
 ---
@@ -192,9 +192,9 @@ KEY=<private_key_hex>                # Relayer / oracle wallet (no 0x prefix)
 
 # ── Protocol contracts ─────────────────────────────────────────────────────────
 ORACLE=0x1494432a8Af6fa8c03C0d7DD7720E298D85C55c7
-MARKET_ADDR=0x0F90Fe6141AC29a6031C3ae2155749e9f38a0174
-LENDING_ADDR=0x1eDaD1271FB9d1296939C6f4Fb762752b041C64E
-YIELD_POOL_ADDR=0x1dB4Faad3081aAfe26eC0ef6886F04f28D944AAB
+MARKET_ADDR=0x5617dBa1b13155fD6fD62f82ef6D9e8F0F3B0E86
+LENDING_ADDR=0x61c6b46f5094f2867Dce66497391d0fd41796CEa
+YIELD_POOL_ADDR=0x12CEF08cb9D58357A170ee2fA70b3cE2c0419bd6
 
 # ── Bridge ─────────────────────────────────────────────────────────────────────
 MINTER_ADDR=0x...                    # KredioBridgeMinter on Asset Hub

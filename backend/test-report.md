@@ -1,75 +1,128 @@
-# Kredio Full Test Run Report
+# Kredio Product Simulation Report
 
-- **Run Date:** 2026-03-19T08:50:39.754Z
-- **Duration:** 843.8s
+- Run Date: 2026-03-19T21:44:49.345Z
+- Duration: 782.8s
+- Chain: 420420417
+- RPC: https://eth-rpc-testnet.polkadot.io/
+- Steps: 48 | Passed: 45 | Failed: 3
 
-## Pre-Test Snapshots
-### KredioLending
-- Total Deposited: 1,100,000.00 mUSDC
-- Total Borrowed: 50,000.00 mUSDC
+## Scenario Objective
 
-### Users Initial
-- USER1 (0x5EF0a87f578778Fc78cbFe318D3444D71Ff638da): 200,000 mUSDC, 50,000 PAS
-- USER2 (0x8fb792EdBbA0A3b4e83Fffe790a8F080FD9C46CE): 200,000 mUSDC, 50,000 PAS
-- USER3 (0x7B8428750F29381Ef4190a0a9F8c294ac123014e): 200,000 mUSDC, 50,000 PAS
-- USER4 (0x6bA56a179ff0C0E08B60EBe2a3f03141CEacE50F): 200,000 mUSDC, 50,000 PAS
-- USER5 (0x105952E94C36916757785C4F7f92DAf5f1cC99ad): 200,000 mUSDC, 50,000 PAS
-- USER6 (0x863930353d628aA250fB98A4Eb2C1bAa649d5617): 200,000 mUSDC, 50,000 PAS
+- Convert testing flow into product-style multi-user simulation
+- Required user flow enforced: USER1/USER2 deposit, USER3/USER4 borrow+repay, USER1/USER2 harvest+withdraw
+- Intelligent yield exercised under stressed liquidity and validated via depositor pending-yield progression
+- Oracle crash simulation executed and liquidation verified
+- Expected failures classified separately from true failures
 
-## Active Execution Log
+## Initial Targets
 
-| Step | Actor | Action | Params | Expected | Status | TxHash/Err |
-|---|---|---|---|---|---|---|
-| 1 | ADMIN | Pull back 250,000.00 mUSDC from yield pool → KredioLending | - | **Exp:** investedAmount → 0; contract USDC balance restores; YieldPool principal drops <br> **Obs. Before:** N/A <br> **Obs. After:** N/A | FAIL | could not coalesce error |
-| 2 | ADMIN | Bulk-withdraw 3 depositor(s) from KredioLending | - | **Exp:** depositBalance zeroed for all; USDC returned to depositors <br> **Obs. Before:** N/A <br> **Obs. After:** N/A | FAIL | execution reverted: "insufficient" |
-| 3 | ADMIN | Force-close all borrower positions in KredioLending | - | **Exp:** All borrow positions closed; USDC collateral returned; totalBorrowed → 0 <br> **Obs. Before:** N/A <br> **Obs. After:** N/A | PASS | `0x335cef911459f450fedcbd0a82c1f750f31c39c3383bc43cf163455ebeb6b43d` |
-| 4 | ADMIN | Hard-reset KredioLending (sweep all USDC dust to admin) | - | **Exp:** totalDeposited=0, totalBorrowed=0, accYieldPerShare=0, globalTick=0 <br> **Obs. Before:** N/A <br> **Obs. After:** N/A | PASS | `0xc57009f38c4e6aa91041300c9d81299df6efb5fbf9b5d6713f0d6de405b89e15` |
-| 5 | ADMIN | Reset credit scores for all known addresses (KredioLending) | - | **Exp:** repaymentCount/liquidationCount/totalDepositedEver = 0 for all <br> **Obs. Before:** N/A <br> **Obs. After:** N/A | FAIL | 80A047F301000000:error:0A0003FC:SSL routines:ssl3_read_bytes:sslv3 alert bad record mac:../deps/openssl/openssl/ssl/record/rec_layer_s3.c:1605:SSL alert number 20
- |
-| 6 | ADMIN | Force-close all positions in KredioPASMarket (return PAS collateral) | - | **Exp:** All PAS positions closed; PAS returned to borrowers; totalBorrowed → 0 <br> **Obs. Before:** N/A <br> **Obs. After:** N/A | PASS | `0xfe6463e0523c23cc32b4ab67f4324f8ddd790a3b9e9c4b8353bc5067715739ff` |
-| 7 | ADMIN | Bulk-withdraw 1 depositor(s) from KredioPASMarket | - | **Exp:** PM depositBalances zeroed; mUSDC returned <br> **Obs. Before:** N/A <br> **Obs. After:** N/A | FAIL | execution reverted: "insufficient" |
-| 8 | ADMIN | Hard-reset KredioPASMarket | - | **Exp:** PM totalDeposited=0, totalBorrowed=0, accYieldPerShare=0 <br> **Obs. Before:** N/A <br> **Obs. After:** N/A | FAIL | could not coalesce error |
-| 9 | ADMIN | Reset credit scores for all known addresses (KredioPASMarket) | - | **Exp:** PM credit scores cleared <br> **Obs. Before:** N/A <br> **Obs. After:** N/A | PASS | `0x5b93060fbc63e5c50b62b476fa7d12c026c7ceddf8bb2563483bbddb54d6c47d` |
-| 10 | ADMIN | Set yield pool rate to 100 000 bps (1 000% APY) | - | **Exp:** yieldRateBps = 100 000; yield accrues rapidly for demo <br> **Obs. Before:** N/A <br> **Obs. After:** N/A | PASS | `0xcf643c9daf33a68873c0d1e31f8d6f1b75df7ffaca88bca0a81a328c67f22b29` |
-| 11 | ADMIN | Set KredioLending globalTick = 86400 (1 s = 1 day interest) | tickMultiplier=86400 | **Exp:** globalTick = 86400 <br> **Obs. Before:** N/A <br> **Obs. After:** N/A | PASS | `0xcf66fc350fa34c8e6609ebb5dbec99e94215074a95e6890786e82fb0b5762829` |
-| 12 | ADMIN | Set KredioPASMarket globalTick = 86400 | tickMultiplier=86400 | **Exp:** globalTick = 86400 <br> **Obs. Before:** N/A <br> **Obs. After:** N/A | PASS | `0x58473e689096c09ccd3fa358ad850eb15b901fc138974dd0adbcaa847ba22219` |
-| 13 | ADMIN | Wire MockYieldPool to KredioLending | - | **Exp:** yieldPool set; lending can now invest/pull/claim <br> **Obs. Before:** N/A <br> **Obs. After:** N/A | PASS | `0xa4d4145434cdcd2ca87242e249ba312eea8df7aad695cf8351a5b9423468313e` |
-| 14 | ADMIN | Set KredioPASMarket risk params (stalenessLimit=86400, others unchanged) | - | **Exp:** stalenessLimit = 86400 s (24 h); ltvBps=6500, liqBonusBps=800, protocolFeeBps=1000 <br> **Obs. Before:** N/A <br> **Obs. After:** N/A | PASS | `0x6367847b1d7e417f6ffed5ab4ff4c6f8270211124b222ec15952a96a9509808b` |
-| 15 | ADMIN | Refresh oracle price to 562440000 (reset updatedAt) | - | **Exp:** oracle.updatedAt = now; staleness check will pass for 86400 s <br> **Obs. Before:** N/A <br> **Obs. After:** N/A | PASS | `0xaf696a5198a0a3705addb61282cab9d0174410174e3978af1d7449a9641d076d` |
-| 16 | ADMIN | Approve MaxUint256 mUSDC to KredioLending | - | **Exp:** Admin can deposit + fundReserve without re-approving <br> **Obs. Before:** N/A <br> **Obs. After:** N/A | FAIL | could not coalesce error |
-| 17 | ADMIN | Approve MaxUint256 mUSDC to KredioPASMarket | - | **Exp:** Admin can deposit + liquidate without re-approving <br> **Obs. Before:** N/A <br> **Obs. After:** N/A | PASS | `0x720f6d7b3964a2b4383477052bf2d564692f382b92c6ec09316336ff398af832` |
-| 18 | ADMIN | Deposit 500 000 mUSDC into KredioLending (admin liquidity base) | - | **Exp:** KredioLending.totalDeposited = 500 000; admin is a lender <br> **Obs. Before:** N/A <br> **Obs. After:** N/A | FAIL | could not coalesce error |
-| 19 | ADMIN | Deposit 300 000 mUSDC into KredioPASMarket (admin liquidity base) | - | **Exp:** KredioPASMarket.totalDeposited = 300 000 <br> **Obs. Before:** N/A <br> **Obs. After:** N/A | PASS | `0x32d3c12241483bc0a1e217e86a9f0005f88197bb71618706617765da1522c867` |
-| 20 | USER1 | Approve 50 000 mUSDC to KredioLending | MAX or exact amount | **Exp:** Allowance set <br> **Obs. Before:** N/A <br> **Obs. After:** N/A | PASS | `0x94fdcd41da57c388146a7b25a16affaab5de567b6337670c63adb5d9ac3ceb1f` |
-| 21 | USER1 | Deposit 50 000 mUSDC into KredioLending | - | **Exp:** depositBalance[USER1] += 50 000; KredioLending.totalDeposited += 50 000 <br> **Obs. Before:** {depositBalance:0,totalDeposited:0} <br> **Obs. After:** {depositBalance:100000000000,totalDeposited:100000000000} | PASS | `0xda98a461b9bc0fe85f72bc29cb364508b0e55676ff7a5a1472b6c80b47b2063e` |
-| 22 | USER3 | Approve 80 000 mUSDC to KredioPASMarket | MAX or exact amount | **Exp:** Allowance set <br> **Obs. Before:** N/A <br> **Obs. After:** N/A | PASS | `0xf77465dfb7b97c3093a8d35ead4c8a00106502fbea1ab66d49df0f3dfebe780a` |
-| 23 | USER3 | Deposit 80 000 mUSDC into KredioPASMarket | - | **Exp:** PM depositBalance[USER3] += 80 000; PM totalDeposited += 80 000 <br> **Obs. Before:** {depositBalance:0,totalDeposited:600000000000} <br> **Obs. After:** N/A | FAIL | could not coalesce error |
-| 24 | USER2 | Approve 20 000 mUSDC to KredioLending (collateral) | MAX or exact amount | **Exp:** Allowance set <br> **Obs. Before:** N/A <br> **Obs. After:** N/A | PASS | `0xce720bffdcb02695528a6d3607c60b589d845a47ad8589a09df17173b697596b` |
-| 25 | USER2 | Deposit 20 000 mUSDC as USDC collateral into KredioLending | - | **Exp:** collateralBalance[USER2] += 20 000 <br> **Obs. Before:** {collateralBalance:0} <br> **Obs. After:** {collateralBalance:100000000000} | PASS | `0x685d1990223c4173f0b4453048579ebebb33ca89e2e3606ad4c15b459a8c51c9` |
-| 26 | USER2 | Borrow 51,779.9353 mUSDC from KredioLending (credit-score gated) | borrowAmount=51,779.9353 | **Exp:** Position opened: debt=51,779.9353, collateral=100 000; totalBorrowed += 51,779.9353 <br> **Obs. Before:** {totalBorrowed:0,mUSDCBal:447990276809} <br> **Obs. After:** {totalBorrowed:51779935274,mUSDCBal:499770212083} | PASS | `0xbb6c69d352944dce04b20679fd32a45017bb2a23713b16db68863cacdce02e77` |
-| 27 | USER4 | depositCollateral - lock 300 PAS in KredioPASMarket | - | **Exp:** collateralBalance[USER4] += 300 PAS (wei) <br> **Obs. Before:** {collateralBalance:0} <br> **Obs. After:** {collateralBalance:800000000000000000000} | PASS | `0x82e31b5fb4913f38c089cddd908bbc8e035bb8c30d91f6f6ca21228c301288d3` |
-| 28 | USER4 | Borrow 2,047.2816 mUSDC from KredioPASMarket (PAS-collateral gated) | - | **Exp:** Position opened; USER4 receives 2,047.2816 mUSDC; PM totalBorrowed += 2,047.2816 <br> **Obs. Before:** {totalBorrowed:0,mUSDCBal:399366608339} <br> **Obs. After:** {totalBorrowed:2047281600,mUSDCBal:401413889939} | PASS | `0x941330191fdbbab4c36d5b8e07732cc9dbfe38957e62391236ebe75560345e08` |
-| 29 | USER5 | depositCollateral - lock 400 PAS in KredioPASMarket | - | **Exp:** collateralBalance[USER5] += 400 PAS <br> **Obs. Before:** {collateralBalance:0} <br> **Obs. After:** {collateralBalance:900000000000000000000} | PASS | `0x3479364bb4f9f6a105868160ad2614c7d17996f62d5c2633a560e6f0414bbf99` |
-| 30 | USER5 | Borrow 3,125.7603 mUSDC at 95% LTV (near liquidation) | - | **Exp:** Position opened at 95% LTV; interest accrual will breach health threshold <br> **Obs. Before:** {totalBorrowed:2047281600} <br> **Obs. After:** {totalBorrowed:5173041900} | PASS | `0x74aafb5cf9eea91e02e4733d8ce57831709e3dc581f628772540de4aaf201d0d` |
-| 31 | ADMIN | adminTickPool for USER2 in KredioLending | - | **Exp:** USER2 interest capitalised into debt; accYieldPerShare++ for all lenders <br> **Obs. Before:** {accruedInterest:1872589440,pendingUser1:0} <br> **Obs. After:** N/A | FAIL | could not coalesce error |
-| 32 | ADMIN | adminTickPool for USER4 + USER5 in KredioPASMarket | - | **Exp:** USER4/USER5 interest capitalised; accYieldPerShare++ for PM lenders <br> **Obs. Before:** {u3Pending:0} <br> **Obs. After:** {u3Pending:0,adminPending:253807226} | PASS | `0xce0c09c425975d9bb7fa4525f6177ad4096d32d3c7667a3121ae7ae92928ff0b` |
-| 33 | ADMIN | adminLiquidate USER5 (totalOwed≈3,308.5885 mUSDC, seize PAS + bonus) | - | **Exp:** USER5 position deleted; admin pays 3,308.5885 mUSDC; admin receives ~400 PAS (with bonus); interest distributed to PM lenders <br> **Obs. Before:** {active:true,lenderYieldBefore:0,adminPASBefore:15537850524577737353848} <br> **Obs. After:** {active:false,lenderYieldAfter:0,adminPASAfter:16226487891192350237449} | PASS | `0x0ef01f91d22bde2cc9faddd201a012e8b262f7cd3007eeb811cafec080aef432` |
-| 34 | ADMIN | adminClaimAndInjectYield - mint 45.6621 mUSDC yield → distribute to lenders | - | **Exp:** MockYieldPool mints fresh mUSDC to KredioLending; accYieldPerShare增加; USER1+ADMIN earn pro-rata yield <br> **Obs. Before:** {pendingUser1:0,pendingAdmin:0,totalEarned:14106116076} <br> **Obs. After:** {pendingUser1:44520548,pendingAdmin:0} | PASS | `0xa845b439948420864ead3f3fe921f574bf0581cef36b0747a9963bcb00862623` |
-| 35 | USER1 | Harvest 44.5205 mUSDC yield from KredioLending | harvestAmount=44.5205 | **Exp:** USER1.mUSDC += 44.5205; pendingYield[USER1] → 0 <br> **Obs. Before:** {mUSDCBal:1171500356653,pendingYield:44520548} <br> **Obs. After:** {mUSDCBal:1171544877201,pendingYield:0} | PASS | `0xe054793fd2cbff10f982ca1d4b20ce03176474413922ca646135bc82e6d5f9b0` |
-| 36 | USER3 | Harvest 0.00 mUSDC yield from KredioPASMarket | harvestAmount=0.00 | **Exp:** USER3.mUSDC += 0.00; pendingYield[USER3] → 0 <br> **Obs. Before:** {mUSDCBal:6525164497492,pendingYield:0} <br> **Obs. After:** N/A | FAIL | could not coalesce error |
-| 37 | USER2 | Approve 66,517.4004 mUSDC to KredioLending for repayment | - | **Exp:** Allowance ≥ totalOwed <br> **Obs. Before:** N/A <br> **Obs. After:** N/A | PASS | `0xebc6170810efb65ee8a10951788932c52a0c071413fda6645d7a5d3ff27bdb16` |
-| 38 | USER2 | repay() - pay 61,517.4004 mUSDC (principal + interest) | principal=51,779.9353, interest=9,737.4651 | **Exp:** Position deleted; collateral 100 000 mUSDC returned to USER2; interest distributed to lenders; repaymentCount[USER2]++ <br> **Obs. Before:** {active:true,totalBorrowed:51779935274,mUSDCBal:499770212083} <br> **Obs. After:** {active:false,totalBorrowed:0,mUSDCBal:537503775945} | PASS | `0x48cc0441c76bbffa817278e0006cdbbd92c6928032897cc0ca4d3be0251302db` |
-| 39 | USER4 | Approve 2,506.9439 mUSDC to KredioPASMarket | MAX or exact amount | **Exp:** Allowance set <br> **Obs. Before:** N/A <br> **Obs. After:** N/A | PASS | `0x94f7b1869d5e9c060c532bae53fd7dcfe95eb18e1c7101808bf557d6a98b1cf8` |
-| 40 | USER4 | repay() - pay 2,456.9439 mUSDC (principal + interest) | principal=2,106.5125, interest=350.4313 | **Exp:** Position inactive; totalBorrowed decreases; interest to PM lenders; repaymentCount[USER4]++ <br> **Obs. Before:** {totalBorrowed:2106512541,mUSDCBal:401413889939} <br> **Obs. After:** {totalBorrowed:0,mUSDCBal:398926473761} | PASS | `0x46025d0f1b63be7a82dbba22efbe92d4cddefe10919794f0d7940c09442ea06f` |
-| 41 | USER4 | withdrawCollateral() - retrieve 300 PAS from KredioPASMarket | - | **Exp:** USER4 receives 300 PAS; collateralBalance[USER4] → 0 <br> **Obs. Before:** {pasBal:299774801915400000000} <br> **Obs. After:** {pasBal:1099793839483000000000} | PASS | `0x44e19b69bf926e717bc4e5e31035e0f0debeef28fe1d041ae06030b4477af48a` |
-| 42 | USER1 | withdraw(100,000.00) - full withdrawal from KredioLending | - | **Exp:** USER1 gets deposit back (auto-pulls from yield pool if needed) + any remaining yield; totalDeposited decreases <br> **Obs. Before:** {depositBalance:100000000000,lendingUSDC:110491447591,user1USDC:1171544877201} <br> **Obs. After:** {depositBalance:0,lendingUSDC:1053596813,user1USDC:1280982727979} | PASS | `0x263e6b6e808a8e274226216f2381017f121a770d6ffa5ee199f3f9ebd473a828` |
+| Metric | Target |
+|---|---:|
+| User mUSDC funding floor | 200,000 |
+| User PAS funding floor | 500 |
 
-## Post-Test Snapshots
-### KredioLending (Final)
-- Total Deposited: 0.00 mUSDC
-- Total Borrowed: 0.00 mUSDC
-- Protocol Fees: 1,053.5968 mUSDC
+## Contract Addresses
 
-### Mock Yield Pool (Final)
-- Total Principal: 494,995.7808 mUSDC
-- Pending Yield: 16.172 mUSDC
+| Contract | Address |
+|---|---|
+| MUSDC | 0x5998cE005b4f3923c988Ae31940fAa1DEAC0c646 |
+| LENDING | 0x61c6b46f5094f2867Dce66497391d0fd41796CEa |
+| PAS_MARKET | 0x5617dBa1b13155fD6fD62f82ef6D9e8F0F3B0E86 |
+| YIELD_POOL | 0x1dB4Faad3081aAfe26eC0ef6886F04f28D944AAB |
+| ORACLE | 0x1494432a8Af6fa8c03C0d7DD7720E298D85C55c7 |
+
+## Step-by-Step Execution
+
+| # | Phase | Actor | Contract | Action | Expected | Status | Tx Hash | Gas | Notes |
+|---:|---|---|---|---|---|---|---|---:|---|
+| 1 | PHASE 1 | ADMIN | KredioLending | Reset globalTick=0 on Lending | Lending tick reset | PASS | `0x2226ecce6d33ed628dcc43f4e2851880333daf96e006f73a484be83c4ffd3881` | 0 | - |
+| 2 | PHASE 1 | ADMIN | KredioPASMarket | Reset globalTick=0 on PASMarket | PASMarket tick reset | PASS | `0xc38a8d905241bcac4e7e88374d6e21b10980714b6fffb2a5e2bfcced8ab12171` | 0 | - |
+| 3 | PHASE 1 | ADMIN | KredioLending | adminCleanContract on Lending (7 users) | Lending clean state | PASS | `0x22624efc0c3bea41c00af2f9897f6b354e350e0e94a61a12d6e431e457ac5847` | 0 | - |
+| 4 | PHASE 1 | ADMIN | KredioPASMarket | adminCleanContract on PASMarket (7 users) | PAS clean state | PASS | `0x0ae4f314686278c60d3ae31ebf8023cf3ff1795ce7395a0cd4f36df89024109a` | 0 | - |
+| 5 | PHASE 1 | ADMIN | READ_ONLY_CHECK | Verify clean deposits are zero | Both market totalDeposited should be zero after clean | PASS | - | - | Both markets clean |
+| 6 | PHASE 2 | ADMIN | KredioLending | Set lending tick multiplier = 86400 | 1 second -> 1 day interest simulation | PASS | `0xcccb676d810d385b18ff6fbd8f2e9587ef847257f8ff110a74533f829e2e3745` | 21820 | - |
+| 7 | PHASE 2 | ADMIN | KredioPASMarket | Set PAS market tick multiplier = 86400 | 1 second -> 1 day interest simulation | PASS | `0xbe4aff3bf1a020b923f6d88f16c48bb18766eed6c91b063cca4e9eb8e30dc5aa` | 21820 | - |
+| 8 | PHASE 2 | ADMIN | KredioLending | Wire yield pool to lending | Lending strategyStatus.pool points to deployed yield pool | PASS | `0xb9bb04f6cfdd23737ea8fd657c6d3cbe44d4fa097c7c3c8ed565d5f8efa4c98d` | 1271 | - |
+| 9 | PHASE 2 | ADMIN | KredioPASMarket | Set PAS risk params (ltv=6500, bonus=800, stale=86400, fee=1000) | Stable testing risk profile | PASS | `0xae9cb9fef9a8a477395db65a8aa6abc79adc04abe071daaed9b359f328ba3b2d` | 1940 | - |
+| 10 | PHASE 2 | ADMIN | MockYieldPool | Set yield pool rate to 100000 bps | Fast visible external yield accrual | PASS | `0xfcbbe934d16d5c4fc9cdc8d80e70f26b309cf65555f2b4b76ed2915ba1754928` | 1180 | - |
+| 11 | PHASE 2 | ADMIN | MockPASOracle | Refresh oracle with normal price 627840000 | Fresh normal oracle baseline before borrow simulation | PASS | `0x4bc947a3870555b5d3532e13968b6c3852f00a39990cb43194ec0c1ee96971a4` | 1543 | - |
+| 12 | PHASE 2 | ADMIN | MockUSDC | Approve max mUSDC -> Lending | Admin can seed liquidity and support strategy ops | PASS | `0x0548724c734989bdfe090ca26f272faf8c35fab064ed8d2f24b8ceb0f109ab06` | 1256 | - |
+| 13 | PHASE 2 | ADMIN | MockUSDC | Approve max mUSDC -> PASMarket | Admin can seed PAS market + liquidations | PASS | `0xfa0ef1d8c38a5aa20b6dcb5371aa2e6c5d8d5c5b1ec51091016b355789aebd7e` | 1256 | - |
+| 14 | PHASE 2 | ADMIN | KredioLending | Seed Lending with 700000 mUSDC | Initial deep liquidity for simulation | FAIL | `0x59efe4168d9ba9c49790895fe302fcc92d447a5fb1ebdb0dea119ff8d23399bc` | - | tx 0x59efe4168d9ba9c49790895fe302fcc92d447a5fb1ebdb0dea119ff8d23399bc not mined within 180s |
+| 15 | PHASE 2 | ADMIN | KredioPASMarket | Seed PASMarket with 350000 mUSDC | Initial PAS market liquidity | PASS | `0xb2ed118fa9c0255d4c5c2e92ffad23f8b3443d18a336df2d3ba7ee8450eaebfa` | 106792 | - |
+| 16 | PHASE 3 | USER1 | MockUSDC | Approve 120,000.00 mUSDC to Lending | USER1 allowance set | PASS | `0x2a05e4a871c5ce49b0f59be8e62bd94a0313b76c5e756d1a8b0dc6b61c743a7f` | 21885 | - |
+| 17 | PHASE 3 | USER1 | KredioLending | Deposit 120,000.00 mUSDC to Lending | USER1 becomes depositor | PASS | `0xa0f3b0874734dfed4e55a64415b5c400a9926924e3fb069708723916132ca774` | 65411 | - |
+| 18 | PHASE 3 | USER2 | MockUSDC | Approve 90,000.00 mUSDC to Lending | USER2 allowance set | PASS | `0x8f490b6603b7ed17fd329db6b8ec152e6ef6dccb6808a46f2828a7c5497b07f0` | 21885 | - |
+| 19 | PHASE 3 | USER2 | KredioLending | Deposit 90,000.00 mUSDC to Lending | USER2 becomes depositor | PASS | `0x7a201aa5e9ae11fddc34fe0b509153f94deff90217414f981a684844a3013f61` | 44766 | - |
+| 20 | PHASE 3 | ADMIN | KredioLending | Invest idle 350,000.00 mUSDC into strategy | investedAmount increases and strategy accrues yield | FAIL | - | - | execution reverted: "not enough liquid capital" |
+| 21 | PHASE 3 | ADMIN | READ_ONLY_CHECK | Check strategy pending yield > 0 after invest | Strategy pending yield should increase after invest + time | PASS | - | - | pendingStrategyYield=0.2283 mUSDC |
+| 22 | PHASE 3 | USER3 | MockUSDC | Approve 70,000.00 mUSDC collateral to Lending | USER3 collateral allowance ready | PASS | `0x30870fbe31a54bdbf4e53758649fb6a181f3cab9c7801bb5faeb374e62b72d87` | 1256 | - |
+| 23 | PHASE 3 | USER3 | KredioLending | Deposit 70,000.00 mUSDC collateral to Lending | USER3 collateral set for borrowing | PASS | `0x7520266c3213eabf44c0926c4bd044fb961f94cf7531799b481a8b2c522e5b52` | 2318 | - |
+| 24 | PHASE 3 | USER3 | KredioLending | Borrow 35,000.00 mUSDC from Lending | USER3 debt opens and pool utilization increases | PASS | `0x140998c99d761c85cce3551197b8a660d95ceeebb6d3078fb72528c722149215` | 87142 | - |
+| 25 | PHASE 3 | ADMIN | KredioLending | Tick Lending pool for USER3 debt capitalization | Borrow interest converted into lender yield | PASS | `0xe65d539265f24efc21c02ac58d9a401eb5211731433fba42928db6e40d3d9a65` | 23871 | - |
+| 26 | PHASE 3 | USER3 | MockUSDC | Approve 36,506.3014 mUSDC for Lending repay | Repay allowance set | PASS | `0x5b9d3636cd42e2a7a791d553f1bb90a9e7677ec8e028804c7d0ab99e10bf2ac8` | 21895 | - |
+| 27 | PHASE 3 | USER3 | KredioLending | Repay Lending debt (owed 35,506.3014 mUSDC) | USER3 lending debt closed and collateral returned | PASS | `0x9ca4a90ebe9c949d6171163c6953da06caeef8917eedc144da66124135a1920b` | 0 | USER3 active=false |
+| 28 | PHASE 3 | USER4 | KredioPASMarket | Deposit 40 PAS collateral into PASMarket | USER4 PAS collateral active | PASS | `0xb7da1b095b6f59a18ef4f3ee2dfc281c40884b6d69fb8f6b6a03812f8f4512ed` | 22057 | - |
+| 29 | PHASE 3 | USER4 | KredioPASMarket | Borrow 114.2669 mUSDC from PASMarket | USER4 PAS debt opens | PASS | `0xcfc22f146d87c5fe3630b146d7d197f48021e6f01db0c5ce5d79f5587e4a4821` | 108093 | - |
+| 30 | PHASE 3 | ADMIN | KredioPASMarket | Tick PASMarket for USER4 debt capitalization | PAS debt interest capitalized | PASS | `0x0a6efb2a1027f60cfbbb78a1ea79edae36fc940ea5fadd9d8309ce6829a8610b` | 44692 | - |
+| 31 | PHASE 3 | USER4 | MockUSDC | Approve 315.0934 mUSDC for PAS repay | Repay allowance set | PASS | `0xc06cf36291fac744bb479663eba5f55cff40a11e5b7dc8a2de23585967cab927` | 1246 | - |
+| 32 | PHASE 3 | USER4 | KredioPASMarket | Repay PAS debt (owed 115.0934 mUSDC) | USER4 PAS position closed after repayment | PASS | `0x0918dc65803187e002167cfb5f771510dc5e7f4a07c7ecb1731a59fccd0e2143` | 0 | USER4 active=false |
+| 33 | PHASE 3 | USER4 | KredioPASMarket | Withdraw PAS collateral after full repay | Collateral withdrawal succeeds after debt close | PASS | `0x1e7a2df3a272b912f05ed3c6a94a03213653ccb8435d52ff091b81459e9f7a1f` | 0 | - |
+| 34 | PHASE 3 | USER4 | KredioPASMarket | Deposit 30 PAS collateral for high-risk position | Risky collateral position opened | PASS | `0xee9f4f808d6a2b9a0bce8614d7cf772b18a4a6cd9225d2999937c5a29e52a865` | 22057 | - |
+| 35 | PHASE 3 | USER4 | KredioPASMarket | Borrow 113.8588 mUSDC at high LTV | Position vulnerable to oracle downside move | PASS | `0x14254747c182b5bfa84ffaabc92529933b9c5043015a26be392776715957d66e` | 108093 | - |
+| 36 | PHASE 3 | ADMIN | MockPASOracle | Crash oracle price to 52320000 for liquidation test | Collateral value drops sharply, risky position becomes liquidatable | FAIL | `0x67ddbb282b71defd32c4d4e81e2ed5d51c6b47f7cade4eecf48de3ff83eac0cb` | - | tx 0x67ddbb282b71defd32c4d4e81e2ed5d51c6b47f7cade4eecf48de3ff83eac0cb not mined within 180s |
+| 37 | PHASE 3 | ADMIN | KredioPASMarket | Liquidate USER4 risky PAS position | Liquidation succeeds and closes USER4 risky PAS debt | PASS | `0x3ba2f54c4bda6b79e88a010661af38d593627cb9a1d642cdc820e005ebcb6113` | 0 | USER4 active=false |
+| 38 | PHASE 3 | USER4 | KredioPASMarket | Expected failure: withdrawCollateral after liquidation | No collateral left to withdraw after liquidation | EXPECTED_FAIL | - | - | execution reverted: "no collateral" |
+| 39 | PHASE 3 | ADMIN | MockPASOracle | Recover oracle to normal price 627840000 | Restore normal pricing after crash simulation | PASS | `0xbf91ff5189ca1e1021feec41c3ba691b279f98fe633c1514234339ace8377f18` | 1543 | - |
+| 40 | PHASE 3 | ADMIN | KredioLending | Claim strategy yield and inject to lending pool | External strategy yield distributed to lenders | PASS | `0xef103c2730edbcd8e90502e579d7a40c39c448c70e8ab2ade36b6e959227ba8a` | 0 | U1 pending: 392.4587 -> 397.2728, U2 pending: 294.344 -> 297.9546 |
+| 41 | PHASE 3 | USER1 | KredioLending | Harvest Lending yield (397.2728 mUSDC pending) | USER1 pending yield becomes near zero | PASS | `0x97652f94d792c81a175b8b5fea4085d37049fb1a104f52ecfb4c85dabd7ed045` | 23039 | remaining pending=0.00 mUSDC |
+| 42 | PHASE 3 | USER2 | KredioLending | Harvest Lending yield (297.9546 mUSDC pending) | USER2 pending yield becomes near zero | PASS | `0xf92d279126bd6f47c37339c8fe87c276e30a44dbd498513f24726a801831fc73` | 23039 | remaining pending=0.00 mUSDC |
+| 43 | PHASE 3 | USER1 | KredioLending | Withdraw full lending deposit (120,000.00 mUSDC) | USER1 principal withdrawn | PASS | `0x7ce8cbe8c0b9ca1ac9071692502acf26ed37dcbbba7262ffb3b1d02b0f8fb2b9` | 0 | remaining deposit=0.00 mUSDC |
+| 44 | PHASE 3 | USER2 | KredioLending | Withdraw full lending deposit (90,000.00 mUSDC) | USER2 principal withdrawn | PASS | `0x8fd3e12af59dac7cb94c2cf9b6de1fd70a1d1f8ae91d85ffd88810eeaa9e9d15` | 0 | remaining deposit=0.00 mUSDC |
+| 45 | PHASE 4 | ADMIN | KredioLending | Set lending tick back to 0 | Disable accelerated interest after simulation | PASS | `0x0a2b30b8c5e30f2910a62aeee8da7a05879035ddca134b5a944b8dda78fcbf9c` | 0 | - |
+| 46 | PHASE 4 | ADMIN | KredioPASMarket | Set PAS market tick back to 0 | Disable accelerated interest after simulation | PASS | `0x9c273eb992e19c744a4602801d01b53b932ba85a557c24acad5e643eb42776d0` | 0 | - |
+| 47 | PHASE 4 | ADMIN | KredioLending | Post-clean Lending (7 users) | Fresh lending state for next run | PASS | `0xa8973fc53680b10fb2b179fa17ac18f5abcd70a2e3b1578f12de0c5c28e9773e` | 0 | - |
+| 48 | PHASE 4 | ADMIN | KredioPASMarket | Post-clean PASMarket (7 users) | Fresh PAS market state for next run | PASS | `0x65ff01590f461810ab5210e2cfe0002aece29b7b0dffe6bf567b751711789d51` | 0 | - |
+
+## Post Simulation Snapshots
+
+### Lending
+
+- totalDeposited: 0.00 mUSDC
+- totalBorrowed: 0.00 mUSDC
+- investedAmount: 0.00 mUSDC
+- protocolFees: 0.00 mUSDC
+- utilizationRate: 0.00%
+
+### PAS Market
+
+- totalDeposited: 0.00 mUSDC
+- totalBorrowed: 0.00 mUSDC
+- protocolFees: 0.00 mUSDC
+- utilizationRate: 0.00%
+
+### Yield Pool
+
+- totalPrincipal: 494,995.7808 mUSDC
+- pendingForLending: 1.1986 mUSDC
+- yieldRateBps: 100000
+
+## Final User Balances
+
+| Account | Address | mUSDC | PAS |
+|---|---|---:|---:|
+| ADMIN | 0xe37a8983570B39F305fe93D565A29F89366f3fFe | 2,807,872.2473 | 16,018.4712 |
+| USER1 | 0x5EF0a87f578778Fc78cbFe318D3444D71Ff638da | 1,283,052.7335 | 1,999.5137 |
+| USER2 | 0x8fb792EdBbA0A3b4e83Fffe790a8F080FD9C46CE | 526,680.38 | 1,099.535 |
+| USER3 | 0x7B8428750F29381Ef4190a0a9F8c294ac123014e | 6,524,558.1212 | 1,097.5181 |
+| USER4 | 0x6bA56a179ff0C0E08B60EBe2a3f03141CEacE50F | 398,515.3819 | 1,077.6991 |
+| USER5 | 0x105952E94C36916757785C4F7f92DAf5f1cC99ad | 1,037,258.5014 | 1,000.00 |
+| USER6 | 0x863930353d628aA250fB98A4Eb2C1bAa649d5617 | 831,987.9142 | 1,999.8654 |
+
+## Failure Classification
+
+- PASS: Action executed and validation passed
+- EXPECTED_FAIL: Revert/failure that was intentionally expected
+- VERIFY_FAIL: Transaction mined but expected post-state was not reached
+- FAIL: Unexpected execution failure
+- UNEXPECTED_SUCCESS: Action was expected to fail but succeeded

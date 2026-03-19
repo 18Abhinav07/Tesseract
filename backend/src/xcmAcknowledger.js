@@ -16,7 +16,7 @@ const provider = new ethers.JsonRpcProvider(RPC_URL);
 const wallet = new ethers.Wallet(KEY, provider);
 
 const XCM_SETTLER_ADDRESS = process.env.XCM_SETTLER_ADDRESS
-    || '0xbaaE8f7b97ac387DE8C433A218d63166Ce104Bb1';
+    || '0xE0C102eCe5F6940D5CAF77B6980456F188974e52';
 
 const SETTLER_ABI = [
     // Phase 5 events

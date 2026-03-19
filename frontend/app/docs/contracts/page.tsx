@@ -31,15 +31,15 @@ export default function ContractsPage() {
                     </thead>
                     <tbody className="bg-slate-900/20">
                         {([
-                            ['KredioLending', '0x1eDaD1271FB9d1296939C6f4Fb762752b041C64E', 'mUSDC lending pool with credit-scored borrowing and yield routing'],
-                            ['KredioPASMarket', '0x0F90Fe6141AC29a6031C3ae2155749e9f38a0174', 'Native PAS collateral market; oracle-priced LTV and liquidation'],
+                            ['KredioLending', '0x61c6b46f5094f2867Dce66497391d0fd41796CEa', 'mUSDC lending pool with credit-scored borrowing and yield routing'],
+                            ['KredioPASMarket', '0x5617dBa1b13155fD6fD62f82ef6D9e8F0F3B0E86', 'Native PAS collateral market; oracle-priced LTV and liquidation'],
                             ['KredioSwap', '0xaF1d183F4550500Beb517A3249780290A88E6e39', 'Oracle-priced PAS → mUSDC swap with slippage guard'],
-                            ['KredioXCMSettler', '0xbaaE8f7b97ac387DE8C433A218d63166Ce104Bb1', 'XCM intent settlement engine; decodes and executes parachain Transact payloads'],
-                            ['KredioAccountRegistry', '0xBf7ac0e6f0024ED0F2Cf2efb3669E7c389258BFf', 'SR25519 Substrate key ↔ EVM address binding with on-chain verification'],
+                            ['KredioXCMSettler', '0xE0C102eCe5F6940D5CAF77B6980456F188974e52', 'XCM intent settlement engine; decodes and executes parachain Transact payloads'],
+                            ['KredioAccountRegistry', '0xe3603f70ACeBe6A7f3975cf3Edbd12EfeA78aDeA', 'SR25519 Substrate key ↔ EVM address binding with on-chain verification'],
                             ['GovernanceCache', '0xe4DE7eadE2c0A65BdA6863Ad7bA22416c77F3e55', 'On-chain OpenGov vote count and conviction cache (Phase 4 credit input)'],
                             ['PASOracle', '0x1494432a8Af6fa8c03C0d7DD7720E298D85C55c7', 'Chainlink AggregatorV3-compatible PAS/USD price feed'],
                             ['mUSDC', '0x5998cE005b4f3923c988Ae31940fAa1DEAC0c646', 'Protocol stablecoin; 6 decimals; public testnet faucet via mint()'],
-                            ['YieldPool', '0x1dB4Faad3081aAfe26eC0ef6886F04f28D944AAB', 'External yield destination for idle lending capital'],
+                            ['YieldPool', '0x12CEF08cb9D58357A170ee2fA70b3cE2c0419bd6', 'External yield destination for idle lending capital'],
                             ['KredioBridgeMinter', 'configured via MINTER_ADDR env', 'Hub-side ETH → mUSDC bridge minter; replay-protected by source tx hash'],
                             ['EthBridgeInbox (Sepolia)', 'configured via INBOX_ADDR env', 'Source-chain ETH deposit contract; emits EthDeposited trigger event'],
                         ] as [string, string, string][]).map(([name, addr, desc]) => (

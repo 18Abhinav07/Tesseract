@@ -388,15 +388,15 @@ Liquidation penalties: −20 pts (1 event), −35 pts (2), −55 pts (3+).
 
 | Contract | Address |
 |----------|---------|
-| KredioLending | `0x1eDaD1271FB9d1296939C6f4Fb762752b041C64E` |
-| KredioPASMarket | `0x0F90Fe6141AC29a6031C3ae2155749e9f38a0174` |
+| KredioLending | `0x61c6b46f5094f2867Dce66497391d0fd41796CEa` |
+| KredioPASMarket | `0x5617dBa1b13155fD6fD62f82ef6D9e8F0F3B0E86` |
 | KredioSwap | `0xaF1d183F4550500Beb517A3249780290A88E6e39` |
-| KredioXCMSettler | `0xbaaE8f7b97ac387DE8C433A218d63166Ce104Bb1` |
-| KredioAccountRegistry | `0xBf7ac0e6f0024ED0F2Cf2efb3669E7c389258BFf` |
+| KredioXCMSettler | `0xE0C102eCe5F6940D5CAF77B6980456F188974e52` |
+| KredioAccountRegistry | `0xe3603f70ACeBe6A7f3975cf3Edbd12EfeA78aDeA` |
 | PASOracle | `0x1494432a8Af6fa8c03C0d7DD7720E298D85C55c7` |
 | mUSDC | `0x5998cE005b4f3923c988Ae31940fAa1DEAC0c646` |
 | GovernanceCache | `0xe4DE7eadE2c0A65BdA6863Ad7bA22416c77F3e55` |
-| YieldPool | `0x1dB4Faad3081aAfe26eC0ef6886F04f28D944AAB` |
+| YieldPool | `0x12CEF08cb9D58357A170ee2fA70b3cE2c0419bd6` |
 | KredioBridgeMinter | Configured via `MINTER_ADDR` environment variable |
 | EthBridgeInbox (Sepolia) | Configured via `INBOX_ADDR_11155111` environment variable |
 

@@ -55,7 +55,7 @@ export default function IntroPage() {
                     <a href="https://blockscout-testnet.polkadot.io">blockscout-testnet.polkadot.io</a>
                     {' · '}
                     Primary lending contract:{' '}
-                    <code>0x1eDaD1271FB9d1296939C6f4Fb762752b041C64E</code>
+                    <code>0x61c6b46f5094f2867Dce66497391d0fd41796CEa</code>
                 </p>
             </div>
 

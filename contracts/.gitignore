@@ -6,6 +6,7 @@ cache/
 /broadcast/**/dry-run/
 
 # Env
+/out
 .env
 
 # Misc

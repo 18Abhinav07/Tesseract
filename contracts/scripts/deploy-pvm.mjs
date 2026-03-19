@@ -85,7 +85,7 @@ let envContent = '';
 for (const [key, val] of Object.entries(deployed)) {
     envContent += `\n${key}=${val}`;
 }
-envContent += `\nXCM_SETTLER_ADDRESS=0xbaaE8f7b97ac387DE8C433A218d63166Ce104Bb1`;
+envContent += `\nXCM_SETTLER_ADDRESS=0xE0C102eCe5F6940D5CAF77B6980456F188974e52`;
 appendFileSync(backendEnv, envContent + '\n');
 console.log('\nAppended to backend/.env:', envContent);
 

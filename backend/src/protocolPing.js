@@ -25,7 +25,7 @@ const KEY = process.env.KEY;
 
 // ─── Contract addresses (fixed per deployment) ───────────────────────────────
 const GOV_CACHE_ADDR = '0xe4DE7eadE2c0A65BdA6863Ad7bA22416c77F3e55';
-const ACCOUNT_REG_ADDR = '0xBf7ac0e6f0024ED0F2Cf2efb3669E7c389258BFf';
+const ACCOUNT_REG_ADDR = '0xe3603f70ACeBe6A7f3975cf3Edbd12EfeA78aDeA';
 const SWAP_ADDR = '0xaF1d183F4550500Beb517A3249780290A88E6e39';
 
 // ─── ABIs (minimal) ──────────────────────────────────────────────────────────

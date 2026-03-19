@@ -1,0 +1,381 @@
+{
+  "generatedAt": "2026-03-19T21:56:31.819Z",
+  "chain": {
+    "rpc": "https://eth-rpc-testnet.polkadot.io/",
+    "chainId": 420420417
+  },
+  "sourceReportMeta": {
+    "runAt": "2026-03-19T21:44:49.345Z",
+    "elapsed_s": 782.8,
+    "reportPath": "/Users/18abhinav07/Documents/Kredio/backend/test-report.json"
+  },
+  "summary": {
+    "failedSteps": 3,
+    "expectedFailuresIgnored": 1
+  },
+  "execution": {
+    "enabled": true,
+    "attempts": 2,
+    "txTimeoutMs": 120000
+  },
+  "results": [
+    {
+      "step": {
+        "step": 14,
+        "phase": "PHASE 2",
+        "actor": "ADMIN",
+        "action": "Seed Lending with 700000 mUSDC",
+        "contract": "KredioLending",
+        "params": "",
+        "expected": "Initial deep liquidity for simulation",
+        "expectedFailure": false,
+        "status": "FAIL",
+        "txHash": "0x59efe4168d9ba9c49790895fe302fcc92d447a5fb1ebdb0dea119ff8d23399bc",
+        "gasUsed": null,
+        "error": "tx 0x59efe4168d9ba9c49790895fe302fcc92d447a5fb1ebdb0dea119ff8d23399bc not mined within 180s",
+        "verification": null,
+        "observedBefore": null,
+        "observedAfter": null,
+        "durationMs": 185071
+      },
+      "txAnalysis": {
+        "txHash": "0x59efe4168d9ba9c49790895fe302fcc92d447a5fb1ebdb0dea119ff8d23399bc",
+        "foundInNode": false,
+        "receiptFound": false,
+        "tx": null,
+        "receipt": null,
+        "feeContext": {
+          "latestBaseFeeGwei": 1000,
+          "networkSuggestedMaxFeeGwei": 2000,
+          "networkSuggestedPriorityFeeGwei": 0
+        },
+        "nonceContext": null,
+        "likelyNetworkReason": "Tx hash not found now: likely dropped from mempool, replaced, or node no longer retains pending tx."
+      },
+      "useCase": {
+        "category": "similar-usecase/timeout-or-sendability",
+        "state": {
+          "reportObservedBefore": null,
+          "reportObservedAfter": null,
+          "adminMusdc": "2807872247296",
+          "adminMusdcFmt": "2,807,872.247296",
+          "allowanceToLending": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+          "allowanceToLendingFmt": "115,792,089,237,316,200,000,000,000,000,000,000,000,000,000,000,000,000,000,000,000,000,000,000",
+          "requestedAmount": "700000000000",
+          "requestedAmountFmt": "700,000"
+        },
+        "checks": [
+          {
+            "ok": true,
+            "label": "estimateGas deposit(requested)",
+            "gas": "106755",
+            "error": null
+          },
+          {
+            "ok": true,
+            "label": "staticCall deposit(requested)",
+            "error": null
+          },
+          {
+            "ok": true,
+            "label": "estimateGas deposit(1 mUSDC)",
+            "gas": "106755",
+            "error": null
+          },
+          {
+            "ok": true,
+            "label": "staticCall deposit(1 mUSDC)",
+            "error": null
+          }
+        ],
+        "inference": "If staticCall/estimateGas pass but original tx timed out, cause is likely mempool/inclusion delay instead of business-logic revert."
+      },
+      "execution": {
+        "enabled": true,
+        "attempts": 2,
+        "successCount": 0,
+        "failCount": 2,
+        "successRate": 0,
+        "recurrence": "consistently_failing",
+        "results": [
+          {
+            "attempt": 1,
+            "ok": false,
+            "txHash": null,
+            "error": "waitForReceiptWithTimeout is not defined",
+            "durationMs": 1754
+          },
+          {
+            "attempt": 2,
+            "ok": false,
+            "txHash": null,
+            "error": "could not coalesce error",
+            "durationMs": 1871
+          }
+        ],
+        "note": "Execution template based on similar-usecase/timeout-or-sendability"
+      },
+      "rootCause": "Likely dropped/replaced pending tx (not available in node now)."
+    },
+    {
+      "step": {
+        "step": 20,
+        "phase": "PHASE 3",
+        "actor": "ADMIN",
+        "action": "Invest idle 350,000.00 mUSDC into strategy",
+        "contract": "KredioLending",
+        "params": "",
+        "expected": "investedAmount increases and strategy accrues yield",
+        "expectedFailure": false,
+        "status": "FAIL",
+        "txHash": null,
+        "gasUsed": null,
+        "error": "execution reverted: \"not enough liquid capital\"",
+        "verification": null,
+        "observedBefore": {
+          "investedAmount": "60000000000",
+          "strategyPending": "0"
+        },
+        "observedAfter": null,
+        "durationMs": 4167
+      },
+      "txAnalysis": {
+        "txHash": null,
+        "reason": "No tx hash on failed step"
+      },
+      "useCase": {
+        "category": "similar-usecase/liquidity-constraint",
+        "state": {
+          "reportObservedBefore": {
+            "investedAmount": "60000000000",
+            "strategyPending": "0"
+          },
+          "reportObservedAfter": null,
+          "totalDeposited": "0",
+          "totalDepositedFmt": "0",
+          "totalBorrowed": "0",
+          "totalBorrowedFmt": "0",
+          "investedAmount": "0",
+          "investedAmountFmt": "0",
+          "pendingStrategyYield": "1198630",
+          "pendingStrategyYieldFmt": "1.19863",
+          "lendingMusdcBalance": "0",
+          "lendingMusdcBalanceFmt": "0",
+          "strategyInvestRatio": "5000",
+          "strategyMinBuffer": "2000",
+          "requestedAmount": "350000000000",
+          "requestedAmountFmt": "350,000",
+          "discoveredMaxInvestable": "0",
+          "discoveredMaxInvestableFmt": "0",
+          "probeResults": [
+            {
+              "amount": "350000000000",
+              "amountFmt": "350,000",
+              "ok": false,
+              "error": "execution reverted: \"not enough liquid capital\""
+            },
+            {
+              "amount": "1000000000000",
+              "amountFmt": "1,000,000",
+              "ok": false,
+              "error": "execution reverted: \"not enough liquid capital\""
+            },
+            {
+              "amount": "750000000000",
+              "amountFmt": "750,000",
+              "ok": false,
+              "error": "execution reverted: \"not enough liquid capital\""
+            },
+            {
+              "amount": "500000000000",
+              "amountFmt": "500,000",
+              "ok": false,
+              "error": "execution reverted: \"not enough liquid capital\""
+            },
+            {
+              "amount": "333333333333",
+              "amountFmt": "333,333.333333",
+              "ok": false,
+              "error": "execution reverted: \"not enough liquid capital\""
+            },
+            {
+              "amount": "250000000000",
+              "amountFmt": "250,000",
+              "ok": false,
+              "error": "execution reverted: \"not enough liquid capital\""
+            },
+            {
+              "amount": "125000000000",
+              "amountFmt": "125,000",
+              "ok": false,
+              "error": "execution reverted: \"not enough liquid capital\""
+            },
+            {
+              "amount": "62500000000",
+              "amountFmt": "62,500",
+              "ok": false,
+              "error": "execution reverted: \"not enough liquid capital\""
+            },
+            {
+              "amount": "1000000000",
+              "amountFmt": "1,000",
+              "ok": false,
+              "error": "execution reverted: \"not enough liquid capital\""
+            },
+            {
+              "amount": "100000000",
+              "amountFmt": "100",
+              "ok": false,
+              "error": "execution reverted: \"not enough liquid capital\""
+            },
+            {
+              "amount": "1000000",
+              "amountFmt": "1",
+              "ok": false,
+              "error": "execution reverted: \"not enough liquid capital\""
+            }
+          ]
+        },
+        "checks": [
+          {
+            "ok": false,
+            "label": "estimateGas adminInvest(requested)",
+            "gas": null,
+            "error": "execution reverted: \"not enough liquid capital\""
+          },
+          {
+            "ok": false,
+            "label": "staticCall adminInvest(requested)",
+            "error": "execution reverted: \"not enough liquid capital\""
+          },
+          {
+            "ok": false,
+            "label": "staticCall adminInvest(maxInvestable)",
+            "error": "execution reverted: \"zero amt\""
+          },
+          {
+            "ok": false,
+            "label": "staticCall adminInvest(maxInvestable + 1)",
+            "error": "execution reverted: \"not enough liquid capital\""
+          }
+        ],
+        "inference": "Requested invest amount exceeded live investable liquidity constraints at execution time."
+      },
+      "execution": {
+        "enabled": true,
+        "attempts": 2,
+        "successCount": 0,
+        "failCount": 2,
+        "successRate": 0,
+        "recurrence": "consistently_failing",
+        "results": [
+          {
+            "attempt": 1,
+            "ok": false,
+            "txHash": null,
+            "error": "execution reverted: \"not enough liquid capital\"",
+            "durationMs": 618
+          },
+          {
+            "attempt": 2,
+            "ok": false,
+            "txHash": null,
+            "error": "execution reverted: \"would breach min buffer\"",
+            "durationMs": 543
+          }
+        ],
+        "note": "Execution template based on similar-usecase/liquidity-constraint"
+      },
+      "rootCause": "Liquidity constraint revert: requested invest exceeded max investable (~0 mUSDC) at check time."
+    },
+    {
+      "step": {
+        "step": 36,
+        "phase": "PHASE 3",
+        "actor": "ADMIN",
+        "action": "Crash oracle price to 52320000 for liquidation test",
+        "contract": "MockPASOracle",
+        "params": "",
+        "expected": "Collateral value drops sharply, risky position becomes liquidatable",
+        "expectedFailure": false,
+        "status": "FAIL",
+        "txHash": "0x67ddbb282b71defd32c4d4e81e2ed5d51c6b47f7cade4eecf48de3ff83eac0cb",
+        "gasUsed": null,
+        "error": "tx 0x67ddbb282b71defd32c4d4e81e2ed5d51c6b47f7cade4eecf48de3ff83eac0cb not mined within 180s",
+        "verification": null,
+        "observedBefore": null,
+        "observedAfter": null,
+        "durationMs": 185162
+      },
+      "txAnalysis": {
+        "txHash": "0x67ddbb282b71defd32c4d4e81e2ed5d51c6b47f7cade4eecf48de3ff83eac0cb",
+        "foundInNode": false,
+        "receiptFound": false,
+        "tx": null,
+        "receipt": null,
+        "feeContext": {
+          "latestBaseFeeGwei": 1000,
+          "networkSuggestedMaxFeeGwei": 2000,
+          "networkSuggestedPriorityFeeGwei": 0
+        },
+        "nonceContext": null,
+        "likelyNetworkReason": "Tx hash not found now: likely dropped from mempool, replaced, or node no longer retains pending tx."
+      },
+      "useCase": {
+        "category": "similar-usecase/oracle-update-timeout",
+        "state": {
+          "reportObservedBefore": null,
+          "reportObservedAfter": null,
+          "currentOraclePrice": "627840000",
+          "targetCrashPrice": "52320000",
+          "crashedFlag": false
+        },
+        "checks": [
+          {
+            "ok": true,
+            "label": "estimateGas setPrice(targetCrash)",
+            "gas": "1602",
+            "error": null
+          },
+          {
+            "ok": true,
+            "label": "staticCall setPrice(targetCrash)",
+            "error": null
+          },
+          {
+            "ok": true,
+            "label": "staticCall setPrice(currentPrice)",
+            "error": null
+          }
+        ],
+        "inference": "If staticCall/estimateGas pass while tx timed out, likely network/mempool delay; if they fail, analyze signer permissions or oracle guards."
+      },
+      "execution": {
+        "enabled": true,
+        "attempts": 2,
+        "successCount": 0,
+        "failCount": 2,
+        "successRate": 0,
+        "recurrence": "consistently_failing",
+        "results": [
+          {
+            "attempt": 1,
+            "ok": false,
+            "txHash": null,
+            "error": "waitForReceiptWithTimeout is not defined",
+            "durationMs": 1938
+          },
+          {
+            "attempt": 2,
+            "ok": false,
+            "txHash": null,
+            "error": "could not coalesce error",
+            "durationMs": 2062
+          }
+        ],
+        "note": "Execution template based on similar-usecase/oracle-update-timeout"
+      },
+      "rootCause": "Likely dropped/replaced pending tx (not available in node now)."
+    }
+  ]
+}

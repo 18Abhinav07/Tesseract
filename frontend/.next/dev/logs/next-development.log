@@ -1,0 +1,403 @@
+[00:00:00.748] Server  LOG     ✓ Ready in 574ms
+[00:00:15.905] Server  ERROR   Unsupported style property @media (min-width: 768px). Did you mean @media (minWidth: 768px)?
+[00:00:16.292] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:00:27.694] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[00:04:25.977] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:04:26.122] Browser ERROR   uncaughtError: Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <InnerScrollAndFocusHandler segmentPath={[...]} focusAndScrollRef={{apply:false, ...}}>
+      <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+        <LoadingBoundary name="dashboard/" loading={null}>
+          <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+            <RedirectBoundary>
+              <RedirectErrorBoundary router={{...}}>
+                <InnerLayoutRouter url="/dashboard/" tree={[...]} params={{}} cacheNode={{rsc:<Fragment>, ...}} ...>
+                  <SegmentViewNode type="page" pagePath="dashboard/...">
+                    <SegmentTrieNode>
+                    <ClientPageRoot Component={function DashboardPage} serverProvidedParams={{...}}>
+                      <DashboardPage params={Promise} searchParams={Promise}>
+                        <PageShell title="Dashboard" subtitle="Active pos...">
+                          <div className="w-full max...">
+                            <div>
+                            <div
++                             className="mt-8 flex flex-col gap-10 w-full mb-12"
+-                             className="rounded-3xl border border-white/10 bg-white/[0.02] backdrop-blur-2xl px-6 py-..."
+                            >
++                             <div className="flex justify-end pb-2">
+-                             <p className="text-white text-base font-bold">
+                              ...
+                  ...
+                ...
+      ...
+
+[00:04:40.086] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:04:40.215] Browser ERROR   uncaughtError: Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <InnerScrollAndFocusHandler segmentPath={[...]} focusAndScrollRef={{apply:false, ...}}>
+      <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+        <LoadingBoundary name="dashboard/" loading={null}>
+          <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+            <RedirectBoundary>
+              <RedirectErrorBoundary router={{...}}>
+                <InnerLayoutRouter url="/dashboard/" tree={[...]} params={{}} cacheNode={{rsc:<Fragment>, ...}} ...>
+                  <SegmentViewNode type="page" pagePath="dashboard/...">
+                    <SegmentTrieNode>
+                    <ClientPageRoot Component={function DashboardPage} serverProvidedParams={{...}}>
+                      <DashboardPage params={Promise} searchParams={Promise}>
+                        <PageShell title="Dashboard" subtitle="Active pos...">
+                          <div className="w-full max...">
+                            <div>
+                            <div
++                             className="mt-8 flex flex-col gap-10 w-full mb-12"
+-                             className="rounded-3xl border border-white/10 bg-white/[0.02] backdrop-blur-2xl px-6 py-..."
+                            >
++                             <div className="flex justify-end pb-2">
+-                             <p className="text-white text-base font-bold">
+                              ...
+                  ...
+                ...
+      ...
+
+[00:04:56.870] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:04:57.000] Browser ERROR   uncaughtError: Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <InnerScrollAndFocusHandler segmentPath={[...]} focusAndScrollRef={{apply:false, ...}}>
+      <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+        <LoadingBoundary name="dashboard/" loading={null}>
+          <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+            <RedirectBoundary>
+              <RedirectErrorBoundary router={{...}}>
+                <InnerLayoutRouter url="/dashboard/" tree={[...]} params={{}} cacheNode={{rsc:<Fragment>, ...}} ...>
+                  <SegmentViewNode type="page" pagePath="dashboard/...">
+                    <SegmentTrieNode>
+                    <ClientPageRoot Component={function DashboardPage} serverProvidedParams={{...}}>
+                      <DashboardPage params={Promise} searchParams={Promise}>
+                        <PageShell title="Dashboard" subtitle="Active pos...">
+                          <div className="w-full max...">
+                            <div>
+                            <div
++                             className="mt-8 flex flex-col gap-10 w-full mb-12"
+-                             className="rounded-3xl border border-white/10 bg-white/[0.02] backdrop-blur-2xl px-6 py-..."
+                            >
++                             <div className="flex justify-end pb-2">
+-                             <p className="text-white text-base font-bold">
+                              ...
+                  ...
+                ...
+      ...
+
+[00:08:46.686] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:08:46.813] Browser ERROR   uncaughtError: Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <InnerScrollAndFocusHandler segmentPath={[...]} focusAndScrollRef={{apply:false, ...}}>
+      <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+        <LoadingBoundary name="dashboard/" loading={null}>
+          <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+            <RedirectBoundary>
+              <RedirectErrorBoundary router={{...}}>
+                <InnerLayoutRouter url="/dashboard/" tree={[...]} params={{}} cacheNode={{rsc:<Fragment>, ...}} ...>
+                  <SegmentViewNode type="page" pagePath="dashboard/...">
+                    <SegmentTrieNode>
+                    <ClientPageRoot Component={function DashboardPage} serverProvidedParams={{...}}>
+                      <DashboardPage params={Promise} searchParams={Promise}>
+                        <PageShell title="Dashboard" subtitle="Active pos...">
+                          <div className="w-full max...">
+                            <div>
+                            <div
++                             className="mt-8 flex flex-col gap-10 w-full mb-12"
+-                             className="rounded-3xl border border-white/10 bg-white/[0.02] backdrop-blur-2xl px-6 py-..."
+                            >
++                             <div className="flex justify-end pb-2">
+-                             <p className="text-white text-base font-bold">
+                              ...
+                  ...
+                ...
+      ...
+
+[00:10:01.938] Server  LOG     ✓ Compiled in 396ms
+[00:16:44.699] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:16:44.841] Browser ERROR   uncaughtError: Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <InnerScrollAndFocusHandler segmentPath={[...]} focusAndScrollRef={{apply:false, ...}}>
+      <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+        <LoadingBoundary name="dashboard/" loading={null}>
+          <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+            <RedirectBoundary>
+              <RedirectErrorBoundary router={{...}}>
+                <InnerLayoutRouter url="/dashboard/" tree={[...]} params={{}} cacheNode={{rsc:<Fragment>, ...}} ...>
+                  <SegmentViewNode type="page" pagePath="dashboard/...">
+                    <SegmentTrieNode>
+                    <ClientPageRoot Component={function DashboardPage} serverProvidedParams={{...}}>
+                      <DashboardPage params={Promise} searchParams={Promise}>
+                        <PageShell title="Dashboard" subtitle="Active pos...">
+                          <div className="w-full max...">
+                            <div>
+                            <div
++                             className="mt-8 flex flex-col gap-10 w-full mb-12"
+-                             className="rounded-3xl border border-white/10 bg-white/[0.02] backdrop-blur-2xl px-6 py-..."
+                            >
++                             <div className="flex justify-end pb-2">
+-                             <p className="text-white text-base font-bold">
+                              ...
+                  ...
+                ...
+      ...
+
+[00:18:09.102] Server  LOG     ✓ Compiled in 228ms
+[00:18:52.508] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:18:52.665] Browser ERROR   uncaughtError: Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <InnerScrollAndFocusHandler segmentPath={[...]} focusAndScrollRef={{apply:false, ...}}>
+      <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+        <LoadingBoundary name="dashboard/" loading={null}>
+          <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+            <RedirectBoundary>
+              <RedirectErrorBoundary router={{...}}>
+                <InnerLayoutRouter url="/dashboard/" tree={[...]} params={{}} cacheNode={{rsc:<Fragment>, ...}} ...>
+                  <SegmentViewNode type="page" pagePath="dashboard/...">
+                    <SegmentTrieNode>
+                    <ClientPageRoot Component={function DashboardPage} serverProvidedParams={{...}}>
+                      <DashboardPage params={Promise} searchParams={Promise}>
+                        <PageShell title="Dashboard" subtitle="Active pos...">
+                          <div className="w-full max...">
+                            <div>
+                            <div
++                             className="mt-8 flex flex-col gap-10 w-full mb-12"
+-                             className="rounded-3xl border border-white/10 bg-white/[0.02] backdrop-blur-2xl px-6 py-..."
+                            >
++                             <div className="flex justify-end pb-2">
+-                             <p className="text-white text-base font-bold">
+                              ...
+                  ...
+                ...
+      ...
+
+[00:19:35.401] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:19:35.540] Browser ERROR   uncaughtError: Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <InnerScrollAndFocusHandler segmentPath={[...]} focusAndScrollRef={{apply:false, ...}}>
+      <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+        <LoadingBoundary name="dashboard/" loading={null}>
+          <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+            <RedirectBoundary>
+              <RedirectErrorBoundary router={{...}}>
+                <InnerLayoutRouter url="/dashboard/" tree={[...]} params={{}} cacheNode={{rsc:<Fragment>, ...}} ...>
+                  <SegmentViewNode type="page" pagePath="dashboard/...">
+                    <SegmentTrieNode>
+                    <ClientPageRoot Component={function DashboardPage} serverProvidedParams={{...}}>
+                      <DashboardPage params={Promise} searchParams={Promise}>
+                        <PageShell title="Dashboard" subtitle="Active pos...">
+                          <div className="w-full max...">
+                            <div>
+                            <div
++                             className="mt-8 flex flex-col gap-10 w-full mb-12"
+-                             className="rounded-3xl border border-white/10 bg-white/[0.02] backdrop-blur-2xl px-6 py-..."
+                            >
++                             <div className="flex justify-end pb-2">
+-                             <p className="text-white text-base font-bold">
+                              ...
+                  ...
+                ...
+      ...
+
+[00:19:42.748] Server  LOG       Reload env: .env.local
+[00:19:48.489] Browser ERROR   Unsupported style property %s. Did you mean %s? @media (min-width: 768px) @media (minWidth: 768px)
+[00:28:57.174] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:28:58.829] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[00:33:04.442] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:33:04.616] Browser ERROR   uncaughtError: Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <InnerScrollAndFocusHandler segmentPath={[...]} focusAndScrollRef={{apply:false, ...}}>
+      <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+        <LoadingBoundary name="dashboard/" loading={null}>
+          <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+            <RedirectBoundary>
+              <RedirectErrorBoundary router={{...}}>
+                <InnerLayoutRouter url="/dashboard/" tree={[...]} params={{}} cacheNode={{rsc:<Fragment>, ...}} ...>
+                  <SegmentViewNode type="page" pagePath="dashboard/...">
+                    <SegmentTrieNode>
+                    <ClientPageRoot Component={function DashboardPage} serverProvidedParams={{...}}>
+                      <DashboardPage params={Promise} searchParams={Promise}>
+                        <PageShell title="Dashboard" subtitle="Active pos...">
+                          <div className="w-full max...">
+                            <div>
+                            <div
++                             className="mt-8 flex flex-col gap-10 w-full mb-12"
+-                             className="rounded-3xl border border-white/10 bg-white/[0.02] backdrop-blur-2xl px-6 py-..."
+                            >
++                             <div className="flex justify-end pb-2">
+-                             <p className="text-white text-base font-bold">
+                              ...
+                  ...
+                ...
+      ...
+
+[01:04:27.416] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[01:04:27.610] Browser ERROR   uncaughtError: Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <InnerScrollAndFocusHandler segmentPath={[...]} focusAndScrollRef={{apply:false, ...}}>
+      <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+        <LoadingBoundary name="dashboard/" loading={null}>
+          <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+            <RedirectBoundary>
+              <RedirectErrorBoundary router={{...}}>
+                <InnerLayoutRouter url="/dashboard/" tree={[...]} params={{}} cacheNode={{rsc:<Fragment>, ...}} ...>
+                  <SegmentViewNode type="page" pagePath="dashboard/...">
+                    <SegmentTrieNode>
+                    <ClientPageRoot Component={function DashboardPage} serverProvidedParams={{...}}>
+                      <DashboardPage params={Promise} searchParams={Promise}>
+                        <PageShell title="Dashboard" subtitle="Active pos...">
+                          <div className="w-full max...">
+                            <div>
+                            <div
++                             className="mt-8 flex flex-col gap-10 w-full mb-12"
+-                             className="rounded-3xl border border-white/10 bg-white/[0.02] backdrop-blur-2xl px-6 py-..."
+                            >
++                             <div className="flex justify-end pb-2">
+-                             <p className="text-white text-base font-bold">
+                              ...
+                  ...
+                ...
+      ...
+
+[01:48:09.908] Server  LOG     ✓ Compiled in 47ms
+[01:48:43.111] Server  LOG     ✓ Compiled in 83ms
+[01:48:55.497] Server  LOG     ✓ Compiled in 86ms
+[02:36:32.406] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:36:32.599] Browser ERROR   uncaughtError: Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <InnerScrollAndFocusHandler segmentPath={[...]} focusAndScrollRef={{apply:false, ...}}>
+      <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+        <LoadingBoundary name="dashboard/" loading={null}>
+          <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+            <RedirectBoundary>
+              <RedirectErrorBoundary router={{...}}>
+                <InnerLayoutRouter url="/dashboard/" tree={[...]} params={{}} cacheNode={{rsc:<Fragment>, ...}} ...>
+                  <SegmentViewNode type="page" pagePath="dashboard/...">
+                    <SegmentTrieNode>
+                    <ClientPageRoot Component={function DashboardPage} serverProvidedParams={{...}}>
+                      <DashboardPage params={Promise} searchParams={Promise}>
+                        <PageShell title="Dashboard" subtitle="Active pos...">
+                          <div className="w-full max...">
+                            <div>
+                            <div
++                             className="mt-8 flex flex-col gap-10 w-full mb-12"
+-                             className="rounded-3xl border border-white/10 bg-white/[0.02] backdrop-blur-2xl px-6 py-..."
+                            >
++                             <div className="flex justify-end pb-2">
+-                             <p className="text-white text-base font-bold">
+                              ...
+                  ...
+                ...
+      ...
+

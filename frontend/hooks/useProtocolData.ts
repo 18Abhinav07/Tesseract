@@ -498,3 +498,127 @@ export function useLendingHistory() {
 
     return { history, loading, refresh };
 }
+
+export type BorrowHistoryEntry = {
+    type: 'borrow' | 'repay' | 'liquidate';
+    market: 'USDC Market' | 'PAS Market';
+    amount: bigint;
+    collateralSeized: bigint;
+    blockNumber: bigint;
+    txHash: string;
+    liquidator: string;
+};
+
+export function useBorrowHistory() {
+    const publicClient = usePublicClient();
+    const { address } = useAccount();
+    const [history, setHistory] = React.useState<BorrowHistoryEntry[]>([]);
+    const [loading, setLoading] = React.useState(false);
+
+    const refresh = React.useCallback(async () => {
+        if (!publicClient || !address) return;
+        setLoading(true);
+        try {
+            const addrLower = address.toLowerCase();
+
+            const [borrowedL, repaidL, liquidatedL, borrowedP, repaidP, liquidatedP] = await Promise.all([
+                publicClient.getLogs({ address: config.lending, event: parseAbiItem('event Borrowed(address indexed user, uint256 amount, uint8 tier, uint32 ratioBps)'), fromBlock: DEPLOY_BLOCK }),
+                publicClient.getLogs({ address: config.lending, event: parseAbiItem('event Repaid(address indexed user, uint256 principal, uint256 interest)'), fromBlock: DEPLOY_BLOCK }),
+                publicClient.getLogs({ address: config.lending, event: parseAbiItem('event Liquidated(address indexed borrower, address indexed liquidator)'), fromBlock: DEPLOY_BLOCK }),
+                publicClient.getLogs({ address: config.pasMarket, event: parseAbiItem('event Borrowed(address indexed borrower, uint256 usdcAmount)'), fromBlock: DEPLOY_BLOCK }),
+                publicClient.getLogs({ address: config.pasMarket, event: parseAbiItem('event Repaid(address indexed borrower, uint256 totalOwed)'), fromBlock: DEPLOY_BLOCK }),
+                publicClient.getLogs({ address: config.pasMarket, event: parseAbiItem('event Liquidated(address indexed borrower, address indexed liquidator, uint256 pasSeized, uint256 usdcRepaid)'), fromBlock: DEPLOY_BLOCK }),
+            ]);
+
+            const entries: BorrowHistoryEntry[] = [];
+
+            for (const log of borrowedL) {
+                if ((log.args as any).user?.toLowerCase() !== addrLower) continue;
+                entries.push({
+                    type: 'borrow',
+                    market: 'USDC Market',
+                    amount: (log.args as any).amount ?? 0n,
+                    collateralSeized: 0n,
+                    blockNumber: log.blockNumber ?? 0n,
+                    txHash: log.transactionHash ?? '',
+                    liquidator: '',
+                });
+            }
+            for (const log of repaidL) {
+                if ((log.args as any).user?.toLowerCase() !== addrLower) continue;
+                const principal = (log.args as any).principal ?? 0n;
+                const interest = (log.args as any).interest ?? 0n;
+                entries.push({
+                    type: 'repay',
+                    market: 'USDC Market',
+                    amount: principal + interest,
+                    collateralSeized: 0n,
+                    blockNumber: log.blockNumber ?? 0n,
+                    txHash: log.transactionHash ?? '',
+                    liquidator: '',
+                });
+            }
+            for (const log of liquidatedL) {
+                if ((log.args as any).borrower?.toLowerCase() !== addrLower) continue;
+                entries.push({
+                    type: 'liquidate',
+                    market: 'USDC Market',
+                    amount: 0n,
+                    collateralSeized: 0n,
+                    blockNumber: log.blockNumber ?? 0n,
+                    txHash: log.transactionHash ?? '',
+                    liquidator: (log.args as any).liquidator ?? '',
+                });
+            }
+            for (const log of borrowedP) {
+                if ((log.args as any).borrower?.toLowerCase() !== addrLower) continue;
+                entries.push({
+                    type: 'borrow',
+                    market: 'PAS Market',
+                    amount: (log.args as any).usdcAmount ?? 0n,
+                    collateralSeized: 0n,
+                    blockNumber: log.blockNumber ?? 0n,
+                    txHash: log.transactionHash ?? '',
+                    liquidator: '',
+                });
+            }
+            for (const log of repaidP) {
+                if ((log.args as any).borrower?.toLowerCase() !== addrLower) continue;
+                entries.push({
+                    type: 'repay',
+                    market: 'PAS Market',
+                    amount: (log.args as any).totalOwed ?? 0n,
+                    collateralSeized: 0n,
+                    blockNumber: log.blockNumber ?? 0n,
+                    txHash: log.transactionHash ?? '',
+                    liquidator: '',
+                });
+            }
+            for (const log of liquidatedP) {
+                if ((log.args as any).borrower?.toLowerCase() !== addrLower) continue;
+                entries.push({
+                    type: 'liquidate',
+                    market: 'PAS Market',
+                    amount: (log.args as any).usdcRepaid ?? 0n,
+                    collateralSeized: (log.args as any).pasSeized ?? 0n,
+                    blockNumber: log.blockNumber ?? 0n,
+                    txHash: log.transactionHash ?? '',
+                    liquidator: (log.args as any).liquidator ?? '',
+                });
+            }
+
+            entries.sort((a, b) => (b.blockNumber > a.blockNumber ? 1 : -1));
+            setHistory(entries.slice(0, 100));
+        } catch (err) {
+            console.error('useBorrowHistory:', err);
+        } finally {
+            setLoading(false);
+        }
+    }, [publicClient, address]);
+
+    React.useEffect(() => {
+        if (address) refresh();
+    }, [address, refresh]);
+
+    return { history, loading, refresh };
+}

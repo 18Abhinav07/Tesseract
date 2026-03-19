@@ -51,7 +51,7 @@ export default function ProductsPage() {
                 </p>
             </div>
             <p className="text-sm text-slate-400">
-                <strong>Contract:</strong> <code>0x1eDaD1271FB9d1296939C6f4Fb762752b041C64E</code> &middot; Asset Hub EVM
+                <strong>Contract:</strong> <code>0x61c6b46f5094f2867Dce66497391d0fd41796CEa</code> &middot; Asset Hub EVM
             </p>
 
             <hr className="my-10 border-slate-800" />
@@ -70,7 +70,7 @@ export default function ProductsPage() {
                 <li>Admin-configurable risk parameters: <code>ltvBps</code>, <code>liqBonusBps</code>, and <code>protocolFeeBps</code> (capped at 20% by contract)</li>
             </ul>
             <p className="text-sm text-slate-400">
-                <strong>Contract:</strong> <code>0x0F90Fe6141AC29a6031C3ae2155749e9f38a0174</code> &middot; Asset Hub EVM
+                <strong>Contract:</strong> <code>0x5617dBa1b13155fD6fD62f82ef6D9e8F0F3B0E86</code> &middot; Asset Hub EVM
             </p>
 
             <hr className="my-10 border-slate-800" />
@@ -177,7 +177,7 @@ export default function ProductsPage() {
                 acknowledged - forming a complete and auditable lifecycle visible on Blockscout.
             </p>
             <p className="text-sm text-slate-400">
-                <strong>Contract:</strong> <code>0xbaaE8f7b97ac387DE8C433A218d63166Ce104Bb1</code> &middot; Asset Hub EVM
+                <strong>Contract:</strong> <code>0xE0C102eCe5F6940D5CAF77B6980456F188974e52</code> &middot; Asset Hub EVM
             </p>
         </div>
     );

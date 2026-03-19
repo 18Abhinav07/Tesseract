@@ -16,7 +16,7 @@ DeFi lending treats every participant identically. A veteran with twelve repayme
 A tamper-proof ink! smart contract scores every borrower from on-chain history alone - repayments, volume, and tenure. Your score unlocks lower collateral requirements and lower interest rates. Earn better terms through behaviour, not through identity.
 
 > **Live on Polkadot Asset Hub Paseo Testnet** · Chain ID `420420417`  
-> Verify on-chain: [`0x1eDaD1271...`](https://blockscout-testnet.polkadot.io/address/0x1eDaD1271FB9d1296939C6f4Fb762752b041C64E) · Explorer: [blockscout-testnet.polkadot.io](https://blockscout-testnet.polkadot.io)
+> Verify on-chain: [`0x1eDaD1271...`](https://blockscout-testnet.polkadot.io/address/0x61c6b46f5094f2867Dce66497391d0fd41796CEa) · Explorer: [blockscout-testnet.polkadot.io](https://blockscout-testnet.polkadot.io)
 
 ---
 
@@ -194,7 +194,7 @@ Two contracts, one flow:
 
 ## XCM Intent Settlement
 
-Live on testnet - any parachain with XCM Transact capability can submit intents to [`0xbaaE8f7b97ac387DE8C433A218d63166Ce104Bb1`](https://blockscout-testnet.polkadot.io/address/0xbaaE8f7b97ac387DE8C433A218d63166Ce104Bb1) today.
+Live on testnet - any parachain with XCM Transact capability can submit intents to [`0xE0C102eCe5F6940D5CAF77B6980456F188974e52`](https://blockscout-testnet.polkadot.io/address/0xE0C102eCe5F6940D5CAF77B6980456F188974e52) today.
 
 `KredioXCMSettler` decodes compact encoded intent payloads from any connected parachain and executes them inside the Kredio protocol. The call lands in the same block as the XCM, with full ACID guarantees.
 
@@ -288,16 +288,16 @@ flowchart TD
 
 | Contract | Address |
 |----------|---------|
-| KredioLending | [`0x1eDaD1271FB9d1296939C6f4Fb762752b041C64E`](https://blockscout-testnet.polkadot.io/address/0x1eDaD1271FB9d1296939C6f4Fb762752b041C64E) |
-| KredioPASMarket | [`0x0F90Fe6141AC29a6031C3ae2155749e9f38a0174`](https://blockscout-testnet.polkadot.io/address/0x0F90Fe6141AC29a6031C3ae2155749e9f38a0174) |
-| KredioXCMSettler | [`0xbaaE8f7b97ac387DE8C433A218d63166Ce104Bb1`](https://blockscout-testnet.polkadot.io/address/0xbaaE8f7b97ac387DE8C433A218d63166Ce104Bb1) |
-| KredioAccountRegistry | [`0xBf7ac0e6f0024ED0F2Cf2efb3669E7c389258BFf`](https://blockscout-testnet.polkadot.io/address/0xBf7ac0e6f0024ED0F2Cf2efb3669E7c389258BFf) |
+| KredioLending | [`0x61c6b46f5094f2867Dce66497391d0fd41796CEa`](https://blockscout-testnet.polkadot.io/address/0x61c6b46f5094f2867Dce66497391d0fd41796CEa) |
+| KredioPASMarket | [`0x5617dBa1b13155fD6fD62f82ef6D9e8F0F3B0E86`](https://blockscout-testnet.polkadot.io/address/0x5617dBa1b13155fD6fD62f82ef6D9e8F0F3B0E86) |
+| KredioXCMSettler | [`0xE0C102eCe5F6940D5CAF77B6980456F188974e52`](https://blockscout-testnet.polkadot.io/address/0xE0C102eCe5F6940D5CAF77B6980456F188974e52) |
+| KredioAccountRegistry | [`0xe3603f70ACeBe6A7f3975cf3Edbd12EfeA78aDeA`](https://blockscout-testnet.polkadot.io/address/0xe3603f70ACeBe6A7f3975cf3Edbd12EfeA78aDeA) |
 | KredioSwap | [`0xaF1d183F4550500Beb517A3249780290A88E6e39`](https://blockscout-testnet.polkadot.io/address/0xaF1d183F4550500Beb517A3249780290A88E6e39) |
 | KreditAgent (ink!) | [`0x8c13E6fFDf27bB51304Efff108C9B646d148E5F3`](https://blockscout-testnet.polkadot.io/address/0x8c13E6fFDf27bB51304Efff108C9B646d148E5F3) |
 | PAS/USD Oracle | [`0x1494432a8Af6fa8c03C0d7DD7720E298D85C55c7`](https://blockscout-testnet.polkadot.io/address/0x1494432a8Af6fa8c03C0d7DD7720E298D85C55c7) |
 | USD Coin (mUSDC) | [`0x5998cE005b4f3923c988Ae31940fAa1DEAC0c646`](https://blockscout-testnet.polkadot.io/address/0x5998cE005b4f3923c988Ae31940fAa1DEAC0c646) |
 | GovernanceCache | [`0xe4DE7eadE2c0A65BdA6863Ad7bA22416c77F3e55`](https://blockscout-testnet.polkadot.io/address/0xe4DE7eadE2c0A65BdA6863Ad7bA22416c77F3e55) |
-| YieldPool | [`0x1dB4Faad3081aAfe26eC0ef6886F04f28D944AAB`](https://blockscout-testnet.polkadot.io/address/0x1dB4Faad3081aAfe26eC0ef6886F04f28D944AAB) |
+| YieldPool | [`0x12CEF08cb9D58357A170ee2fA70b3cE2c0419bd6`](https://blockscout-testnet.polkadot.io/address/0x12CEF08cb9D58357A170ee2fA70b3cE2c0419bd6) |
 | NeuralScorer (PVM) | [`0xac6bd3ff3447d8d1689dd4f02899ff558f108e0d`](https://blockscout-testnet.polkadot.io/address/0xac6bd3ff3447d8d1689dd4f02899ff558f108e0d) |
 | RiskAssessor (PVM) | [`0xdB9E48932E061D95E22370235ac3a35332d289f7`](https://blockscout-testnet.polkadot.io/address/0xdB9E48932E061D95E22370235ac3a35332d289f7) |
 | YieldMind (PVM) | [`0x0b68fbfb596846e4f3a23da10365e0888a182ef3`](https://blockscout-testnet.polkadot.io/address/0x0b68fbfb596846e4f3a23da10365e0888a182ef3) |

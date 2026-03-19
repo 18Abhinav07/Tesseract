@@ -80,6 +80,7 @@ contract KredioPASMarket is Ownable, ReentrancyGuard, Pausable {
     event UserScoreReset(address indexed user);
     event PoolTicked(uint256 totalInterestDistributed);
     event HardReset(address indexed to, uint256 usdcSwept);
+    event ContractCleaned(address indexed to, uint256 usdcSwept, uint256 usersProcessed, uint256 depositorsProcessed);
 
     constructor(
         address _usdc,
@@ -462,6 +463,87 @@ contract KredioPASMarket is Ownable, ReentrancyGuard, Pausable {
         uint256 bal = usdc.balanceOf(address(this));
         if (bal > 0) require(usdc.transfer(to, bal), "sweep fail");
         emit HardReset(to, bal);
+    }
+
+    /// @notice Comprehensive cleanup to return mutable contract state to a fresh-start baseline.
+    /// @dev Clears listed borrower/lender user state, zeros accounting, restores default risk params,
+    ///      unpauses if paused, then sweeps remaining USDC to `to`.
+    function adminCleanContract(
+        address to,
+        address[] calldata users,
+        address[] calldata depositors
+    ) external onlyOwner nonReentrant {
+        require(to != address(0), "zero addr");
+
+        globalTick = 0;
+
+        for (uint256 i = 0; i < users.length; i++) {
+            address user = users[i];
+            Position storage p = positions[user];
+            uint256 pasToReturn = collateralBalance[user];
+
+            if (p.active) {
+                if (p.debtUSDC <= totalBorrowed) totalBorrowed -= p.debtUSDC;
+                else totalBorrowed = 0;
+                pasToReturn += p.collateralPAS;
+                delete positions[user];
+            }
+
+            if (collateralBalance[user] > 0) collateralBalance[user] = 0;
+
+            if (pasToReturn > 0) {
+                (bool ok,) = payable(user).call{value: pasToReturn}("");
+                require(ok, "clean pas return fail");
+                emit CollateralWithdrawn(user, pasToReturn);
+            }
+
+            repaymentCount[user] = 0;
+            liquidationCount[user] = 0;
+            firstSeenBlock[user] = 0;
+            totalDepositedEver[user] = 0;
+            demoRateMultiplier[user] = 0;
+            emit UserScoreReset(user);
+        }
+
+        for (uint256 i = 0; i < depositors.length; i++) {
+            address depositor = depositors[i];
+            uint256 amount = depositBalance[depositor];
+
+            if (amount > 0) {
+                depositBalance[depositor] = 0;
+                yieldDebt[depositor] = 0;
+                if (totalDeposited >= amount) totalDeposited -= amount;
+                else totalDeposited = 0;
+                require(usdc.transfer(depositor, amount), "clean withdraw fail");
+                emit Withdrawn(depositor, amount);
+            }
+
+            repaymentCount[depositor] = 0;
+            liquidationCount[depositor] = 0;
+            firstSeenBlock[depositor] = 0;
+            totalDepositedEver[depositor] = 0;
+            demoRateMultiplier[depositor] = 0;
+            emit UserScoreReset(depositor);
+        }
+
+        ltvBps = 6500;
+        liqBonusBps = 800;
+        stalenessLimit = 3600;
+        protocolFeeBps = 1000;
+
+        accYieldPerShare = 0;
+        protocolFees = 0;
+        totalBorrowed = 0;
+        totalDeposited = 0;
+
+        if (paused()) {
+            _unpause();
+        }
+
+        uint256 bal = usdc.balanceOf(address(this));
+        if (bal > 0) require(usdc.transfer(to, bal), "clean sweep fail");
+
+        emit ContractCleaned(to, bal, users.length, depositors.length);
     }
 
     function pause() external onlyOwner {
