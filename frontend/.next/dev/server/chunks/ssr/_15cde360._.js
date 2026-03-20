@@ -4023,6 +4023,7 @@ function PeopleTab() {
                 before,
                 publicClient,
                 onTick: ()=>{},
+                onError: (msg)=>setBridgeStatus(`Polling error: ${msg}`),
                 onArrival: (delta)=>{
                     setBridgeStatus(`+${(0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$xcm$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["formatPASFromEVM"])(delta)} PAS arrived on Hub`);
                     setBridging(false);
@@ -4071,7 +4072,7 @@ function PeopleTab() {
                                 children: "→"
                             }, void 0, false, {
                                 fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                lineNumber: 526,
+                                lineNumber: 527,
                                 columnNumber: 35
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -4083,18 +4084,18 @@ function PeopleTab() {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                lineNumber: 527,
+                                lineNumber: 528,
                                 columnNumber: 25
                             }, this)
                         ]
                     }, s, true, {
                         fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                        lineNumber: 525,
+                        lineNumber: 526,
                         columnNumber: 21
                     }, this))
             }, void 0, false, {
                 fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                lineNumber: 523,
+                lineNumber: 524,
                 columnNumber: 13
             }, this),
             !isConnected && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$modules$2f$ProtocolUI$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["StateNotice"], {
@@ -4102,7 +4103,7 @@ function PeopleTab() {
                 message: "Connect MetaMask via the header first."
             }, void 0, false, {
                 fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                lineNumber: 535,
+                lineNumber: 536,
                 columnNumber: 30
             }, this),
             isConnected && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Fragment"], {
@@ -4116,7 +4117,7 @@ function PeopleTab() {
                                     label: "Bridge PAS from People Chain"
                                 }, void 0, false, {
                                     fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                    lineNumber: 543,
+                                    lineNumber: 544,
                                     columnNumber: 33
                                 }, this),
                                 !talismanConnected ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -4125,7 +4126,7 @@ function PeopleTab() {
                                     children: "Connect Talisman"
                                 }, void 0, false, {
                                     fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                    lineNumber: 545,
+                                    lineNumber: 546,
                                     columnNumber: 37
                                 }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                     className: "rounded-xl border border-purple-500/20 bg-purple-500/10 px-3 py-2 flex items-center gap-2 text-xs",
@@ -4134,7 +4135,7 @@ function PeopleTab() {
                                             className: "w-2 h-2 rounded-full bg-emerald-400 shrink-0"
                                         }, void 0, false, {
                                             fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                            lineNumber: 550,
+                                            lineNumber: 551,
                                             columnNumber: 41
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -4142,7 +4143,7 @@ function PeopleTab() {
                                             children: selectedAcc?.meta?.name ?? selectedAcc?.address.slice(0, 14) + '...'
                                         }, void 0, false, {
                                             fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                            lineNumber: 551,
+                                            lineNumber: 552,
                                             columnNumber: 41
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -4153,13 +4154,13 @@ function PeopleTab() {
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                            lineNumber: 552,
+                                            lineNumber: 553,
                                             columnNumber: 41
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                    lineNumber: 549,
+                                    lineNumber: 550,
                                     columnNumber: 37
                                 }, this),
                                 subAccounts.length > 1 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
@@ -4176,12 +4177,12 @@ function PeopleTab() {
                                             children: a.meta?.name ?? a.address.slice(0, 20) + '...'
                                         }, a.address, false, {
                                             fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                            lineNumber: 565,
+                                            lineNumber: 566,
                                             columnNumber: 63
                                         }, this))
                                 }, void 0, false, {
                                     fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                    lineNumber: 556,
+                                    lineNumber: 557,
                                     columnNumber: 37
                                 }, this),
                                 talismanConnected && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Fragment"], {
@@ -4194,7 +4195,7 @@ function PeopleTab() {
                                                     children: "PAS amount to bridge"
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                                    lineNumber: 571,
+                                                    lineNumber: 572,
                                                     columnNumber: 45
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4211,7 +4212,7 @@ function PeopleTab() {
                                                             className: "flex-1 bg-transparent text-xl font-light text-white placeholder-slate-600 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                         }, void 0, false, {
                                                             fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                                            lineNumber: 573,
+                                                            lineNumber: 574,
                                                             columnNumber: 49
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -4219,13 +4220,13 @@ function PeopleTab() {
                                                             children: "PAS"
                                                         }, void 0, false, {
                                                             fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                                            lineNumber: 575,
+                                                            lineNumber: 576,
                                                             columnNumber: 49
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                                    lineNumber: 572,
+                                                    lineNumber: 573,
                                                     columnNumber: 45
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4243,32 +4244,32 @@ function PeopleTab() {
                                                                     ]
                                                                 }, void 0, true, {
                                                                     fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                                                    lineNumber: 578,
+                                                                    lineNumber: 579,
                                                                     columnNumber: 67
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                                            lineNumber: 578,
+                                                            lineNumber: 579,
                                                             columnNumber: 49
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                             children: "~30 seconds"
                                                         }, void 0, false, {
                                                             fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                                            lineNumber: 579,
+                                                            lineNumber: 580,
                                                             columnNumber: 49
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                                    lineNumber: 577,
+                                                    lineNumber: 578,
                                                     columnNumber: 45
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                            lineNumber: 570,
+                                            lineNumber: 571,
                                             columnNumber: 41
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4279,7 +4280,7 @@ function PeopleTab() {
                                                     value: bridgePreview ? `~$${bridgePreview.collateralUsd.toFixed(2)}` : '-'
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                                    lineNumber: 584,
+                                                    lineNumber: 585,
                                                     columnNumber: 45
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(InfoRow, {
@@ -4288,7 +4289,7 @@ function PeopleTab() {
                                                     tone: "green"
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                                    lineNumber: 585,
+                                                    lineNumber: 586,
                                                     columnNumber: 45
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(InfoRow, {
@@ -4296,13 +4297,13 @@ function PeopleTab() {
                                                     value: bridgePreview ? `$${bridgePreview.oraclePriceNum.toFixed(4)}` : '-'
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                                    lineNumber: 586,
+                                                    lineNumber: 587,
                                                     columnNumber: 45
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                            lineNumber: 582,
+                                            lineNumber: 583,
                                             columnNumber: 41
                                         }, this),
                                         bridgeStatus && bridging && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4312,7 +4313,7 @@ function PeopleTab() {
                                                     small: true
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                                    lineNumber: 590,
+                                                    lineNumber: 591,
                                                     columnNumber: 49
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -4320,7 +4321,7 @@ function PeopleTab() {
                                                     children: bridgeStatus
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                                    lineNumber: 591,
+                                                    lineNumber: 592,
                                                     columnNumber: 49
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -4331,13 +4332,13 @@ function PeopleTab() {
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                                    lineNumber: 592,
+                                                    lineNumber: 593,
                                                     columnNumber: 49
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                            lineNumber: 589,
+                                            lineNumber: 590,
                                             columnNumber: 45
                                         }, this),
                                         bridgeStatus && bridgeStatus.startsWith('Error') && !bridging ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4348,7 +4349,7 @@ function PeopleTab() {
                                                     children: "✕"
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                                    lineNumber: 597,
+                                                    lineNumber: 598,
                                                     columnNumber: 49
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -4356,7 +4357,7 @@ function PeopleTab() {
                                                     children: bridgeStatus.replace(/^Error:\s*/, '')
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                                    lineNumber: 598,
+                                                    lineNumber: 599,
                                                     columnNumber: 49
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -4366,13 +4367,13 @@ function PeopleTab() {
                                                     children: "✕"
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                                    lineNumber: 599,
+                                                    lineNumber: 600,
                                                     columnNumber: 49
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                            lineNumber: 596,
+                                            lineNumber: 597,
                                             columnNumber: 45
                                         }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                                             onClick: handleBridge,
@@ -4382,7 +4383,7 @@ function PeopleTab() {
                                                 children: [
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(Spinner, {}, void 0, false, {
                                                         fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                                        lineNumber: 607,
+                                                        lineNumber: 608,
                                                         columnNumber: 63
                                                     }, this),
                                                     "Bridging..."
@@ -4390,7 +4391,7 @@ function PeopleTab() {
                                             }, void 0, true) : `Bridge ${bridgeAmount || '0'} PAS to Hub`
                                         }, void 0, false, {
                                             fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                            lineNumber: 602,
+                                            lineNumber: 603,
                                             columnNumber: 45
                                         }, this)
                                     ]
@@ -4398,14 +4399,14 @@ function PeopleTab() {
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                            lineNumber: 542,
+                            lineNumber: 543,
                             columnNumber: 29
                         }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                             className: "rounded-2xl border border-emerald-500/20 bg-emerald-900/10 p-4 flex items-center gap-3",
                             children: [
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(Check, {}, void 0, false, {
                                     fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                    lineNumber: 615,
+                                    lineNumber: 616,
                                     columnNumber: 33
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4416,7 +4417,7 @@ function PeopleTab() {
                                             children: "Step 1 - "
                                         }, void 0, false, {
                                             fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                            lineNumber: 617,
+                                            lineNumber: 618,
                                             columnNumber: 37
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -4428,19 +4429,19 @@ function PeopleTab() {
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                            lineNumber: 618,
+                                            lineNumber: 619,
                                             columnNumber: 37
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                    lineNumber: 616,
+                                    lineNumber: 617,
                                     columnNumber: 33
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                            lineNumber: 614,
+                            lineNumber: 615,
                             columnNumber: 29
                         }, this)
                     }, void 0, false),
@@ -4454,7 +4455,7 @@ function PeopleTab() {
                                         label: "Deposit PAS as Collateral"
                                     }, void 0, false, {
                                         fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                        lineNumber: 630,
+                                        lineNumber: 631,
                                         columnNumber: 41
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(DepositStep, {
@@ -4466,20 +4467,20 @@ function PeopleTab() {
                                         }
                                     }, void 0, false, {
                                         fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                        lineNumber: 631,
+                                        lineNumber: 632,
                                         columnNumber: 41
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                lineNumber: 629,
+                                lineNumber: 630,
                                 columnNumber: 37
                             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "rounded-2xl border border-emerald-500/20 bg-emerald-900/10 p-4 flex items-center gap-3",
                                 children: [
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(Check, {}, void 0, false, {
                                         fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                        lineNumber: 638,
+                                        lineNumber: 639,
                                         columnNumber: 41
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4490,7 +4491,7 @@ function PeopleTab() {
                                                 children: "Step 2 - "
                                             }, void 0, false, {
                                                 fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                                lineNumber: 640,
+                                                lineNumber: 641,
                                                 columnNumber: 45
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -4501,24 +4502,24 @@ function PeopleTab() {
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                                lineNumber: 641,
+                                                lineNumber: 642,
                                                 columnNumber: 45
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                        lineNumber: 639,
+                                        lineNumber: 640,
                                         columnNumber: 41
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                lineNumber: 637,
+                                lineNumber: 638,
                                 columnNumber: 37
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                            lineNumber: 627,
+                            lineNumber: 628,
                             columnNumber: 29
                         }, this)
                     }, void 0, false),
@@ -4532,7 +4533,7 @@ function PeopleTab() {
                                     done: step === 'done'
                                 }, void 0, false, {
                                     fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                    lineNumber: 653,
+                                    lineNumber: 654,
                                     columnNumber: 33
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(BorrowStep, {
@@ -4541,13 +4542,13 @@ function PeopleTab() {
                                     onSuccess: ()=>setStep('done')
                                 }, void 0, false, {
                                     fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                                    lineNumber: 654,
+                                    lineNumber: 655,
                                     columnNumber: 33
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                            lineNumber: 652,
+                            lineNumber: 653,
                             columnNumber: 29
                         }, this)
                     }, void 0, false),
@@ -4557,7 +4558,7 @@ function PeopleTab() {
                         children: "← Start another borrow"
                     }, void 0, false, {
                         fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                        lineNumber: 660,
+                        lineNumber: 661,
                         columnNumber: 25
                     }, this)
                 ]
@@ -4565,7 +4566,7 @@ function PeopleTab() {
         ]
     }, void 0, true, {
         fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-        lineNumber: 522,
+        lineNumber: 523,
         columnNumber: 9
     }, this);
 }
@@ -4584,7 +4585,7 @@ function BorrowPasFeature() {
                         children: "PAS on Hub"
                     }, void 0, false, {
                         fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                        lineNumber: 679,
+                        lineNumber: 680,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -4593,36 +4594,36 @@ function BorrowPasFeature() {
                         children: "PAS on People Chain"
                     }, void 0, false, {
                         fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                        lineNumber: 680,
+                        lineNumber: 681,
                         columnNumber: 17
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                lineNumber: 678,
+                lineNumber: 679,
                 columnNumber: 13
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Fragment"], {
                 children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                     children: source === 'hub' ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(HubTab, {}, void 0, false, {
                         fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                        lineNumber: 684,
+                        lineNumber: 685,
                         columnNumber: 41
                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(PeopleTab, {}, void 0, false, {
                         fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                        lineNumber: 684,
+                        lineNumber: 685,
                         columnNumber: 54
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-                    lineNumber: 683,
+                    lineNumber: 684,
                     columnNumber: 17
                 }, this)
             }, void 0, false)
         ]
     }, void 0, true, {
         fileName: "[project]/components/modules/borrow/BorrowPasFeature.tsx",
-        lineNumber: 677,
+        lineNumber: 678,
         columnNumber: 9
     }, this);
 }

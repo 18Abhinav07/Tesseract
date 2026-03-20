@@ -61,3 +61,5 @@ The following conflicting packages were found:
 [00:41:47.075] Browser INFO    web3Accounts: Found 1 address
 [00:41:48.470] Browser WARN    2026-03-20 11:50:18        REGISTRY: Unknown signed extensions StorageWeightReclaim found, treating them as no-effect
 [00:41:48.470] Browser WARN    2026-03-20 11:50:18        API/INIT: RPC methods not decorated: archive_v1_body, archive_v1_call, archive_v1_finalizedHeight, archive_v1_genesisHash, archive_v1_hashByHeight, archive_v1_header, archive_v1_stopStorage, archive_v1_storage, archive_v1_storageDiff, archive_v1_storageDiff_stopStorageDiff, chainHead_v1_body, chainHead_v1_call, chainHead_v1_continue, chainHead_v1_follow, chainHead_v1_header, chainHead_v1_stopOperation, chainHead_v1_storage, chainHead_v1_unfollow, chainHead_v1_unpin, chainSpec_v1_chainName, chainSpec_v1_genesisHash, chainSpec_v1_properties, transactionWatch_v1_submitAndWatch, transactionWatch_v1_unwatch, transaction_v1_broadcast, transaction_v1_stop
+[00:45:03.203] Server  LOG     ✓ Compiled in 282ms
+[00:45:23.304] Server  LOG     ✓ Compiled in 32ms

@@ -289,6 +289,7 @@ function PasTab() {
                     before: snapshot,
                     publicClient,
                     onTick: (cur: bigint) => setBalanceNow(cur),
+                    onError: (msg: string) => setStatusMsg(`Polling error: ${msg}`),
                     onArrival: (delta: bigint) => {
                         setArrived(true);
                         setStatusMsg(`+${formatPASFromEVM(delta)} PAS arrived on Hub`);

@@ -495,6 +495,7 @@ function PeopleTab() {
             pollCleanupRef.current = pollHubArrival({
                 address: hubAddress, before, publicClient,
                 onTick: () => { },
+                onError: msg => setBridgeStatus(`Polling error: ${msg}`),
                 onArrival: delta => {
                     setBridgeStatus(`+${formatPASFromEVM(delta)} PAS arrived on Hub`);
                     setBridging(false);
