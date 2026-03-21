@@ -1271,7 +1271,7 @@ export default function DashboardPage() {
                                         {!hasAnyBorrow ? (
                                             <div className="border border-white/10 bg-transparent px-6 py-12 text-center flex flex-col justify-center items-center">
                                                 <p className="text-slate-500 text-sm mb-5">You have no open borrowing positions.</p>
-                                                <Link href="/borrow/usdc" className="px-6 py-2.5 rounded-none text-sm font-bold border border-white/10 bg-transparent hover:bg-white/5 text-slate-300 hover:text-white transition-colors">Open a Borrow Position</Link>
+                                                <Link href="/borrow" className="px-6 py-2.5 rounded-none text-sm font-bold border border-white/10 bg-transparent hover:bg-white/5 text-slate-300 hover:text-white transition-colors">Open a Borrow Position</Link>
                                             </div>
                                         ) : (
                                             <div className="rounded-2xl border border-white/10 bg-black/30 backdrop-blur-xl overflow-x-auto shadow-[0_0_0_1px_rgba(255,255,255,0.03)]">
