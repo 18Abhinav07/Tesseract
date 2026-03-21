@@ -1,6 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+
+  transpilePackages: [
+    "@polkadot/wasm-crypto",
+    "@polkadot/wasm-crypto-wasm",
+    "@polkadot/wasm-crypto-asmjs",
+    "@polkadot/wasm-bridge"
+  ],
   webpack: (config) => {
 
     config.optimization.splitChunks = false;
