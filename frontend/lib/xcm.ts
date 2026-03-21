@@ -1,3 +1,5 @@
+"use client"
+
 import { formatUnits, isAddress, parseUnits } from 'viem';
 import type { ApiPromise as PolkadotApiPromise } from '@polkadot/api';
 
