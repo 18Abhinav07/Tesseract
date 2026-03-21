@@ -44,30 +44,18 @@ export type PollHubArrivalParams = {
     onTimeout?: (elapsedMs: number) => void;
 };
 
-async function withPeopleApi<T>(work: (api: PolkadotApiPromise) => Promise<T>): Promise<T> {
+let apiInstance: PolkadotApiPromise | null = null;
+
+async function getApi(): Promise<PolkadotApiPromise> {
+    if (apiInstance && apiInstance.isConnected) return apiInstance;
+
     const { ApiPromise, WsProvider } = await import('@polkadot/api');
-    const tried: string[] = [];
-    let lastError: unknown;
 
-    for (const endpoint of PEOPLE_RPCS) {
-        let api: InstanceType<typeof ApiPromise> | null = null;
-        try {
-            // 10-second connect timeout so dead endpoints don't stall the whole flow
-            const provider = new WsProvider(endpoint, 1000, {}, 10_000);
-            api = await ApiPromise.create({ provider });
-            return await work(api);
-        } catch (error) {
-            tried.push(endpoint);
-            lastError = error;
-        } finally {
-            if (api) {
-                try { await api.disconnect(); } catch { /* ignore */ }
-            }
-        }
-    }
+    // WsProvider handles array of endpoints natively for fallback
+    const provider = new WsProvider(PEOPLE_RPCS, 1000, {}, 10_000);
+    apiInstance = await ApiPromise.create({ provider });
 
-    const reason = lastError instanceof Error ? lastError.message : String(lastError ?? 'Unknown RPC error');
-    throw new Error(`People Chain RPC unavailable (${tried.join(', ')}): ${reason}`);
+    return apiInstance;
 }
 
 // Converts an EVM H160 address to the SS58 AccountId32 used by Asset Hub Paseo's Frontier EVM.
@@ -96,11 +84,10 @@ export function formatPASFromPeople(raw: bigint): string {
 }
 
 export async function fetchPeopleBalance(address: string): Promise<bigint> {
-    return withPeopleApi(async (api) => {
-        const acct = await api.query.system.account(address);
-        const free = BigInt((acct as unknown as { data: { free: { toString: () => string } } }).data.free.toString());
-        return free;
-    });
+    const api = await getApi();
+    const acct = await api.query.system.account(address);
+    const free = BigInt((acct as unknown as { data: { free: { toString: () => string } } }).data.free.toString());
+    return free;
 }
 
 function toSubstrateAmount(amountPAS: string): string {
@@ -131,75 +118,75 @@ export async function sendXCMToHub(params: SendXcmParams): Promise<{ blockHash: 
     }
 
     try {
-        return await withPeopleApi(async (api) => {
-            onStatus?.('connecting', 'Connecting to People Chain...');
-            onStatus?.('building', 'Building XCM transaction...');
+        const api = await getApi();
+        onStatus?.('connecting', 'Connecting to People Chain...');
+        onStatus?.('building', 'Building XCM transaction...');
 
-            const amount = toSubstrateAmount(amountPAS);
+        const amount = toSubstrateAmount(amountPAS);
 
-            // Convert EVM address to the SS58 AccountId32 that Asset Hub Frontier uses
-            // for eth_getBalance. Encoding: H160 (first 20 bytes) || 0xEE×12 (last 12 bytes).
-            // This produces a valid SS58 that ParaSpell accepts AND that maps back to the
-            // EVM wallet — confirmed working in production.
-            const { encodeAddress } = await import('@polkadot/util-crypto');
-            const { hexToU8a } = await import('@polkadot/util');
-            const h160 = hexToU8a(destinationEVM);
-            const id32 = new Uint8Array(32);
-            id32.set(h160, 0);
-            id32.fill(0xee, 20);
-            const ss58Dest = encodeAddress(id32, 0);
+        // Convert EVM address to the SS58 AccountId32 that Asset Hub Frontier uses
+        // for eth_getBalance. Encoding: H160 (first 20 bytes) || 0xEE×12 (last 12 bytes).
+        // This produces a valid SS58 that ParaSpell accepts AND that maps back to the
+        // EVM wallet — confirmed working in production.
+        const { encodeAddress } = await import('@polkadot/util-crypto');
+        const { hexToU8a } = await import('@polkadot/util');
+        const h160 = hexToU8a(destinationEVM);
+        const id32 = new Uint8Array(32);
+        id32.set(h160, 0);
+        id32.fill(0xee, 20);
+        const ss58Dest = encodeAddress(id32, 0);
 
-            const builder = await getBuilder(api);
-            const tx = await builder
-                .from('PeoplePaseo')
-                .to('AssetHubPaseo')
-                .currency({ symbol: 'PAS', amount })
-                .address(ss58Dest)
-                .senderAddress(senderAddress)
-                .build();
+        const builder = await getBuilder(api);
+        const tx = await builder
+            .from('PeoplePaseo')
+            .to('AssetHubPaseo')
+            .currency({ symbol: 'PAS', amount })
+            .address(ss58Dest)
+            .senderAddress(senderAddress)
+            .build();
 
-            onStatus?.('awaiting_signature', 'Waiting for Talisman signature...');
-            const { web3FromAddress } = await import('@polkadot/extension-dapp');
-            const injector = await web3FromAddress(senderAddress);
+        onStatus?.('awaiting_signature', 'Waiting for Talisman signature...');
+        const { web3FromAddress } = await import('@polkadot/extension-dapp');
+        const injector = await web3FromAddress(senderAddress);
 
-            return await new Promise<{ blockHash: string }>((resolve, reject) => {
-                let unsub: (() => void) | null = null;
-                const cleanup = () => {
-                    if (unsub) { try { unsub(); } catch { /* ignore */ } unsub = null; }
-                };
+        return await new Promise<{ blockHash: string }>((resolve, reject) => {
+            let unsub: (() => void) | null = null;
+            const cleanup = () => {
+                if (unsub) { try { unsub(); } catch { /* ignore */ } unsub = null; }
+            };
 
-                tx.signAndSend(
-                    senderAddress,
-                    { signer: injector.signer, nonce: -1 },
-                    ({ status, dispatchError }: {
-                        status: { isBroadcast?: boolean; isInBlock: boolean; isFinalized: boolean; asFinalized?: { toHex: () => string } };
-                        dispatchError?: { isModule?: boolean; asModule?: unknown; toString: () => string };
-                    }) => {
-                        if (status.isBroadcast) onStatus?.('broadcasting', 'Broadcasting to network...');
-                        if (status.isInBlock) onStatus?.('in_block', 'In block - waiting for finalization...');
-                        if (status.isFinalized) {
-                            if (dispatchError) {
-                                cleanup();
-                                if (dispatchError.isModule && dispatchError.asModule) {
-                                    const decoded = api.registry.findMetaError(
-                                        dispatchError.asModule as Parameters<typeof api.registry.findMetaError>[0]
-                                    );
-                                    reject(new Error(`${decoded.section}.${decoded.name}: ${decoded.docs.join(' ')}`));
-                                    return;
-                                }
-                                reject(new Error(dispatchError.toString()));
+            tx.signAndSend(
+                senderAddress,
+                { signer: injector.signer, nonce: -1 },
+                ({ status, dispatchError }: {
+                    status: { isBroadcast?: boolean; isInBlock: boolean; isFinalized: boolean; asFinalized?: { toHex: () => string } };
+                    dispatchError?: { isModule?: boolean; asModule?: unknown; toString: () => string };
+                }) => {
+                    if (status.isBroadcast) onStatus?.('broadcasting', 'Broadcasting to network...');
+                    if (status.isInBlock) onStatus?.('in_block', 'In block - waiting for finalization...');
+                    if (status.isFinalized) {
+                        if (dispatchError) {
+                            cleanup();
+                            if (dispatchError.isModule && dispatchError.asModule) {
+                                const decoded = api.registry.findMetaError(
+                                    dispatchError.asModule as Parameters<typeof api.registry.findMetaError>[0]
+                                );
+                                reject(new Error(`${decoded.section}.${decoded.name}: ${decoded.docs.join(' ')}`));
                                 return;
                             }
-                            onStatus?.('finalized', 'Finalized on People Chain.');
-                            cleanup();
-                            resolve({ blockHash: status.asFinalized?.toHex?.() ?? '' });
+                            reject(new Error(dispatchError.toString()));
+                            return;
                         }
-                    },
-                )
-                    .then((u) => { unsub = u; })
-                    .catch((err: unknown) => { cleanup(); reject(err); });
-            });
+                        onStatus?.('finalized', 'Finalized on People Chain.');
+                        cleanup();
+                        resolve({ blockHash: status.asFinalized?.toHex?.() ?? '' });
+                    }
+                },
+            )
+                .then((u) => { unsub = u; })
+                .catch((err: unknown) => { cleanup(); reject(err); });
         });
+
     } catch (error: unknown) {
         throw normalizeXcmError(error);
     }
