@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
   webpack: (config) => {
     config.module.rules.push({
       test: /\.js$/,
-      include: /node_modules\/(@paraspell\/sdk-pjs|@snowbridge\/api)/,
+      include: /node_modules\/(@paraspell\/sdk-pjs)/,
       use: {
         loader: "babel-loader",
         options: {
