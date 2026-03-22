@@ -1,47 +1,57 @@
 // scripts/fix-wasm.js
 const fs = require("fs");
 const path = require("path");
-const { execSync } = require("child_process");
 
-// '\0' and '\u0000' both get constant-folded by SWC → illegal `proving\00`
-// String.fromCharCode(0) is a runtime function call — SWC CANNOT fold it
-// → template stays dynamic → valid JS → new chunk hash → CDN cache bypassed
+const root = path.resolve(__dirname, "..");
 const TARGET      = "`proving${'\\0'}0`";
 const REPLACEMENT = "`proving${String.fromCharCode(0)}0`";
 
-console.log("[fix-wasm] Searching for all copies of bundle-polkadot-util-crypto.js...");
+console.log("[fix-wasm] Searching for the octal string in @scure/sr25519 and @polkadot/util-crypto...");
 
-let files = [];
-try {
-  const result = execSync(
-    `find node_modules -name "bundle-polkadot-util-crypto.js"`,
-    { encoding: "utf8" }
-  ).trim();
-  files = result.split("\n").filter(Boolean);
-} catch (e) {
-  console.log("[fix-wasm] find command failed. Skipping.");
-  process.exit(0);
+function findJsFiles(dir, fileList = []) {
+  try {
+    const files = fs.readdirSync(dir);
+    for (const file of files) {
+      if (file === ".git" || file === "node_modules") continue;
+      const fullPath = path.join(dir, file);
+      const stat = fs.statSync(fullPath);
+      if (stat.isDirectory()) {
+        findJsFiles(fullPath, fileList);
+      } else if (file.endsWith(".js") || file.endsWith(".ts")) {
+        fileList.push(fullPath);
+      }
+    }
+  } catch (e) {
+    // Ignore permissions or missing dirs
+  }
+  return fileList;
 }
 
-let patchedCount = 0;
+let files = [];
+const scurePath = path.join(root, "node_modules", "@scure", "sr25519");
+if (fs.existsSync(scurePath)) {
+  files = files.concat(findJsFiles(scurePath));
+}
+const cryptoPath = path.join(root, "node_modules", "@polkadot", "util-crypto");
+if (fs.existsSync(cryptoPath)) {
+  files = files.concat(findJsFiles(cryptoPath));
+}
 
-for (const file of files) {
-  try {
-    const content = fs.readFileSync(file, "utf8");
-    if (content.includes(REPLACEMENT)) {
-      console.log(`[fix-wasm] Already patched: ${file}`);
-      continue;
-    }
-    if (!content.includes(TARGET)) {
-      // It might have been patched by my previous weird script, continue gracefully
-      continue;
-    }
-    fs.writeFileSync(file, content.replace(TARGET, REPLACEMENT));
-    console.log(`[fix-wasm] ✅ Patched: ${file}`);
-    patchedCount++;
-  } catch (e) {
-    console.error(`[fix-wasm] Error processing ${file}: ${e.message}`);
+console.log(`[fix-wasm] Found ${files.length} candidate file(s).`);
+
+let patchedCount = 0;
+for (const fullPath of files) {
+  const content = fs.readFileSync(fullPath, "utf8");
+  if (content.includes(REPLACEMENT)) { 
+    console.log(`[fix-wasm] Already patched: ${fullPath.replace(root, '')}`); 
+    continue; 
   }
+  if (!content.includes(TARGET)) { 
+    continue; 
+  }
+  fs.writeFileSync(fullPath, content.replace(TARGET, REPLACEMENT));
+  console.log(`[fix-wasm] ✅ Patched: ${fullPath.replace(root, '')}`);
+  patchedCount++;
 }
 
 console.log(`[fix-wasm] Done. ${patchedCount} file(s) patched.`);
